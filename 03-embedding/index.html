@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Embedding Demo: USE + 3D PCA (Single-file)</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", sans-serif; }
+    body { margin: 18px; line-height: 1.35; }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
+    .card h2 { font-size: 14px; margin: 0 0 8px; }
+    button, input, select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 12px; background:#fff; }
+    button { cursor: pointer; }
+    button:hover { background:#f7f7f7; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    input[type="text"] { width: 100%; }
+    .controls { display:flex; gap:8px; flex-wrap: wrap; align-items:center; }
+    .small { font-size: 12px; color:#444; }
+    .muted { color:#666; }
+    .pill { padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; }
+    .mono { font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .list { border:1px solid #eee; border-radius:12px; overflow:hidden; margin-top:8px; }
+    .item {
+      display:grid; grid-template-columns: 1fr auto; gap:10px;
+      padding:10px; border-top:1px solid #f1f1f1; cursor:pointer; user-select:none;
+    }
+    .item:first-child { border-top:none; }
+    .item:hover { background:#fafafa; }
+    .item.selected { background:#fff2a8; }
+    .btnRow { display:flex; gap:8px; }
+    .canvasWrap { width: 100%; height: 440px; border: 1px solid #eee; border-radius: 12px; overflow: hidden; }
+    .outbox { border:1px solid #eee; border-radius:12px; padding:10px; white-space: pre-wrap; }
+    .footer { margin-top: 10px; font-size: 12px; color: #666; }
+    .kbd { font: 12px ui-monospace; border: 1px solid #ddd; border-bottom-width: 2px; padding: 1px 6px; border-radius: 8px; background: #fafafa; }
+  </style>
+
+  <!-- TensorFlow.js + Universal Sentence Encoder via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
+
+  <!-- three.js via importmap (no build step) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <h1>Embedding Demo (USE): vectors → cosine neighbors → 3D PCA</h1>
+
+  <div class="row">
+    <div class="card">
+      <h2>1) Load model + add text</h2>
+
+      <div class="controls">
+        <button id="loadBtn">Load USE model</button>
+        <span class="pill" id="modelStatus">Model: not loaded</span>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="small muted">Text (word or short sentence)</div>
+        <input id="textInput" type="text" placeholder="e.g., king, queen, apple, orange, teaching tokenization is fun" />
+      </div>
+
+      <div class="controls" style="margin-top:10px;">
+        <button id="addBtn" disabled>Add + Embed</button>
+        <button id="addBatchBtn" disabled>Add demo set</button>
+        <button id="clearBtn" disabled>Clear all</button>
+        <span class="pill" id="dimPill">dim=—</span>
+      </div>
+
+      <div class="footer">
+        Notes:
+        <ul>
+          <li>USE outputs a fixed-length embedding (commonly 512 dims). :contentReference[oaicite:4]{index=4}</li>
+          <li>We do PCA on the <i>current</i> points only, then plot in 3D.</li>
+          <li>For lecture: add ~10–50 points (fast). Hundreds may lag.</li>
+        </ul>
+      </div>
+
+      <h2 style="margin-top:14px;">2) Items</h2>
+      <div class="small muted">Click an item to see nearest neighbors + highlight in 3D.</div>
+      <div class="list" id="itemsList"></div>
+    </div>
+
+    <div class="card">
+      <h2>3) 3D visualization</h2>
+      <div class="controls">
+        <button id="recomputeBtn" disabled>Recompute PCA + redraw</button>
+        <span class="pill" id="pcaStatus">PCA: —</span>
+      </div>
+
+      <div class="canvasWrap" id="viz"></div>
+
+      <div style="margin-top:10px;">
+        <h2 style="margin:0 0 8px;">4) Nearest neighbors (cosine)</h2>
+        <div class="outbox mono" id="nnBox">—</div>
+      </div>
+
+      <div class="footer">
+        Controls: drag to rotate, wheel to zoom, right-drag to pan.
+        Selected point is highlighted.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global app state shared with module script
+    window.APP = {
+      model: null,
+      items: [], // { id, text, vec: Float32Array, xyz: [x,y,z] }
+      selectedId: null
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    const loadBtn = $("loadBtn");
+    const addBtn = $("addBtn");
+    const addBatchBtn = $("addBatchBtn");
+    const clearBtn = $("clearBtn");
+    const recomputeBtn = $("recomputeBtn");
+
+    const modelStatus = $("modelStatus");
+    const dimPill = $("dimPill");
+    const pcaStatus = $("pcaStatus");
+
+    const textInput = $("textInput");
+    const itemsList = $("itemsList");
+    const nnBox = $("nnBox");
+
+    function setModelStatus(s) { modelStatus.textContent = `Model: ${s}`; }
+    function setPCAStatus(s) { pcaStatus.textContent = `PCA: ${s}`; }
+
+    function cosine(a, b) {
+      let dot = 0, na = 0, nb = 0;
+      for (let i = 0; i < a.length; i++) {
+        const x = a[i], y = b[i];
+        dot += x * y;
+        na += x * x;
+        nb += y * y;
+      }
+      const denom = Math.sqrt(na) * Math.sqrt(nb);
+      return denom > 0 ? dot / denom : 0;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    function renderItems() {
+      itemsList.innerHTML = "";
+      if (window.APP.items.length === 0) {
+        itemsList.innerHTML = `<div class="item mono" style="cursor:default;"><div>—</div><div></div></div>`;
+        nnBox.textContent = "—";
+        return;
+      }
+
+      for (const it of window.APP.items) {
+        const row = document.createElement("div");
+        row.className = "item mono" + (it.id === window.APP.selectedId ? " selected" : "");
+        row.innerHTML = `<div>${escapeHtml(it.text)}</div><div class="btnRow">
+          <button data-del="${it.id}" style="padding:4px 8px;">Del</button>
+        </div>`;
+
+        row.onclick = (e) => {
+          const delId = e.target?.getAttribute?.("data-del");
+          if (delId) return;
+          window.APP.selectedId = it.id;
+          renderItems();
+          renderNeighbors();
+          window.redraw3D?.();
+        };
+
+        row.querySelector("button[data-del]").onclick = (e) => {
+          e.stopPropagation();
+          const id = it.id;
+          window.APP.items = window.APP.items.filter(x => x.id !== id);
+          if (window.APP.selectedId === id) window.APP.selectedId = window.APP.items[0]?.id ?? null;
+          renderItems();
+          renderNeighbors();
+          recomputePCAAndRedraw();
+        };
+
+        itemsList.appendChild(row);
+      }
+    }
+
+    function renderNeighbors() {
+      const items = window.APP.items;
+      if (items.length < 2) { nnBox.textContent = "Add at least 2 items."; return; }
+
+      const sel = items.find(x => x.id === window.APP.selectedId) ?? items[0];
+      if (!sel) { nnBox.textContent = "—"; return; }
+
+      const sims = items
+        .filter(x => x.id !== sel.id)
+        .map(x => ({ text: x.text, sim: cosine(sel.vec, x.vec) }))
+        .sort((a,b) => b.sim - a.sim)
+        .slice(0, 8);
+
+      nnBox.textContent =
+        `Selected: ${sel.text}\n\n` +
+        sims.map((s,i) => `${String(i+1).padStart(2," ")}. ${s.text}   cosine=${s.sim.toFixed(3)}`).join("\n");
+    }
+
+    async function loadModel() {
+      setModelStatus("loading…");
+      loadBtn.disabled = true;
+      try {
+        window.APP.model = await use.load();
+        setModelStatus("loaded");
+        addBtn.disabled = false;
+        addBatchBtn.disabled = false;
+        clearBtn.disabled = false;
+        dimPill.textContent = "dim=512";
+      } catch (e) {
+        console.error(e);
+        setModelStatus("failed (check console)");
+        loadBtn.disabled = false;
+      }
+    }
+
+    async function embedText(text) {
+      const m = window.APP.model;
+      const emb = await m.embed([text]);
+      const arr = await emb.array();
+      emb.dispose();
+      return new Float32Array(arr[0]);
+    }
+
+    async function addOne(text) {
+      const clean = text.trim();
+      if (!clean) return;
+
+      addBtn.disabled = true;
+      addBatchBtn.disabled = true;
+      recomputeBtn.disabled = true;
+      setPCAStatus("embedding…");
+
+      try {
+        const vec = await embedText(clean);
+        const id = Math.random().toString(16).slice(2);
+        window.APP.items.push({ id, text: clean, vec, xyz: [0,0,0] });
+        if (!window.APP.selectedId) window.APP.selectedId = id;
+
+        renderItems();
+        renderNeighbors();
+
+        await recomputePCAAndRedraw();
+      } finally {
+        addBtn.disabled = false;
+        addBatchBtn.disabled = false;
+        recomputeBtn.disabled = window.APP.items.length < 3;
+        setPCAStatus("ready");
+      }
+    }
+
+    async function addDemoSet() {
+      const demo = [
+        "king","queen","man","woman","boy","girl",
+        "apple","orange","banana","grape",
+        "cat","dog","wolf","tiger",
+        "car","bus","train","airplane",
+        "Japan","Tokyo","Colorado","Boulder",
+        "teaching","learning","tokenization","language model"
+      ];
+
+      addBtn.disabled = true;
+      addBatchBtn.disabled = true;
+      recomputeBtn.disabled = true;
+      setPCAStatus("embedding demo set…");
+
+      try {
+        for (const t of demo) {
+          const vec = await embedText(t);
+          const id = Math.random().toString(16).slice(2);
+          window.APP.items.push({ id, text: t, vec, xyz: [0,0,0] });
+          if (!window.APP.selectedId) window.APP.selectedId = id;
+          renderItems();
+        }
+        renderNeighbors();
+        await recomputePCAAndRedraw();
+      } finally {
+        addBtn.disabled = false;
+        addBatchBtn.disabled = false;
+        recomputeBtn.disabled = window.APP.items.length < 3;
+        setPCAStatus("ready");
+      }
+    }
+
+    function clearAll() {
+      window.APP.items = [];
+      window.APP.selectedId = null;
+      renderItems();
+      renderNeighbors();
+      window.redraw3D?.();
+      setPCAStatus("—");
+      recomputeBtn.disabled = true;
+    }
+
+    function meanCenter(X) {
+      const n = X.length;
+      const d = X[0].length;
+      const mu = new Float32Array(d);
+      for (let i = 0; i < n; i++) {
+        const v = X[i];
+        for (let j = 0; j < d; j++) mu[j] += v[j];
+      }
+      for (let j = 0; j < d; j++) mu[j] /= n;
+      const Y = new Array(n);
+      for (let i = 0; i < n; i++) {
+        const v = X[i];
+        const w = new Float32Array(d);
+        for (let j = 0; j < d; j++) w[j] = v[j] - mu[j];
+        Y[i] = w;
+      }
+      return { Y, mu };
+    }
+
+    function dot(a, b) {
+      let s = 0;
+      for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+      return s;
+    }
+
+    function norm(a) { return Math.sqrt(dot(a,a)); }
+
+    function matVecMul(G, x) {
+      const n = G.length;
+      const y = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        let s = 0;
+        const row = G[i];
+        for (let j = 0; j < n; j++) s += row[j] * x[j];
+        y[i] = s;
+      }
+      return y;
+    }
+
+    function outer(u, v) {
+      const n = u.length;
+      const M = new Array(n);
+      for (let i = 0; i < n; i++) {
+        const row = new Float32Array(n);
+        const ui = u[i];
+        for (let j = 0; j < n; j++) row[j] = ui * v[j];
+        M[i] = row;
+      }
+      return M;
+    }
+
+    function matSub(A, B, scale = 1) {
+      const n = A.length;
+      const C = new Array(n);
+      for (let i = 0; i < n; i++) {
+        const row = new Float32Array(n);
+        for (let j = 0; j < n; j++) row[j] = A[i][j] - scale * B[i][j];
+        C[i] = row;
+      }
+      return C;
+    }
+
+    function buildGram(Y) {
+      // G = Y Y^T (n x n), n is small (number of points)
+      const n = Y.length;
+      const G = new Array(n);
+      for (let i = 0; i < n; i++) {
+        const row = new Float32Array(n);
+        for (let j = 0; j < n; j++) row[j] = dot(Y[i], Y[j]);
+        G[i] = row;
+      }
+      return G;
+    }
+
+    function powerIterTopK(G, k=3, iters=60) {
+      // returns eigenpairs of symmetric matrix G via power iteration + deflation
+      let A = G;
+      const n = G.length;
+      const eig = [];
+
+      for (let comp = 0; comp < k; comp++) {
+        let x = new Float32Array(n);
+        for (let i = 0; i < n; i++) x[i] = Math.random() - 0.5;
+        let xnorm = norm(x);
+        for (let i = 0; i < n; i++) x[i] /= (xnorm || 1);
+
+        for (let t = 0; t < iters; t++) {
+          const y = matVecMul(A, x);
+          const yn = norm(y);
+          if (yn === 0) break;
+          for (let i = 0; i < n; i++) x[i] = y[i] / yn;
+        }
+
+        const Ax = matVecMul(A, x);
+        const lambda = dot(x, Ax);
+        eig.push({ lambda, u: x });
+
+        // deflate: A = A - lambda * u u^T
+        const uuT = outer(x, x);
+        A = matSub(A, uuT, lambda);
+      }
+      return eig;
+    }
+
+    function computePCA3(items) {
+      // PCA in feature space (d=512) using small-n trick via Gram matrix eigenvectors
+      const X = items.map(it => it.vec);
+      const { Y } = meanCenter(X);         // n vectors, centered
+      const n = Y.length;
+      if (n < 3) return items.map(_ => [0,0,0]);
+
+      const G = buildGram(Y);              // n x n
+      const eig = powerIterTopK(G, 3, 80); // top-3
+
+      // build principal directions in feature space:
+      // v = Y^T u / sqrt(lambda)
+      const d = Y[0].length;
+      const V = [];
+      for (const {lambda, u} of eig) {
+        const v = new Float32Array(d);
+        for (let i = 0; i < n; i++) {
+          const ui = u[i];
+          const yi = Y[i];
+          for (let j = 0; j < d; j++) v[j] += yi[j] * ui;
+        }
+        const scale = Math.sqrt(Math.max(lambda, 1e-8));
+        for (let j = 0; j < d; j++) v[j] /= scale;
+        V.push(v);
+      }
+
+      // project: z = Y v
+      const Z = items.map((_, i) => {
+        const zi = [ dot(Y[i], V[0]), dot(Y[i], V[1]), dot(Y[i], V[2]) ];
+        return zi;
+      });
+
+      // normalize scale for nicer viewing
+      let maxAbs = 1e-8;
+      for (const z of Z) for (const t of z) maxAbs = Math.max(maxAbs, Math.abs(t));
+      const s = 6 / maxAbs;
+      return Z.map(z => [z[0]*s, z[1]*s, z[2]*s]);
+    }
+
+    async function recomputePCAAndRedraw() {
+      if (window.APP.items.length < 3) {
+        setPCAStatus("need ≥ 3 points");
+        window.redraw3D?.();
+        return;
+      }
+      setPCAStatus("computing PCA…");
+      // slight yield to UI
+      await new Promise(r => setTimeout(r, 0));
+
+      const xyz = computePCA3(window.APP.items);
+      for (let i = 0; i < window.APP.items.length; i++) window.APP.items[i].xyz = xyz[i];
+
+      setPCAStatus("done");
+      recomputeBtn.disabled = false;
+      window.redraw3D?.();
+    }
+
+    loadBtn.onclick = loadModel;
+    addBtn.onclick = () => addOne(textInput.value);
+    addBatchBtn.onclick = addDemoSet;
+    clearBtn.onclick = clearAll;
+    recomputeBtn.onclick = recomputePCAAndRedraw;
+
+    // initial UI
+    setModelStatus("not loaded");
+    renderItems();
+  </script>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    const mount = document.getElementById("viz");
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
+    camera.position.set(0, 0, 18);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    mount.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    const light = new THREE.DirectionalLight(0xffffff, 1.0);
+    light.position.set(1, 2, 3);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+    const grid = new THREE.GridHelper(20, 20, 0xcccccc, 0xeeeeee);
+    grid.position.y = -7;
+    scene.add(grid);
+
+    const objects = new Map(); // id -> {group, sphere, labelSprite}
+    const tmpV = new THREE.Vector3();
+
+    function resize() {
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    function makeTextSprite(text) {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      const fontSize = 18;
+      ctx.font = `${fontSize}px ui-monospace, Menlo, Monaco, Consolas, monospace`;
+      const padding = 10;
+
+      const metrics = ctx.measureText(text);
+      const w = Math.ceil(metrics.width + padding * 2);
+      const h = Math.ceil(fontSize + padding * 2);
+
+      canvas.width = w;
+      canvas.height = h;
+
+      ctx.font = `${fontSize}px ui-monospace, Menlo, Monaco, Consolas, monospace`;
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.strokeStyle = "rgba(0,0,0,0.15)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(1, 1, w-2, h-2, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(0,0,0,0.85)";
+      ctx.fillText(text, padding, padding + fontSize - 4);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+
+      const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(w/40, h/40, 1);
+      return sprite;
+    }
+
+    function ensurePoint(it) {
+      if (objects.has(it.id)) return objects.get(it.id);
+
+      const group = new THREE.Group();
+
+      const geom = new THREE.SphereGeometry(0.22, 18, 18);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+      const sphere = new THREE.Mesh(geom, mat);
+
+      const label = makeTextSprite(it.text.length > 18 ? it.text.slice(0,18) + "…" : it.text);
+      label.position.set(0.7, 0.4, 0);
+
+      group.add(sphere);
+      group.add(label);
+      scene.add(group);
+
+      const obj = { group, sphere, label };
+      objects.set(it.id, obj);
+      return obj;
+    }
+
+    function removeMissing(currentIds) {
+      for (const [id, obj] of objects.entries()) {
+        if (!currentIds.has(id)) {
+          scene.remove(obj.group);
+          objects.delete(id);
+        }
+      }
+    }
+
+    function redraw3D() {
+      const items = window.APP.items;
+      const currentIds = new Set(items.map(x => x.id));
+      removeMissing(currentIds);
+
+      for (const it of items) {
+        const obj = ensurePoint(it);
+        const [x,y,z] = it.xyz || [0,0,0];
+        obj.group.position.set(x, y, z);
+
+        const selected = (it.id === window.APP.selectedId);
+        obj.sphere.material.color.setHex(selected ? 0xffaa00 : 0x888888);
+        obj.sphere.scale.setScalar(selected ? 1.35 : 1.0);
+      }
+    }
+    window.redraw3D = redraw3D;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
