@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MNIST CNN Explainer (Single-file)</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", sans-serif; }
+    body { margin: 18px; line-height: 1.35; }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
+    .card h2 { font-size: 14px; margin: 0 0 8px; }
+    button, input, select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 12px; background:#fff; }
+    button { cursor: pointer; }
+    button:hover { background:#f7f7f7; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .controls { display:flex; gap:8px; flex-wrap: wrap; align-items:center; }
+    .small { font-size: 12px; color:#444; }
+    .muted { color:#666; }
+    .pill { padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; }
+    .mono { font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .canvasRow { display:flex; gap: 12px; flex-wrap: wrap; align-items: start; }
+    canvas { border: 1px solid #eee; border-radius: 12px; background: #000; }
+    .mini { background: #fff; }
+    .outbox { border:1px solid #eee; border-radius:12px; padding:10px; white-space: pre-wrap; }
+    .bars { border:1px solid #eee; border-radius:12px; overflow:hidden; }
+    .barRow { display:grid; grid-template-columns: 30px 1fr 70px; gap:10px; padding:8px 10px; border-top:1px solid #f1f1f1; align-items:center; }
+    .barRow:first-child { border-top:none; }
+    .barWrap { height: 10px; background:#eee; border-radius:999px; overflow:hidden; }
+    .bar { height:100%; background:#bbb; width:0%; }
+    .fmGrid { display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .fmItem { border:1px solid #eee; border-radius:12px; padding:6px; }
+    .fmItem canvas { width: 100%; height: auto; border-radius:10px; background:#fff; }
+    .footer { margin-top: 10px; font-size: 12px; color: #666; }
+    .kbd { font: 12px ui-monospace; border: 1px solid #ddd; border-bottom-width: 2px; padding: 1px 6px; border-radius: 8px; background: #fafafa; }
+    .warn { color:#8a4b00; }
+  </style>
+
+  <!-- TensorFlow.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+</head>
+
+<body>
+  <h1>MNIST CNN Explainer (single-file): draw → tensor → conv features → prediction</h1>
+
+  <div class="row">
+    <div class="card">
+      <h2>1) Model + input</h2>
+
+      <div class="controls">
+        <button id="loadModelBtn">Load pretrained CNN (CDN)</button>
+        <span class="pill" id="modelPill">Model: not loaded</span>
+        <span class="pill" id="ioPill">I/O: —</span>
+      </div>
+
+      <div class="small muted" style="margin-top:6px;">
+        Model loading uses <span class="kbd">tf.loadLayersModel(url)</span>. :contentReference[oaicite:3]{index=3}
+      </div>
+
+      <div class="controls" style="margin-top:10px;">
+        <button id="clearBtn">Clear drawing</button>
+        <button id="sampleBtn" disabled>Load random MNIST sample</button>
+        <span class="pill" id="dataPill">MNIST sprite: not loaded</span>
+      </div>
+
+      <div class="canvasRow" style="margin-top:10px;">
+        <div>
+          <div class="small muted">Draw here (280×280)</div>
+          <canvas id="draw" width="280" height="280"></canvas>
+        </div>
+        <div>
+          <div class="small muted">Downsampled (28×28)</div>
+          <canvas id="mini" class="mini" width="28" height="28" style="width:140px;height:140px;"></canvas>
+          <div class="small muted" style="margin-top:6px;">(what the CNN sees)</div>
+        </div>
+      </div>
+
+      <div class="controls" style="margin-top:10px;">
+        <button id="runBtn" disabled>Run inference</button>
+        <button id="stepBtn" disabled>Step-by-step</button>
+        <select id="stepSelect" disabled>
+          <option value="pre">Step 0: preprocess</option>
+          <option value="conv1">Step 1: conv1 activation</option>
+          <option value="conv2">Step 2: conv2 activation</option>
+          <option value="logits">Step 3: logits / probabilities</option>
+        </select>
+      </div>
+
+      <div class="outbox mono" id="logBox" style="margin-top:10px;">—</div>
+
+      <div class="footer warn" id="modelNote">
+        Note: The demo auto-detects the output dimension. Some public MNIST TFJS models may output fewer than 10 classes. :contentReference[oaicite:4]{index=4}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2) Output + internals</h2>
+
+      <div class="grid2">
+        <div>
+          <div class="small muted">Prediction probabilities</div>
+          <div class="bars" id="probBars"></div>
+        </div>
+        <div>
+          <div class="small muted">Manual 3×3 convolution (first filter)</div>
+          <div class="outbox mono" id="convBox">Load model, then run preprocess to enable.</div>
+          <div class="controls" style="margin-top:8px;">
+            <span class="small muted">Filter idx:</span>
+            <input id="fIdx" type="number" min="0" value="0" style="width:80px;">
+            <span class="small muted">x,y:</span>
+            <input id="px" type="number" min="0" max="25" value="10" style="width:70px;">
+            <input id="py" type="number" min="0" max="25" value="10" style="width:70px;">
+            <button id="calcConvBtn" disabled>Compute</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="small muted">Conv feature maps (first 16 channels)</div>
+        <div class="fmGrid" id="fm1"></div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="small muted">Conv feature maps (second conv, first 16 channels)</div>
+        <div class="fmGrid" id="fm2"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const loadModelBtn = $("loadModelBtn");
+    const sampleBtn = $("sampleBtn");
+    const clearBtn = $("clearBtn");
+    const runBtn = $("runBtn");
+    const stepBtn = $("stepBtn");
+    const stepSelect = $("stepSelect");
+
+    const modelPill = $("modelPill");
+    const ioPill = $("ioPill");
+    const dataPill = $("dataPill");
+
+    const drawCanvas = $("draw");
+    const miniCanvas = $("mini");
+    const logBox = $("logBox");
+
+    const probBars = $("probBars");
+    const fm1 = $("fm1");
+    const fm2 = $("fm2");
+
+    const convBox = $("convBox");
+    const fIdxEl = $("fIdx");
+    const pxEl = $("px");
+    const pyEl = $("py");
+    const calcConvBtn = $("calcConvBtn");
+
+    const MODEL_URL = "https://storage.googleapis.com/tfjs-models/tfjs/mnist_transfer_cnn_v1/model.json"; // :contentReference[oaicite:5]{index=5}
+
+    // MNIST sprite dataset (used in TFJS examples/tutorials) :contentReference[oaicite:6]{index=6}
+    const MNIST_SPRITE = "https://storage.googleapis.com/learnjs-data/model-builder/mnist_images.png";
+    const MNIST_LABELS = "https://storage.googleapis.com/learnjs-data/model-builder/mnist_labels_uint8";
+    const SPRITE_COLS = 100;
+    const IMAGE_SIZE = 28;
+
+    const state = {
+      model: null,
+      conv1Model: null,
+      conv2Model: null,
+      logitsModel: null,
+      outputClasses: 10,
+      lastInput28: null,      // Float32Array length 784 in [0,1]
+      lastInputTensor: null,  // tf.tensor4d [1,28,28,1]
+      spriteImg: null,
+      labels: null
+    };
+
+    function setModelStatus(s) { modelPill.textContent = `Model: ${s}`; }
+    function setIOStatus(s) { ioPill.textContent = `I/O: ${s}`; }
+    function setLog(s) { logBox.textContent = s; }
+
+    function clearTF() {
+      if (state.lastInputTensor) { state.lastInputTensor.dispose(); state.lastInputTensor = null; }
+    }
+
+    function initBars(k) {
+      probBars.innerHTML = "";
+      for (let i = 0; i < k; i++) {
+        const row = document.createElement("div");
+        row.className = "barRow mono";
+        row.innerHTML = `
+          <div>${i}</div>
+          <div class="barWrap"><div class="bar" id="bar${i}"></div></div>
+          <div id="pct${i}" style="text-align:right;">0.0%</div>
+        `;
+        probBars.appendChild(row);
+      }
+    }
+
+    function updateBars(probs) {
+      const max = Math.max(...probs, 1e-9);
+      for (let i = 0; i < probs.length; i++) {
+        const p = probs[i];
+        const w = Math.max(1, Math.round((p / max) * 100));
+        const bar = document.getElementById(`bar${i}`);
+        const pct = document.getElementById(`pct${i}`);
+        if (bar) bar.style.width = `${w}%`;
+        if (pct) pct.textContent = `${(p * 100).toFixed(1)}%`;
+      }
+    }
+
+    // ---------- Drawing ----------
+    const ctx = drawCanvas.getContext("2d");
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+    let drawing = false;
+    let last = null;
+
+    function drawLine(x0, y0, x1, y1) {
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 18;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+    }
+
+    function getPos(ev) {
+      const r = drawCanvas.getBoundingClientRect();
+      const x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+      const y = (ev.touches ? ev.touches[0].clientY : ev.clientY) - r.top;
+      return { x, y };
+    }
+
+    function start(ev) {
+      drawing = true;
+      last = getPos(ev);
+      ev.preventDefault();
+    }
+    function move(ev) {
+      if (!drawing) return;
+      const p = getPos(ev);
+      drawLine(last.x, last.y, p.x, p.y);
+      last = p;
+      ev.preventDefault();
+      // optional live update
+      preprocessTo28();
+    }
+    function end(ev) {
+      drawing = false;
+      last = null;
+      ev.preventDefault();
+      preprocessTo28();
+    }
+
+    drawCanvas.addEventListener("mousedown", start);
+    drawCanvas.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", end);
+
+    drawCanvas.addEventListener("touchstart", start, { passive:false });
+    drawCanvas.addEventListener("touchmove", move, { passive:false });
+    window.addEventListener("touchend", end, { passive:false });
+
+    clearBtn.onclick = () => {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+      preprocessTo28();
+      setLog("Cleared.");
+    };
+
+    // ---------- Preprocess (280->28) ----------
+    function preprocessTo28() {
+      const mctx = miniCanvas.getContext("2d");
+      mctx.imageSmoothingEnabled = true;
+      mctx.clearRect(0,0,28,28);
+
+      // draw downscaled
+      mctx.drawImage(drawCanvas, 0, 0, 28, 28);
+
+      // get pixels
+      const img = mctx.getImageData(0,0,28,28);
+      const data = img.data;
+
+      const arr = new Float32Array(28*28);
+      for (let i = 0; i < 28*28; i++) {
+        // miniCanvas background is white by CSS, but actual pixels may be from drawImage (black bg, white stroke).
+        const r = data[i*4+0];
+        const g = data[i*4+1];
+        const b = data[i*4+2];
+        const gray = (r + g + b) / (3 * 255); // [0,1], white stroke -> ~1
+        arr[i] = gray;
+      }
+
+      state.lastInput28 = arr;
+
+      clearTF();
+      state.lastInputTensor = tf.tensor4d(arr, [1, 28, 28, 1]);
+
+      if (state.model) calcConvBtn.disabled = false;
+    }
+
+    // ---------- MNIST sprite loader ----------
+    async function loadMnistSprite() {
+      dataPill.textContent = "MNIST sprite: loading…";
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = MNIST_SPRITE;
+
+      await new Promise((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error("Failed to load MNIST sprite"));
+      });
+
+      const labRes = await fetch(MNIST_LABELS);
+      const labBuf = await labRes.arrayBuffer();
+      const labels = new Uint8Array(labBuf);
+
+      state.spriteImg = img;
+      state.labels = labels;
+
+      dataPill.textContent = `MNIST sprite: loaded (${labels.length} labels)`;
+      sampleBtn.disabled = false;
+    }
+
+    function drawSample(index) {
+      const img = state.spriteImg;
+      const labels = state.labels;
+      if (!img || !labels) return;
+
+      const cols = SPRITE_COLS;
+      const sx = (index % cols) * IMAGE_SIZE;
+      const sy = Math.floor(index / cols) * IMAGE_SIZE;
+
+      const off = document.createElement("canvas");
+      off.width = 28; off.height = 28;
+      const octx = off.getContext("2d");
+      octx.drawImage(img, sx, sy, 28, 28, 0, 0, 28, 28);
+
+      // sprite digits are white-on-black or black-on-white depending; we’ll display it on draw canvas in the same convention (white stroke on black).
+      // We'll scale up to 280x280.
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0,0,280,280);
+
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(off, 0, 0, 280, 280);
+
+      preprocessTo28();
+      setLog(`Loaded sample index=${index}, label=${labels[index] ?? "?"}`);
+    }
+
+    sampleBtn.onclick = () => {
+      const n = state.labels?.length ?? 0;
+      if (n === 0) return;
+      const idx = Math.floor(Math.random() * n);
+      drawSample(idx);
+    };
+
+    // ---------- Model loading ----------
+    async function loadModel() {
+      setModelStatus("loading…");
+      setIOStatus("—");
+      loadModelBtn.disabled = true;
+
+      try {
+        // Load layers model from URL :contentReference[oaicite:7]{index=7}
+        const model = await tf.loadLayersModel(MODEL_URL);
+        state.model = model;
+
+        // Infer I/O shapes
+        const inShape = model.inputs[0].shape;   // e.g., [null,28,28,1]
+        const outShape = model.outputs[0].shape; // e.g., [null,10] or [null,5]
+        const outDim = outShape[outShape.length - 1];
+        state.outputClasses = outDim;
+
+        setModelStatus("loaded");
+        setIOStatus(`${JSON.stringify(inShape)} → ${JSON.stringify(outShape)}`);
+
+        initBars(state.outputClasses);
+
+        // Build intermediate models (first two Conv2D layers if present)
+        const convLayers = model.layers.filter(l => (l.getClassName && l.getClassName() === "Conv2D"));
+        const conv1 = convLayers[0] || null;
+        const conv2 = convLayers[1] || null;
+
+        state.conv1Model = conv1 ? tf.model({ inputs: model.inputs, outputs: conv1.output }) : null;
+        state.conv2Model = conv2 ? tf.model({ inputs: model.inputs, outputs: conv2.output }) : null;
+        state.logitsModel = model; // final
+
+        runBtn.disabled = false;
+        stepBtn.disabled = false;
+        stepSelect.disabled = false;
+
+        preprocessTo28();
+        calcConvBtn.disabled = false;
+
+        // start loading MNIST sprite in background (still user-action safe)
+        loadMnistSprite().catch(() => {
+          dataPill.textContent = "MNIST sprite: failed to load";
+        });
+
+        setLog(
+          `Model loaded.\n` +
+          `Output classes = ${state.outputClasses}.\n` +
+          `Draw a digit, then click "Run inference".`
+        );
+      } catch (e) {
+        console.error(e);
+        setModelStatus("failed (see console)");
+        setIOStatus("—");
+        loadModelBtn.disabled = false;
+        setLog("Failed to load model. Check console.");
+      }
+    }
+
+    loadModelBtn.onclick = loadModel;
+
+    // ---------- Feature map rendering ----------
+    function clearFM(container) {
+      container.innerHTML = "";
+    }
+
+    function renderFeatureMaps(container, actTensor, maxChannels = 16) {
+      clearFM(container);
+      if (!actTensor) return;
+
+      const shape = actTensor.shape; // [1,h,w,c]
+      if (shape.length !== 4) {
+        const div = document.createElement("div");
+        div.className = "outbox mono";
+        div.textContent = `Unexpected activation shape: ${JSON.stringify(shape)}`;
+        container.appendChild(div);
+        return;
+      }
+
+      const [_, h, w, c] = shape;
+      const channels = Math.min(c, maxChannels);
+
+      const act = actTensor.squeeze([0]); // [h,w,c]
+      const data = act.arraySync();       // h x w x c (small enough for demo)
+
+      for (let ch = 0; ch < channels; ch++) {
+        const item = document.createElement("div");
+        item.className = "fmItem";
+
+        const label = document.createElement("div");
+        label.className = "small muted mono";
+        label.textContent = `ch ${ch} (${h}×${w})`;
+        label.style.marginBottom = "6px";
+
+        const cv = document.createElement("canvas");
+        cv.width = w;
+        cv.height = h;
+
+        const cctx = cv.getContext("2d");
+        const img = cctx.createImageData(w, h);
+
+        // normalize per-channel for visibility
+        let min = Infinity, max = -Infinity;
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+          const v = data[y][x][ch];
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+        const denom = (max - min) || 1e-6;
+
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+          const v = (data[y][x][ch] - min) / denom; // 0..1
+          const g = Math.max(0, Math.min(255, Math.round(v * 255)));
+          const i = (y*w + x) * 4;
+          img.data[i+0] = g;
+          img.data[i+1] = g;
+          img.data[i+2] = g;
+          img.data[i+3] = 255;
+        }
+        cctx.putImageData(img, 0, 0);
+
+        item.appendChild(label);
+        item.appendChild(cv);
+        container.appendChild(item);
+      }
+
+      act.dispose();
+    }
+
+    // ---------- Inference ----------
+    async function runInference() {
+      if (!state.model || !state.lastInputTensor) return;
+
+      setLog("Running inference…");
+      await tf.nextFrame();
+
+      const x = state.lastInputTensor;
+
+      let conv1Act = null;
+      let conv2Act = null;
+
+      if (state.conv1Model) conv1Act = state.conv1Model.predict(x);
+      if (state.conv2Model) conv2Act = state.conv2Model.predict(x);
+
+      const logits = state.logitsModel.predict(x);
+      const probsT = tf.softmax(logits);
+      const probs = await probsT.data();
+
+      // best
+      let bestIdx = 0;
+      for (let i = 1; i < probs.length; i++) if (probs[i] > probs[bestIdx]) bestIdx = i;
+
+      updateBars(Array.from(probs));
+      renderFeatureMaps(fm1, conv1Act, 16);
+      renderFeatureMaps(fm2, conv2Act, 16);
+
+      setLog(
+        `Prediction: ${bestIdx}\n` +
+        `Output dim: ${state.outputClasses}\n` +
+        `probs: [${Array.from(probs).map(x=>x.toFixed(3)).join(", ")}]`
+      );
+
+      // cleanup
+      tf.dispose([logits, probsT]);
+      if (conv1Act) conv1Act.dispose();
+      if (conv2Act) conv2Act.dispose();
+    }
+
+    runBtn.onclick = runInference;
+
+    // ---------- Step-by-step ----------
+    async function runStep() {
+      if (!state.model) return;
+
+      const step = stepSelect.value;
+
+      if (step === "pre") {
+        preprocessTo28();
+        setLog("Step 0: preprocess done. (280×280 → 28×28 → tensor [1,28,28,1])");
+        return;
+      }
+
+      if (!state.lastInputTensor) preprocessTo28();
+      const x = state.lastInputTensor;
+
+      if (step === "conv1") {
+        if (!state.conv1Model) { setLog("No Conv2D layer found for conv1."); return; }
+        const act = state.conv1Model.predict(x);
+        renderFeatureMaps(fm1, act, 16);
+        setLog(`Step 1: conv1 activation rendered. shape=${JSON.stringify(act.shape)}`);
+        act.dispose();
+        return;
+      }
+
+      if (step === "conv2") {
+        if (!state.conv2Model) { setLog("No second Conv2D layer found for conv2."); return; }
+        const act = state.conv2Model.predict(x);
+        renderFeatureMaps(fm2, act, 16);
+        setLog(`Step 2: conv2 activation rendered. shape=${JSON.stringify(act.shape)}`);
+        act.dispose();
+        return;
+      }
+
+      if (step === "logits") {
+        await runInference();
+        return;
+      }
+    }
+
+    stepBtn.onclick = runStep;
+
+    // ---------- Manual conv (3×3) ----------
+    function getFirstConvWeights() {
+      if (!state.model) return null;
+      const convLayers = state.model.layers.filter(l => (l.getClassName && l.getClassName() === "Conv2D"));
+      const conv1 = convLayers[0];
+      if (!conv1) return null;
+      const ws = conv1.getWeights(); // [kernel, bias] typically
+      if (!ws || ws.length === 0) return null;
+      const kernel = ws[0]; // shape [kh,kw,inC,outC]
+      return kernel;
+    }
+
+    function computeManualConv() {
+      if (!state.lastInput28) { convBox.textContent = "Run preprocess first."; return; }
+
+      const kernel = getFirstConvWeights();
+      if (!kernel) { convBox.textContent = "No conv kernel available."; return; }
+
+      const kshape = kernel.shape; // [kh,kw,inC,outC]
+      const [kh, kw, inC, outC] = kshape;
+
+      const fi = Math.max(0, Math.min(outC - 1, parseInt(fIdxEl.value || "0", 10)));
+      const px = Math.max(0, Math.min(28 - kw, parseInt(pxEl.value || "0", 10)));
+      const py = Math.max(0, Math.min(28 - kh, parseInt(pyEl.value || "0", 10)));
+
+      fIdxEl.value = String(fi);
+      pxEl.value = String(px);
+      pyEl.value = String(py);
+
+      // kernel values
+      const k = kernel.arraySync(); // kh x kw x inC x outC
+      let sum = 0;
+
+      let lines = [];
+      lines.push(`Manual convolution (one output channel)`);
+      lines.push(`kernel shape = [${kh},${kw},${inC},${outC}]`);
+      lines.push(`use filter(outC) = ${fi}, position (x,y) = (${px},${py})`);
+      lines.push("");
+
+      for (let y = 0; y < kh; y++) {
+        let row = [];
+        for (let x = 0; x < kw; x++) {
+          const w = k[y][x][0][fi]; // inC=1 for MNIST grayscale
+          const v = state.lastInput28[(py + y) * 28 + (px + x)];
+          sum += w * v;
+          row.push(`${w.toFixed(3)}*${v.toFixed(3)}`);
+        }
+        lines.push(row.join("  "));
+      }
+      lines.push("");
+      lines.push(`dot sum = ${sum.toFixed(4)} (bias not included)`);
+
+      convBox.textContent = lines.join("\n");
+    }
+
+    calcConvBtn.onclick = computeManualConv;
+
+    // init
+    initBars(10);
+    preprocessTo28();
+    setModelStatus("not loaded");
+    setIOStatus("—");
+    setLog("Draw a digit, then load the model.");
+  </script>
+</body>
+</html>
