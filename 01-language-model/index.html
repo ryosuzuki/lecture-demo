@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini N-gram Language Model Demo (Single-file)</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", sans-serif; }
+    body { margin: 18px; line-height: 1.35; }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
+    .card h2 { font-size: 14px; margin: 0 0 8px; }
+    textarea { width: 100%; height: 190px; resize: vertical; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 10px; }
+    button, select, input[type="file"] {
+      padding: 8px 10px; border: 1px solid #ddd; border-radius: 12px; background: #fff;
+    }
+    button { cursor: pointer; }
+    button:hover { background: #f7f7f7; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    select { cursor: pointer; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .small { font-size: 12px; color: #444; }
+    .muted { color: #666; }
+    .mono { font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .outbox { border: 1px solid #ddd; border-radius: 12px; padding: 10px; min-height: 90px; white-space: pre-wrap; }
+    .pill { padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; }
+    .split { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* Vertical candidate list */
+    .candList { margin-top: 8px; border: 1px solid #eee; border-radius: 12px; overflow: hidden; }
+    .candRow {
+      display: grid; grid-template-columns: 1fr 70px;
+      gap: 10px; padding: 10px; border-top: 1px solid #f0f0f0;
+      cursor: pointer; user-select: none;
+    }
+    .candRow:first-child { border-top: none; }
+    .candRow:hover { background: #fafafa; }
+    .candLeft { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
+    .tok { font-weight: 700; }
+    .barWrap { height: 10px; background: #eee; border-radius: 999px; overflow: hidden; }
+    .bar { height: 100%; background: #bbb; width: 0%; }
+    .pct { text-align: right; font-variant-numeric: tabular-nums; color: #333; }
+
+    /* Evidence */
+    .evidenceBox { border: 1px solid #eee; border-radius: 12px; padding: 10px; }
+    .evLine { padding: 6px 0; border-top: 1px dashed #eee; }
+    .evLine:first-child { border-top: none; }
+    .hlCtx { background: #fff2a8; border-radius: 6px; padding: 0 4px; }
+    .hlNext { background: #c7f5c7; border-radius: 6px; padding: 0 4px; }
+    .evMeta { font-size: 12px; color: #666; margin-bottom: 6px; }
+    .kbd { font: 12px ui-monospace; border: 1px solid #ddd; border-bottom-width: 2px; padding: 1px 6px; border-radius: 8px; background: #fafafa; }
+    .footer { margin-top: 10px; font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Mini N-gram Language Model Demo (single-file index.html)</h1>
+
+  <div class="row">
+    <!-- LEFT: Training -->
+    <div class="card">
+      <h2>1) Training Data</h2>
+      <textarea id="trainText"></textarea>
+
+      <div class="controls" style="margin-top:10px;">
+        <button id="trainBtn">Train</button>
+        <button id="resetBtn">Reset sample</button>
+        <span class="pill" id="statusPill">Not trained</span>
+      </div>
+
+      <div class="split" style="margin-top:10px;">
+        <div class="card" style="border:1px solid #eee;">
+          <h2 style="margin-bottom:6px;">Load a .txt file (for larger corpora)</h2>
+          <div class="controls">
+            <input id="fileInput" type="file" accept=".txt,text/plain" />
+            <button id="appendFileBtn" disabled>Append to training text</button>
+            <button id="replaceFileBtn" disabled>Replace training text</button>
+          </div>
+          <div class="small muted" style="margin-top:6px;">
+            For very large files: consider using a Web Worker (notes at the bottom).
+          </div>
+        </div>
+
+        <div class="footer">
+          How it works: tokenize sentences → add &lt;s&gt; and &lt;/s&gt; → count n-grams → show P(next | context).<br/>
+          This is intentionally simple for lecture demos (no fancy smoothing unless you add it).
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Generation + Evidence -->
+    <div class="card">
+      <h2>2) Generate (next-word prediction)</h2>
+
+      <div class="controls">
+        <span class="small muted">n-gram:</span>
+        <select id="ngramSelect">
+          <option value="1">Unigram (n=1)</option>
+          <option value="2">Bigram (n=2)</option>
+          <option value="3" selected>Trigram (n=3)</option>
+        </select>
+
+        <span class="small muted">Temperature:</span>
+        <select id="tempSelect">
+          <option value="0">0 (argmax)</option>
+          <option value="0.7">0.7</option>
+          <option value="1" selected>1.0</option>
+          <option value="1.3">1.3</option>
+          <option value="1.7">1.7</option>
+        </select>
+
+        <span class="small muted">Top-k:</span>
+        <select id="topkSelect">
+          <option value="8" selected>8</option>
+          <option value="12">12</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+
+      <div class="two" style="margin-top:10px;">
+        <div>
+          <div class="small muted">Current context</div>
+          <div class="mono" id="contextView">—</div>
+        </div>
+        <div>
+          <div class="small muted">Backoff info</div>
+          <div class="mono" id="fallbackNote">—</div>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="small muted">Generated text</div>
+        <div class="outbox mono" id="outputBox">—</div>
+      </div>
+
+      <div class="controls" style="margin-top:10px;">
+        <button id="startBtn" disabled>Start (<span class="kbd">&lt;s&gt;</span>)</button>
+        <button id="sampleBtn" disabled>Sample next</button>
+        <button id="endBtn" disabled>End (<span class="kbd">&lt;/s&gt;</span>)</button>
+        <button id="backBtn" disabled>Undo</button>
+        <button id="clearOutBtn" disabled>Clear output</button>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="small muted">Next-word candidates (sorted by probability)</div>
+        <div class="candList" id="candList"></div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <h2 style="font-size:14px; margin:0 0 8px;">3) Training evidence (where do probabilities come from?)</h2>
+        <div class="evidenceBox">
+          <div class="evMeta" id="evidenceMeta">Train the model and start generation to see evidence.</div>
+          <div id="evidenceLines"></div>
+        </div>
+        <div class="small muted" style="margin-top:6px;">
+          Tip: click a candidate above, then look here to show exact matching n-gram occurrences in the training data.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <h2>Scaling up to large text (e.g., a full novel)</h2>
+    <div class="small muted">
+      If you paste a huge corpus, training may lag or freeze the UI because everything runs on the main thread.
+      For lecture-friendly performance:
+      <ul>
+        <li><b>Use a Web Worker</b> to count n-grams off the main thread (keep the UI responsive).</li>
+        <li><b>Stream the file</b> line-by-line (File API + chunking) instead of loading everything at once.</li>
+        <li><b>Limit vocabulary</b> (e.g., keep top 50k tokens; map the rest to &lt;unk&gt;).</li>
+        <li><b>Use TypedArrays / compact maps</b> or store counts in <b>IndexedDB</b> if needed.</li>
+      </ul>
+      Also: be mindful of copyright when using commercial books in class.
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const trainText = $("trainText");
+    const trainBtn = $("trainBtn");
+    const resetBtn = $("resetBtn");
+    const statusPill = $("statusPill");
+
+    const fileInput = $("fileInput");
+    const appendFileBtn = $("appendFileBtn");
+    const replaceFileBtn = $("replaceFileBtn");
+
+    const ngramSelect = $("ngramSelect");
+    const tempSelect = $("tempSelect");
+    const topkSelect = $("topkSelect");
+
+    const startBtn = $("startBtn");
+    const sampleBtn = $("sampleBtn");
+    const endBtn = $("endBtn");
+    const backBtn = $("backBtn");
+    const clearOutBtn = $("clearOutBtn");
+
+    const contextView = $("contextView");
+    const fallbackNote = $("fallbackNote");
+    const outputBox = $("outputBox");
+    const candList = $("candList");
+
+    const evidenceMeta = $("evidenceMeta");
+    const evidenceLines = $("evidenceLines");
+
+    const BOS = "<s>";
+    const EOS = "</s>";
+
+    let model = null;
+    let generated = [];
+    let history = [];
+    let lastPickedCandidate = null;
+
+    function defaultTrainingData() {
+      return [
+        "I like machine learning.",
+        "I like natural language processing.",
+        "I like generative AI.",
+        "We build simple language models.",
+        "Language models predict the next word.",
+        "Students like interactive demos.",
+        "This demo is a tiny n-gram model.",
+        "Generative models can sample tokens.",
+        "Probability distributions can be visualized.",
+        "I like teaching in class."
+      ].join("\n");
+    }
+
+    function normalizeText(s) {
+      return s.replace(/\r\n/g, "\n").replace(/[“”]/g, '"').replace(/[’]/g, "'").trim();
+    }
+
+    function tokenizeLine(line) {
+      const spaced = line
+        .replace(/([.,!?;:()])/g, " $1 ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!spaced) return [];
+      return spaced.split(" ");
+    }
+
+    function incNested(map, key, subkey) {
+      if (!map.has(key)) map.set(key, new Map());
+      const m = map.get(key);
+      m.set(subkey, (m.get(subkey) || 0) + 1);
+    }
+
+    function buildModelFromLines(lines) {
+      const uni = new Map();
+      const bi = new Map();   // key: w1 -> Map(w2 -> count)
+      const tri = new Map();  // key: w1\tw2 -> Map(w3 -> count)
+
+      const corpus = []; // [{raw, toks, seq}]
+      let totalTokens = 0;
+
+      for (let li = 0; li < lines.length; li++) {
+        const raw = lines[li].trim();
+        if (!raw) continue;
+        const toks = tokenizeLine(raw);
+        if (toks.length === 0) continue;
+
+        const seq = [BOS, ...toks, EOS];
+        corpus.push({ raw, toks, seq });
+
+        for (const t of seq) {
+          uni.set(t, (uni.get(t) || 0) + 1);
+          totalTokens++;
+        }
+        for (let i = 0; i < seq.length - 1; i++) incNested(bi, seq[i], seq[i + 1]);
+        for (let i = 0; i < seq.length - 2; i++) incNested(tri, seq[i] + "\t" + seq[i + 1], seq[i + 2]);
+      }
+
+      const vocab = Array.from(uni.keys());
+      return { uni, bi, tri, vocab, totalTokens, corpus };
+    }
+
+    function distFromMap(m) {
+      const arr = Array.from(m.entries()).map(([tok, c]) => ({ tok, c }));
+      const total = arr.reduce((s, x) => s + x.c, 0);
+      const probs = arr.map(x => ({ tok: x.tok, p: x.c / total, c: x.c }));
+      probs.sort((a, b) => b.p - a.p);
+      return probs;
+    }
+
+    function getContextTokens(tokens, n) {
+      if (n === 1) return [];
+      if (n === 2) return [tokens[tokens.length - 1] || BOS];
+      return [tokens[tokens.length - 2] || BOS, tokens[tokens.length - 1] || BOS];
+    }
+
+    function getDistributionForContext(tokens, n) {
+      fallbackNote.textContent = "—";
+      if (!model) return { dist: [], usedN: n };
+
+      if (n === 1) {
+        // Unigram: P(next) = overall frequency
+        return { dist: distFromMap(model.uni), usedN: 1 };
+      }
+
+      if (n === 2) {
+        const w = tokens.length >= 1 ? tokens[tokens.length - 1] : BOS;
+        const m = model.bi.get(w);
+        if (m) return { dist: distFromMap(m), usedN: 2 };
+
+        fallbackNote.textContent = `No bigram match for (“${w}”). Backing off to unigram P(w).`;
+        return { dist: distFromMap(model.uni), usedN: 1 };
+      }
+
+      // n === 3
+      const w1 = tokens.length >= 2 ? tokens[tokens.length - 2] : BOS;
+      const w2 = tokens.length >= 1 ? tokens[tokens.length - 1] : BOS;
+      const key = w1 + "\t" + w2;
+      const m = model.tri.get(key);
+      if (m) return { dist: distFromMap(m), usedN: 3 };
+
+      const mb = model.bi.get(w2);
+      if (mb) {
+        fallbackNote.textContent = `No trigram match for (“${w1}”, “${w2}”). Backing off to bigram P(w | ${w2}).`;
+        return { dist: distFromMap(mb), usedN: 2 };
+      }
+
+      fallbackNote.textContent = `No trigram/bigram match. Backing off to unigram P(w).`;
+      return { dist: distFromMap(model.uni), usedN: 1 };
+    }
+
+    function applyTemperatureTopK(dist, temperature, topk) {
+      const trimmed = dist.slice(0, topk);
+
+      if (trimmed.length === 0) return [];
+      if (temperature === 0) {
+        const best = trimmed[0];
+        return trimmed.map(x => ({ ...x, p2: x.tok === best.tok ? 1 : 0 }));
+      }
+
+      const invT = 1 / temperature;
+      const weights = trimmed.map(x => Math.pow(Math.max(x.p, 1e-12), invT));
+      const Z = weights.reduce((s, w) => s + w, 0);
+      return trimmed.map((x, i) => ({ ...x, p2: weights[i] / Z }));
+    }
+
+    function sampleFrom(dist2) {
+      let r = Math.random();
+      for (const x of dist2) {
+        r -= x.p2;
+        if (r <= 0) return x.tok;
+      }
+      return dist2[dist2.length - 1]?.tok || EOS;
+    }
+
+    function formatOutput(tokens) {
+      const t = tokens.filter(x => x !== BOS && x !== EOS);
+      let s = t.join(" ");
+      s = s.replace(/\s+([.,!?;:()])/g, "$1");
+      return s || "—";
+    }
+
+    function chooseToken(tok) {
+      if (!model) return;
+      history.push([...generated]);
+      generated.push(tok);
+
+      if (tok === EOS) {
+        sampleBtn.disabled = true;
+        endBtn.disabled = true;
+      }
+
+      backBtn.disabled = history.length === 0;
+      clearOutBtn.disabled = generated.length === 0;
+      render();
+    }
+
+    function startGeneration() {
+      history = [];
+      generated = [BOS];
+      lastPickedCandidate = null;
+
+      startBtn.disabled = true;
+      sampleBtn.disabled = false;
+      endBtn.disabled = false;
+      backBtn.disabled = true;
+      clearOutBtn.disabled = false;
+
+      render();
+    }
+
+    function resetAll() {
+      model = null;
+      history = [];
+      generated = [];
+      lastPickedCandidate = null;
+
+      statusPill.textContent = "Not trained";
+      startBtn.disabled = true;
+      sampleBtn.disabled = true;
+      endBtn.disabled = true;
+      backBtn.disabled = true;
+      clearOutBtn.disabled = true;
+
+      candList.innerHTML = "";
+      contextView.textContent = "—";
+      fallbackNote.textContent = "—";
+      outputBox.textContent = "—";
+
+      evidenceMeta.textContent = "Train the model and start generation to see evidence.";
+      evidenceLines.innerHTML = "";
+    }
+
+    function train() {
+      const raw = normalizeText(trainText.value);
+      const lines = raw.split("\n").map(x => x.trim()).filter(Boolean);
+      model = buildModelFromLines(lines);
+
+      const vocabSize = model.vocab.length;
+      statusPill.textContent = `Trained: ${model.corpus.length} lines, vocab=${vocabSize}`;
+      startBtn.disabled = false;
+
+      sampleBtn.disabled = true;
+      endBtn.disabled = true;
+      backBtn.disabled = true;
+      clearOutBtn.disabled = false;
+
+      history = [];
+      generated = [];
+      lastPickedCandidate = null;
+
+      render();
+    }
+
+    function renderCandidates(dist2) {
+      candList.innerHTML = "";
+      if (dist2.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "candRow";
+        empty.style.cursor = "default";
+        empty.textContent = "No candidates available.";
+        candList.appendChild(empty);
+        return;
+      }
+
+      const maxP = dist2[0].p2 || 1;
+
+      for (const x of dist2) {
+        const row = document.createElement("div");
+        row.className = "candRow";
+        row.onclick = () => { lastPickedCandidate = x.tok; chooseToken(x.tok); };
+
+        const left = document.createElement("div");
+        left.className = "candLeft";
+
+        const tok = document.createElement("div");
+        tok.className = "tok mono";
+        tok.textContent = x.tok;
+
+        const barWrap = document.createElement("div");
+        barWrap.className = "barWrap";
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        bar.style.width = `${Math.max(1, Math.round((x.p2 / maxP) * 100))}%`;
+        barWrap.appendChild(bar);
+
+        left.appendChild(tok);
+        left.appendChild(barWrap);
+
+        const pct = document.createElement("div");
+        pct.className = "pct mono";
+        pct.textContent = `${(x.p2 * 100).toFixed(1)}%`;
+
+        row.appendChild(left);
+        row.appendChild(pct);
+
+        candList.appendChild(row);
+      }
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function renderEvidence(contextTokens, nextTok, usedN) {
+      evidenceLines.innerHTML = "";
+
+      if (!model || generated.length === 0) {
+        evidenceMeta.textContent = "Train the model and start generation to see evidence.";
+        return;
+      }
+
+      // If unigram is used, show where the nextTok appears, plus its count.
+      if (usedN === 1) {
+        const count = model.uni.get(nextTok) || 0;
+        evidenceMeta.textContent = `Unigram evidence: count("${nextTok}") = ${count} over all tokens (including <s> and </s>).`;
+        // show a few occurrences in corpus (token-level)
+        let shown = 0;
+        for (let si = 0; si < model.corpus.length && shown < 8; si++) {
+          const seq = model.corpus[si].seq;
+          for (let i = 0; i < seq.length && shown < 8; i++) {
+            if (seq[i] !== nextTok) continue;
+            const html = seq.map((t, j) => {
+              if (j === i) return `<span class="hlNext">${escapeHtml(t)}</span>`;
+              return escapeHtml(t);
+            }).join(" ");
+            const div = document.createElement("div");
+            div.className = "evLine mono";
+            div.innerHTML = html.replace(/\s+([.,!?;:()])/g, "$1");
+            evidenceLines.appendChild(div);
+            shown++;
+          }
+        }
+        if (shown === 0) {
+          const div = document.createElement("div");
+          div.className = "evLine mono";
+          div.textContent = "No occurrences found (unexpected).";
+          evidenceLines.appendChild(div);
+        }
+        return;
+      }
+
+      // For bigram/trigram evidence: show exact matching n-gram occurrences.
+      const ctx = contextTokens;
+      const n = ctx.length + 1;
+
+      evidenceMeta.textContent =
+        `Showing occurrences of ${n}-gram: [${ctx.join(" ")}] → [${nextTok}] in the training data.`;
+
+      let shown = 0;
+      for (let si = 0; si < model.corpus.length && shown < 12; si++) {
+        const seq = model.corpus[si].seq;
+        for (let i = 0; i <= seq.length - n && shown < 12; i++) {
+          let match = true;
+          for (let k = 0; k < ctx.length; k++) {
+            if (seq[i + k] !== ctx[k]) { match = false; break; }
+          }
+          if (!match) continue;
+          if (seq[i + ctx.length] !== nextTok) continue;
+
+          const html = seq.map((t, j) => {
+            const inCtx = j >= i && j < i + ctx.length;
+            const isNext = j === i + ctx.length;
+            if (inCtx) return `<span class="hlCtx">${escapeHtml(t)}</span>`;
+            if (isNext) return `<span class="hlNext">${escapeHtml(t)}</span>`;
+            return escapeHtml(t);
+          }).join(" ");
+
+          const div = document.createElement("div");
+          div.className = "evLine mono";
+          div.innerHTML = html.replace(/\s+([.,!?;:()])/g, "$1");
+          evidenceLines.appendChild(div);
+          shown++;
+        }
+      }
+
+      if (shown === 0) {
+        const div = document.createElement("div");
+        div.className = "evLine mono";
+        div.textContent = "No matching occurrences found (likely due to backoff or unseen context).";
+        evidenceLines.appendChild(div);
+      }
+    }
+
+    function render() {
+      const n = Number(ngramSelect.value);
+      const temperature = Number(tempSelect.value);
+      const topk = Number(topkSelect.value);
+
+      const ctxTokens = generated.length ? generated : [BOS];
+      const ctxForDisplay = getContextTokens(ctxTokens, n);
+      contextView.textContent = (n === 1) ? "(none — unigram ignores context)" : ctxForDisplay.join("  ");
+
+      const { dist, usedN } = getDistributionForContext(ctxTokens.length ? ctxTokens : [BOS], n);
+      const dist2 = applyTemperatureTopK(dist, temperature, topk);
+
+      outputBox.textContent = formatOutput(generated);
+      renderCandidates(dist2);
+
+      // Evidence:
+      // If user clicked a candidate earlier, show evidence for that candidate.
+      // Otherwise show evidence for the top candidate (most probable) as a default.
+      const candidateToExplain = lastPickedCandidate || dist2[0]?.tok || null;
+      const ctxUsed = getContextTokens(ctxTokens, usedN);
+      if (candidateToExplain) renderEvidence(ctxUsed, candidateToExplain, usedN);
+      else {
+        evidenceMeta.textContent = "No candidates to explain.";
+        evidenceLines.innerHTML = "";
+      }
+    }
+
+    trainBtn.onclick = train;
+
+    resetBtn.onclick = () => {
+      trainText.value = defaultTrainingData();
+      resetAll();
+    };
+
+    startBtn.onclick = startGeneration;
+
+    sampleBtn.onclick = () => {
+      const n = Number(ngramSelect.value);
+      const temperature = Number(tempSelect.value);
+      const topk = Number(topkSelect.value);
+
+      const { dist } = getDistributionForContext(generated.length ? generated : [BOS], n);
+      const dist2 = applyTemperatureTopK(dist, temperature, topk);
+      const tok = sampleFrom(dist2);
+      lastPickedCandidate = tok;
+      chooseToken(tok);
+    };
+
+    endBtn.onclick = () => { lastPickedCandidate = EOS; chooseToken(EOS); };
+
+    backBtn.onclick = () => {
+      if (history.length === 0) return;
+      generated = history.pop();
+      lastPickedCandidate = null;
+
+      const hasEOS = generated.includes(EOS);
+      sampleBtn.disabled = hasEOS;
+      endBtn.disabled = hasEOS;
+
+      backBtn.disabled = history.length === 0;
+      clearOutBtn.disabled = generated.length === 0;
+
+      render();
+    };
+
+    clearOutBtn.onclick = () => {
+      history = [];
+      generated = [];
+      lastPickedCandidate = null;
+
+      startBtn.disabled = !model;
+      sampleBtn.disabled = true;
+      endBtn.disabled = true;
+      backBtn.disabled = true;
+      clearOutBtn.disabled = !model;
+
+      render();
+    };
+
+    // Reactivity
+    ngramSelect.onchange = () => { lastPickedCandidate = null; render(); };
+    tempSelect.onchange = () => render();
+    topkSelect.onchange = () => render();
+
+    // File loading
+    let loadedFileText = "";
+
+    function enableFileButtons(ok) {
+      appendFileBtn.disabled = !ok;
+      replaceFileBtn.disabled = !ok;
+    }
+
+    fileInput.onchange = async () => {
+      const f = fileInput.files?.[0];
+      if (!f) { loadedFileText = ""; enableFileButtons(false); return; }
+      try {
+        loadedFileText = await f.text();
+        enableFileButtons(true);
+      } catch {
+        loadedFileText = "";
+        enableFileButtons(false);
+      }
+    };
+
+    appendFileBtn.onclick = () => {
+      if (!loadedFileText) return;
+      const cur = trainText.value.trim();
+      const add = loadedFileText.trim();
+      trainText.value = cur ? (cur + "\n" + add) : add;
+      loadedFileText = "";
+      fileInput.value = "";
+      enableFileButtons(false);
+    };
+
+    replaceFileBtn.onclick = () => {
+      if (!loadedFileText) return;
+      trainText.value = loadedFileText.trim();
+      loadedFileText = "";
+      fileInput.value = "";
+      enableFileButtons(false);
+    };
+
+    // Init
+    trainText.value = defaultTrainingData();
+    resetAll();
+  </script>
+</body>
+</html>
