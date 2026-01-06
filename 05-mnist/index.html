@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MNIST CNN Explorer (Single-file)</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", sans-serif; }
+    body { margin: 18px; line-height: 1.35; }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
+    .card h2 { font-size: 14px; margin: 0 0 8px; }
+    button, select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 12px; background:#fff; }
+    button { cursor: pointer; }
+    button:hover { background:#f7f7f7; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .controls { display:flex; gap:8px; flex-wrap: wrap; align-items:center; }
+    .small { font-size: 12px; color:#444; }
+    .muted { color:#666; }
+    .pill { padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; }
+    .mono { font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .canvasWrap { display:grid; grid-template-columns: 280px 1fr; gap: 12px; align-items:start; }
+    canvas { border: 1px solid #eee; border-radius: 12px; background:#000; }
+    .outbox { border:1px solid #eee; border-radius:12px; padding:10px; white-space: pre-wrap; }
+    .stage { border:1px solid #eee; border-radius:12px; padding:10px; }
+    .grid { display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .fm { border:1px solid #eee; border-radius:10px; overflow:hidden; background:#fff; }
+    .fm canvas { width: 100%; height: auto; border: none; border-radius: 0; background:#fff; }
+    .barRow { display:grid; grid-template-columns: 26px 1fr 55px; gap: 8px; align-items:center; margin: 4px 0; }
+    .barWrap { height: 10px; background:#eee; border-radius: 999px; overflow:hidden; }
+    .bar { height: 100%; background:#bbb; width:0%; }
+  </style>
+
+  <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+</head>
+
+<body>
+  <h1>MNIST CNN Explorer: draw → step through layers → see feature maps</h1>
+
+  <div class="row">
+    <div class="card">
+      <h2>1) Model</h2>
+      <div class="controls">
+        <button id="loadBtn">Load pre-trained MNIST CNN</button>
+        <span class="pill" id="modelStatus">Model: not loaded</span>
+      </div>
+      <div class="small muted" style="margin-top:8px;">
+        This expects a TF.js model at <span class="mono">./model/mnist.json</span> (and weights in the same folder).
+      </div>
+
+      <h2 style="margin-top:14px;">2) Draw a digit</h2>
+      <div class="canvasWrap">
+        <canvas id="draw" width="280" height="280"></canvas>
+        <div>
+          <div class="controls">
+            <button id="clearBtn">Clear</button>
+            <button id="invertBtn">Invert</button>
+            <span class="pill" id="prepStatus">Input: —</span>
+          </div>
+
+          <div class="stage" style="margin-top:10px;">
+            <div class="small muted">28×28 preprocessed input (what the CNN sees)</div>
+            <canvas id="small" width="28" height="28" style="width: 140px; height: 140px; image-rendering: pixelated;"></canvas>
+          </div>
+
+          <div class="stage" style="margin-top:10px;">
+            <div class="small muted">Controls</div>
+            <div class="controls" style="margin-top:6px;">
+              <button id="stepBtn" disabled>Step</button>
+              <button id="autoBtn" disabled>Auto</button>
+              <button id="stopBtn" disabled>Stop</button>
+              <button id="runBtn" disabled>Run full forward</button>
+              <span class="pill" id="stagePill">Stage: —</span>
+            </div>
+            <div class="small muted" style="margin-top:6px;">
+              Stages: Input → Conv1 → Pool1 → Conv2 → Pool2 → Logits
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2 style="margin-top:14px;">3) Debug</h2>
+      <div class="outbox mono" id="debugBox">—</div>
+    </div>
+
+    <div class="card">
+      <h2>4) What’s inside the CNN?</h2>
+
+      <div class="stage">
+        <div class="small muted">Prediction (softmax)</div>
+        <div id="bars"></div>
+        <div class="small muted" id="predLine" style="margin-top:8px;">—</div>
+      </div>
+
+      <div class="stage" style="margin-top:12px;">
+        <div class="small muted">Feature maps (showing first 16 channels)</div>
+        <div class="grid" id="fmGrid"></div>
+      </div>
+
+      <div class="stage" style="margin-top:12px;">
+        <div class="small muted">Current stage explanation</div>
+        <div class="outbox mono" id="explainBox">Load model, then draw a digit, then Step.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const loadBtn = $("loadBtn");
+    const modelStatus = $("modelStatus");
+    const clearBtn = $("clearBtn");
+    const invertBtn = $("invertBtn");
+    const prepStatus = $("prepStatus");
+
+    const stepBtn = $("stepBtn");
+    const autoBtn = $("autoBtn");
+    const stopBtn = $("stopBtn");
+    const runBtn = $("runBtn");
+    const stagePill = $("stagePill");
+
+    const debugBox = $("debugBox");
+    const explainBox = $("explainBox");
+
+    const draw = $("draw");
+    const small = $("small");
+    const bars = $("bars");
+    const predLine = $("predLine");
+    const fmGrid = $("fmGrid");
+
+    let model = null;
+    let stageModels = null; // {conv1, pool1, conv2, pool2, logits}
+    let timer = null;
+
+    let stageIndex = 0;
+    const STAGES = ["Input", "Conv1", "Pool1", "Conv2", "Pool2", "Logits"];
+
+    // Drawing state
+    const ctx = draw.getContext("2d");
+    ctx.fillStyle = "black";
+    ctx.fillRect(0,0,draw.width,draw.height);
+
+    let drawing = false;
+    let brushSize = 18;
+    let inverted = false;
+
+    function setModelStatus(s) { modelStatus.textContent = `Model: ${s}`; }
+    function setStagePill() { stagePill.textContent = `Stage: ${STAGES[stageIndex]}`; }
+
+    function clearCanvas() {
+      ctx.fillStyle = "black";
+      ctx.fillRect(0,0,draw.width,draw.height);
+      inverted = false;
+      renderSmallPreview();
+    }
+
+    function invertCanvas() {
+      const img = ctx.getImageData(0,0,draw.width,draw.height);
+      const d = img.data;
+      for (let i=0;i<d.length;i+=4) {
+        d[i] = 255 - d[i];
+        d[i+1] = 255 - d[i+1];
+        d[i+2] = 255 - d[i+2];
+      }
+      ctx.putImageData(img,0,0);
+      inverted = !inverted;
+      renderSmallPreview();
+    }
+
+    function drawDot(x,y) {
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      ctx.arc(x,y,brushSize,0,Math.PI*2);
+      ctx.fill();
+    }
+
+    draw.addEventListener("pointerdown", (e) => {
+      drawing = true;
+      draw.setPointerCapture(e.pointerId);
+      const r = draw.getBoundingClientRect();
+      drawDot(e.clientX - r.left, e.clientY - r.top);
+      renderSmallPreview();
+    });
+
+    draw.addEventListener("pointermove", (e) => {
+      if (!drawing) return;
+      const r = draw.getBoundingClientRect();
+      drawDot(e.clientX - r.left, e.clientY - r.top);
+      renderSmallPreview();
+    });
+
+    draw.addEventListener("pointerup", () => { drawing = false; });
+    draw.addEventListener("pointercancel", () => { drawing = false; });
+
+    clearBtn.onclick = clearCanvas;
+    invertBtn.onclick = invertCanvas;
+
+    function renderSmallPreview() {
+      // Downsample 280x280 -> 28x28 and draw to small canvas
+      const sctx = small.getContext("2d");
+      const tmp = document.createElement("canvas");
+      tmp.width = 28; tmp.height = 28;
+      const tctx = tmp.getContext("2d");
+      tctx.imageSmoothingEnabled = true;
+      tctx.drawImage(draw, 0, 0, 28, 28);
+
+      // Optional: normalize contrast a bit (simple)
+      const img = tctx.getImageData(0,0,28,28);
+      const d = img.data;
+      for (let i=0;i<d.length;i+=4) {
+        // grayscale already because we draw in white on black; just keep red channel
+        const v = d[i];
+        d[i] = v; d[i+1] = v; d[i+2] = v; d[i+3] = 255;
+      }
+      tctx.putImageData(img,0,0);
+
+      sctx.imageSmoothingEnabled = false;
+      sctx.clearRect(0,0,28,28);
+      sctx.drawImage(tmp, 0, 0);
+
+      prepStatus.textContent = `Input: 28×28 (inverted=${inverted ? "yes":"no"})`;
+    }
+
+    function getInputTensor() {
+      // return shape [1,28,28,1] float32 in [0,1]
+      const sctx = small.getContext("2d");
+      const img = sctx.getImageData(0,0,28,28);
+      const d = img.data;
+      const arr = new Float32Array(28*28);
+      for (let i=0;i<28*28;i++) {
+        const v = d[i*4]; // 0..255
+        arr[i] = v / 255.0;
+      }
+      // MNIST usually: background 0, digit 1. Our draw is white on black so ok.
+      const x = tf.tensor4d(arr, [1,28,28,1]);
+      return x;
+    }
+
+    function buildStageModels(m) {
+      // Find layers by type (works across many MNIST CNN variants)
+      const layers = m.layers || [];
+      const convs = layers.filter(l => (l.getClassName?.() || "").toLowerCase().includes("conv2d"));
+      const pools = layers.filter(l => (l.getClassName?.() || "").toLowerCase().includes("maxpooling2d"));
+      const denses = layers.filter(l => (l.getClassName?.() || "").toLowerCase().includes("dense"));
+
+      if (convs.length < 1 || pools.length < 1) {
+        debugBox.textContent = "Could not find Conv2D/MaxPooling2D layers. This model may have a different topology.";
+        return null;
+      }
+
+      const conv1 = tf.model({ inputs: m.inputs, outputs: convs[0].output });
+      const pool1 = tf.model({ inputs: m.inputs, outputs: pools[0].output });
+
+      const conv2 = convs[1] ? tf.model({ inputs: m.inputs, outputs: convs[1].output }) : null;
+      const pool2 = pools[1] ? tf.model({ inputs: m.inputs, outputs: pools[1].output }) : null;
+
+      // logits/prob output: use final output
+      const logits = tf.model({ inputs: m.inputs, outputs: m.outputs[0] });
+
+      return { conv1, pool1, conv2, pool2, logits, convs, pools, denses };
+    }
+
+    async function loadModel() {
+      setModelStatus("loading…");
+      loadBtn.disabled = true;
+      try {
+        // Local path: ./model/mnist.json
+        model = await tf.loadLayersModel("./model/mnist.json");
+        stageModels = buildStageModels(model);
+
+        setModelStatus("loaded");
+        stepBtn.disabled = false;
+        autoBtn.disabled = false;
+        runBtn.disabled = false;
+
+        debugBox.textContent =
+          `Loaded.\n` +
+          `Inputs: ${model.inputs.map(t => t.shape).join(", ")}\n` +
+          `Output: ${model.outputs[0].shape}\n` +
+          `Layers: ${model.layers.length}\n` +
+          `Conv2D layers: ${stageModels?.convs?.length ?? 0}\n` +
+          `MaxPool layers: ${stageModels?.pools?.length ?? 0}\n`;
+
+        renderSmallPreview();
+        stageIndex = 0;
+        setStagePill();
+        await runStage();
+      } catch (e) {
+        console.error(e);
+        setModelStatus("failed (check console)");
+        loadBtn.disabled = false;
+        debugBox.textContent = String(e);
+      }
+    }
+
+    loadBtn.onclick = loadModel;
+
+    function clearFeatureMaps() {
+      fmGrid.innerHTML = "";
+    }
+
+    function renderFeatureMaps(t) {
+      // t: [1,H,W,C]
+      clearFeatureMaps();
+      const [_, H, W, C] = t.shape;
+      const show = Math.min(16, C);
+
+      // get data once
+      const data = t.dataSync();
+
+      for (let ch = 0; ch < show; ch++) {
+        const c = document.createElement("div");
+        c.className = "fm";
+
+        const canv = document.createElement("canvas");
+        canv.width = W;
+        canv.height = H;
+        canv.style.imageRendering = "pixelated";
+
+        const cctx = canv.getContext("2d");
+        const img = cctx.createImageData(W, H);
+
+        // find min/max for this channel for normalization
+        let mn = Infinity, mx = -Infinity;
+        for (let y=0;y<H;y++) for (let x=0;x<W;x++) {
+          const idx = ((y*W + x)*C + ch);
+          const v = data[idx];
+          if (v < mn) mn = v;
+          if (v > mx) mx = v;
+        }
+        const denom = (mx - mn) || 1e-6;
+
+        for (let y=0;y<H;y++) for (let x=0;x<W;x++) {
+          const idx = ((y*W + x)*C + ch);
+          const v = (data[idx] - mn) / denom; // 0..1
+          const p = (y*W + x)*4;
+          const g = Math.max(0, Math.min(255, Math.round(v*255)));
+          img.data[p] = g;
+          img.data[p+1] = g;
+          img.data[p+2] = g;
+          img.data[p+3] = 255;
+        }
+        cctx.putImageData(img,0,0);
+
+        const label = document.createElement("div");
+        label.className = "small muted";
+        label.style.padding = "6px 8px";
+        label.textContent = `ch ${ch}`;
+
+        c.appendChild(canv);
+        c.appendChild(label);
+        fmGrid.appendChild(c);
+      }
+    }
+
+    function renderBars(probs) {
+      bars.innerHTML = "";
+      let best = 0, bestP = -1;
+      for (let i=0;i<10;i++) if (probs[i] > bestP) { bestP = probs[i]; best = i; }
+
+      for (let i=0;i<10;i++) {
+        const row = document.createElement("div");
+        row.className = "barRow mono";
+
+        const lab = document.createElement("div");
+        lab.textContent = String(i);
+
+        const wrap = document.createElement("div");
+        wrap.className = "barWrap";
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        bar.style.width = `${Math.round(probs[i]*100)}%`;
+        bar.style.background = (i === best) ? "#777" : "#bbb";
+        wrap.appendChild(bar);
+
+        const val = document.createElement("div");
+        val.style.textAlign = "right";
+        val.textContent = (probs[i]*100).toFixed(1) + "%";
+
+        row.appendChild(lab);
+        row.appendChild(wrap);
+        row.appendChild(val);
+        bars.appendChild(row);
+      }
+      predLine.textContent = `Prediction: ${best}   (p=${bestP.toFixed(3)})`;
+    }
+
+    async function runStage() {
+      if (!model || !stageModels) return;
+
+      const x = getInputTensor();
+      try {
+        setStagePill();
+
+        if (STAGES[stageIndex] === "Input") {
+          explainBox.textContent = "Input stage: the 28×28 grayscale image is converted into a tensor of shape [1,28,28,1].";
+          clearFeatureMaps();
+          const probs = await stageModels.logits.predict(x).data();
+          renderBars(Array.from(probs));
+          return;
+        }
+
+        if (STAGES[stageIndex] === "Conv1") {
+          explainBox.textContent = "Conv1 stage: apply multiple 2D filters to detect strokes/edges. Each filter produces one feature map (channel).";
+          const t = stageModels.conv1.predict(x);
+          renderFeatureMaps(t);
+          const probs = await stageModels.logits.predict(x).data();
+          renderBars(Array.from(probs));
+          t.dispose();
+          return;
+        }
+
+        if (STAGES[stageIndex] === "Pool1") {
+          explainBox.textContent = "Pool1 stage: downsample (max pooling) to keep strong activations and reduce spatial size.";
+          const t = stageModels.pool1.predict(x);
+          renderFeatureMaps(t);
+          const probs = await stageModels.logits.predict(x).data();
+          renderBars(Array.from(probs));
+          t.dispose();
+          return;
+        }
+
+        if (STAGES[stageIndex] === "Conv2") {
+          if (!stageModels.conv2) {
+            explainBox.textContent = "This model has no second conv layer detected.";
+            clearFeatureMaps();
+          } else {
+            explainBox.textContent = "Conv2 stage: deeper filters combine earlier stroke features into higher-level patterns.";
+            const t = stageModels.conv2.predict(x);
+            renderFeatureMaps(t);
+            t.dispose();
+          }
+          const probs = await stageModels.logits.predict(x).data();
+          renderBars(Array.from(probs));
+          return;
+        }
+
+        if (STAGES[stageIndex] === "Pool2") {
+          if (!stageModels.pool2) {
+            explainBox.textContent = "This model has no second pooling layer detected.";
+            clearFeatureMaps();
+          } else {
+            explainBox.textContent = "Pool2 stage: further downsample to prepare for dense classification layers.";
+            const t = stageModels.pool2.predict(x);
+            renderFeatureMaps(t);
+            t.dispose();
+          }
+          const probs = await stageModels.logits.predict(x).data();
+          renderBars(Array.from(probs));
+          return;
+        }
+
+        if (STAGES[stageIndex] === "Logits") {
+          explainBox.textContent = "Logits/Softmax stage: dense layers produce 10 scores, softmax turns them into probabilities for digits 0–9.";
+          clearFeatureMaps();
+          const probs = await stageModels.logits.predict(x).data();
+          renderBars(Array.from(probs));
+          return;
+        }
+      } finally {
+        x.dispose();
+      }
+    }
+
+    stepBtn.onclick = async () => {
+      stageIndex = (stageIndex + 1) % STAGES.length;
+      await runStage();
+    };
+
+    runBtn.onclick = async () => {
+      // run all stages quickly, ending at logits
+      stageIndex = STAGES.length - 1;
+      await runStage();
+    };
+
+    autoBtn.onclick = () => {
+      if (!model) return;
+      stepBtn.disabled = true;
+      autoBtn.disabled = true;
+      stopBtn.disabled = false;
+      timer = setInterval(async () => {
+        stageIndex = (stageIndex + 1) % STAGES.length;
+        await runStage();
+      }, 650);
+    };
+
+    stopBtn.onclick = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
+      stepBtn.disabled = false;
+      autoBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+
+    // update preview + inference as you draw (lightweight)
+    // (we only re-run the current stage; avoid being too heavy)
+    let rafPending = false;
+    function scheduleRerun() {
+      if (!model) return;
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(async () => {
+        rafPending = false;
+        await runStage();
+      });
+    }
+    draw.addEventListener("pointermove", () => scheduleRerun());
+    draw.addEventListener("pointerdown", () => scheduleRerun());
+
+    // init
+    renderSmallPreview();
+    setStagePill();
+  </script>
+</body>
+</html>
