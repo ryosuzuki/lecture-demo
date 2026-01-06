@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MNIST CNN Explorer (Single-file)</title>
+  <title>MNIST CNN Explainer (Single-file)</title>
   <style>
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", sans-serif; }
     body { margin: 18px; line-height: 1.35; }
@@ -11,7 +11,7 @@
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
     .card h2 { font-size: 14px; margin: 0 0 8px; }
-    button, select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 12px; background:#fff; }
+    button, input, select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 12px; background:#fff; }
     button { cursor: pointer; }
     button:hover { background:#f7f7f7; }
     button:disabled { opacity:.5; cursor:not-allowed; }
@@ -20,88 +20,168 @@
     .muted { color:#666; }
     .pill { padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; }
     .mono { font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .canvasWrap { display:grid; grid-template-columns: 280px 1fr; gap: 12px; align-items:start; }
-    canvas { border: 1px solid #eee; border-radius: 12px; background:#000; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .canvasRow { display:flex; gap: 12px; flex-wrap: wrap; align-items: start; }
+    canvas { border: 1px solid #eee; border-radius: 12px; background: #000; }
+    .mini { background: #fff; }
     .outbox { border:1px solid #eee; border-radius:12px; padding:10px; white-space: pre-wrap; }
-    .stage { border:1px solid #eee; border-radius:12px; padding:10px; }
-    .grid { display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .fm { border:1px solid #eee; border-radius:10px; overflow:hidden; background:#fff; }
-    .fm canvas { width: 100%; height: auto; border: none; border-radius: 0; background:#fff; }
-    .barRow { display:grid; grid-template-columns: 26px 1fr 55px; gap: 8px; align-items:center; margin: 4px 0; }
-    .barWrap { height: 10px; background:#eee; border-radius: 999px; overflow:hidden; }
-    .bar { height: 100%; background:#bbb; width:0%; }
+    .bars { border:1px solid #eee; border-radius:12px; overflow:hidden; }
+    .barRow { display:grid; grid-template-columns: 30px 1fr 70px; gap:10px; padding:8px 10px; border-top:1px solid #f1f1f1; align-items:center; }
+    .barRow:first-child { border-top:none; }
+    .barWrap { height: 10px; background:#eee; border-radius:999px; overflow:hidden; }
+    .bar { height:100%; background:#bbb; width:0%; }
+    .fmGrid { display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .fmItem { border:1px solid #eee; border-radius:12px; padding:6px; cursor:pointer; user-select:none; background:#fff; }
+    .fmItem:hover { background:#fafafa; }
+    .fmItem canvas { width: 100%; height: auto; border-radius:10px; background:#fff; border:1px solid #f1f1f1; }
+    .table { border:1px solid #eee; border-radius:12px; overflow:hidden; }
+    .tRow { display:grid; grid-template-columns: 1.2fr 0.8fr 1fr 0.9fr; gap:10px; padding:8px 10px; border-top:1px solid #f1f1f1; align-items:center; }
+    .tRow:first-child { border-top:none; }
+    .tHead { background:#fafafa; font-weight:700; }
+    .footer { margin-top: 10px; font-size: 12px; color: #666; }
+    .kbd { font: 12px ui-monospace; border: 1px solid #ddd; border-bottom-width: 2px; padding: 1px 6px; border-radius: 8px; background: #fafafa; }
+    .warn { color:#8a4b00; }
+    .hr { height:1px; background:#eee; margin:10px 0; }
+
+    /* Modal */
+    .modalBack {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+      display:none; align-items:center; justify-content:center; padding: 18px; z-index: 999;
+    }
+    .modal {
+      width: min(820px, 96vw);
+      background:#fff; border-radius: 14px; border:1px solid #ddd; padding: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .modalTop { display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+    .modalCanvasWrap { border:1px solid #eee; border-radius: 12px; padding: 10px; background:#fafafa; }
+    .modal canvas { background:#fff; border:1px solid #eee; border-radius: 12px; }
+    .tag { display:inline-block; padding: 2px 8px; border:1px solid #ddd; border-radius: 999px; font-size: 12px; color:#444; }
+    .kernelGrid { display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .kernelItem { border:1px solid #eee; border-radius:12px; padding:8px; background:#fff; }
+    .kernelItem canvas { width: 100%; height: auto; background:#fff; border-radius: 10px; border:1px solid #f1f1f1; }
   </style>
 
-  <!-- TensorFlow.js -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
 </head>
 
 <body>
-  <h1>MNIST CNN Explorer: draw → step through layers → see feature maps</h1>
+  <h1>MNIST CNN Explainer: draw → tensor → conv/pool internals → prediction</h1>
 
   <div class="row">
     <div class="card">
-      <h2>1) Model</h2>
+      <h2>1) Model + input</h2>
+
       <div class="controls">
-        <button id="loadBtn">Load pre-trained MNIST CNN</button>
-        <span class="pill" id="modelStatus">Model: not loaded</span>
-      </div>
-      <div class="small muted" style="margin-top:8px;">
-        This expects a TF.js model at <span class="mono">./model/mnist.json</span> (and weights in the same folder).
+        <button id="loadModelBtn">Load pretrained CNN (CDN)</button>
+        <span class="pill" id="modelPill">Model: not loaded</span>
+        <span class="pill" id="ioPill">I/O: —</span>
       </div>
 
-      <h2 style="margin-top:14px;">2) Draw a digit</h2>
-      <div class="canvasWrap">
-        <canvas id="draw" width="280" height="280"></canvas>
+      <div class="controls" style="margin-top:10px;">
+        <button id="clearBtn">Clear drawing</button>
+        <button id="sampleBtn" disabled>Load random MNIST sample</button>
+        <span class="pill" id="dataPill">MNIST sprite: not loaded</span>
+      </div>
+
+      <div class="canvasRow" style="margin-top:10px;">
         <div>
-          <div class="controls">
-            <button id="clearBtn">Clear</button>
-            <button id="invertBtn">Invert</button>
-            <span class="pill" id="prepStatus">Input: —</span>
-          </div>
+          <div class="small muted">Draw here (280×280)</div>
+          <canvas id="draw" width="280" height="280"></canvas>
+        </div>
+        <div>
+          <div class="small muted">Downsampled (28×28)</div>
+          <canvas id="mini" class="mini" width="28" height="28" style="width:140px;height:140px;"></canvas>
+          <div class="small muted" style="margin-top:6px;">(what the CNN sees)</div>
+        </div>
+      </div>
 
-          <div class="stage" style="margin-top:10px;">
-            <div class="small muted">28×28 preprocessed input (what the CNN sees)</div>
-            <canvas id="small" width="28" height="28" style="width: 140px; height: 140px; image-rendering: pixelated;"></canvas>
-          </div>
+      <div class="controls" style="margin-top:10px;">
+        <button id="runBtn" disabled>Run inference</button>
+        <button id="stepBtn" disabled>Step selected layer</button>
+        <select id="layerSelect" disabled></select>
+      </div>
 
-          <div class="stage" style="margin-top:10px;">
-            <div class="small muted">Controls</div>
-            <div class="controls" style="margin-top:6px;">
-              <button id="stepBtn" disabled>Step</button>
-              <button id="autoBtn" disabled>Auto</button>
-              <button id="stopBtn" disabled>Stop</button>
-              <button id="runBtn" disabled>Run full forward</button>
-              <span class="pill" id="stagePill">Stage: —</span>
-            </div>
-            <div class="small muted" style="margin-top:6px;">
-              Stages: Input → Conv1 → Pool1 → Conv2 → Pool2 → Logits
-            </div>
+      <div class="outbox mono" id="logBox" style="margin-top:10px;">—</div>
+
+      <div class="hr"></div>
+
+      <h2>2) Layer inspector (how CNN is configured)</h2>
+      <div class="small muted">This shows: kernel size, stride, padding, activation, and output shape (computed on current input).</div>
+      <div class="table mono" id="layerTable" style="margin-top:8px;"></div>
+
+      <div class="footer warn" id="modelNote">
+        Note: public TFJS MNIST models vary. This demo auto-detects conv/pool layers and builds intermediate outputs dynamically.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3) Output + internals</h2>
+
+      <div class="grid2">
+        <div>
+          <div class="small muted">Prediction probabilities</div>
+          <div class="bars" id="probBars"></div>
+        </div>
+
+        <div>
+          <div class="small muted">Manual 3×3 convolution (from conv1 kernel)</div>
+          <div class="outbox mono" id="convBox">Load model, then preprocess/run to enable.</div>
+          <div class="controls" style="margin-top:8px;">
+            <span class="small muted">filter idx:</span>
+            <input id="fIdx" type="number" min="0" value="0" style="width:80px;">
+            <span class="small muted">x,y:</span>
+            <input id="px" type="number" min="0" max="25" value="10" style="width:70px;">
+            <input id="py" type="number" min="0" max="25" value="10" style="width:70px;">
+            <button id="calcConvBtn" disabled>Compute</button>
           </div>
         </div>
       </div>
 
-      <h2 style="margin-top:14px;">3) Debug</h2>
-      <div class="outbox mono" id="debugBox">—</div>
+      <div class="hr"></div>
+
+      <h2>4) Feature maps (click to enlarge)</h2>
+      <div class="small muted">Shows first 16 channels. Click a channel for big view + min/max.</div>
+
+      <div style="margin-top:10px;">
+        <div class="small muted">From first Conv/Pool layer output</div>
+        <div class="fmGrid" id="fmA"></div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="small muted">From second Conv/Pool layer output</div>
+        <div class="fmGrid" id="fmB"></div>
+      </div>
+
+      <div class="hr"></div>
+
+      <h2>5) Kernel visualization (Conv filters)</h2>
+      <div class="controls">
+        <span class="small muted">conv layer:</span>
+        <select id="kernelLayerSelect" disabled></select>
+        <span class="small muted">filter idx:</span>
+        <input id="kernelFilterIdx" type="number" min="0" value="0" style="width:90px;">
+        <button id="renderKernelBtn" disabled>Render kernels</button>
+        <span class="pill" id="kernelInfo">—</span>
+      </div>
+      <div class="small muted" style="margin-top:6px;">Heatmap uses min→black, max→white (per-kernel normalization).</div>
+      <div class="kernelGrid" id="kernelGrid" style="margin-top:10px;"></div>
     </div>
+  </div>
 
-    <div class="card">
-      <h2>4) What’s inside the CNN?</h2>
-
-      <div class="stage">
-        <div class="small muted">Prediction (softmax)</div>
-        <div id="bars"></div>
-        <div class="small muted" id="predLine" style="margin-top:8px;">—</div>
+  <!-- Modal for feature map enlarge -->
+  <div class="modalBack" id="modalBack">
+    <div class="modal">
+      <div class="modalTop">
+        <div class="mono" id="modalTitle">—</div>
+        <button id="modalClose">Close</button>
       </div>
-
-      <div class="stage" style="margin-top:12px;">
-        <div class="small muted">Feature maps (showing first 16 channels)</div>
-        <div class="grid" id="fmGrid"></div>
+      <div class="controls" style="margin-top:8px;">
+        <span class="tag" id="modalShape">shape=—</span>
+        <span class="tag" id="modalStats">min=— max=—</span>
       </div>
-
-      <div class="stage" style="margin-top:12px;">
-        <div class="small muted">Current stage explanation</div>
-        <div class="outbox mono" id="explainBox">Load model, then draw a digit, then Step.</div>
+      <div class="modalCanvasWrap" style="margin-top:10px;">
+        <canvas id="modalCanvas" width="256" height="256"></canvas>
       </div>
     </div>
   </div>
@@ -109,409 +189,841 @@
   <script>
     const $ = (id) => document.getElementById(id);
 
-    const loadBtn = $("loadBtn");
-    const modelStatus = $("modelStatus");
+    const loadModelBtn = $("loadModelBtn");
+    const sampleBtn = $("sampleBtn");
     const clearBtn = $("clearBtn");
-    const invertBtn = $("invertBtn");
-    const prepStatus = $("prepStatus");
-
-    const stepBtn = $("stepBtn");
-    const autoBtn = $("autoBtn");
-    const stopBtn = $("stopBtn");
     const runBtn = $("runBtn");
-    const stagePill = $("stagePill");
+    const stepBtn = $("stepBtn");
+    const layerSelect = $("layerSelect");
 
-    const debugBox = $("debugBox");
-    const explainBox = $("explainBox");
+    const modelPill = $("modelPill");
+    const ioPill = $("ioPill");
+    const dataPill = $("dataPill");
+    const logBox = $("logBox");
 
-    const draw = $("draw");
-    const small = $("small");
-    const bars = $("bars");
-    const predLine = $("predLine");
-    const fmGrid = $("fmGrid");
+    const drawCanvas = $("draw");
+    const miniCanvas = $("mini");
 
-    let model = null;
-    let stageModels = null; // {conv1, pool1, conv2, pool2, logits}
-    let timer = null;
+    const probBars = $("probBars");
+    const layerTable = $("layerTable");
 
-    let stageIndex = 0;
-    const STAGES = ["Input", "Conv1", "Pool1", "Conv2", "Pool2", "Logits"];
+    const fmA = $("fmA");
+    const fmB = $("fmB");
 
-    // Drawing state
-    const ctx = draw.getContext("2d");
-    ctx.fillStyle = "black";
-    ctx.fillRect(0,0,draw.width,draw.height);
+    const convBox = $("convBox");
+    const fIdxEl = $("fIdx");
+    const pxEl = $("px");
+    const pyEl = $("py");
+    const calcConvBtn = $("calcConvBtn");
 
-    let drawing = false;
-    let brushSize = 18;
-    let inverted = false;
+    const kernelLayerSelect = $("kernelLayerSelect");
+    const kernelFilterIdx = $("kernelFilterIdx");
+    const renderKernelBtn = $("renderKernelBtn");
+    const kernelGrid = $("kernelGrid");
+    const kernelInfo = $("kernelInfo");
 
-    function setModelStatus(s) { modelStatus.textContent = `Model: ${s}`; }
-    function setStagePill() { stagePill.textContent = `Stage: ${STAGES[stageIndex]}`; }
+    const modalBack = $("modalBack");
+    const modalClose = $("modalClose");
+    const modalTitle = $("modalTitle");
+    const modalShape = $("modalShape");
+    const modalStats = $("modalStats");
+    const modalCanvas = $("modalCanvas");
 
-    function clearCanvas() {
-      ctx.fillStyle = "black";
-      ctx.fillRect(0,0,draw.width,draw.height);
-      inverted = false;
-      renderSmallPreview();
+    // Pretrained TFJS MNIST CNN model
+    const MODEL_URL = "https://storage.googleapis.com/tfjs-models/tfjs/mnist_transfer_cnn_v1/model.json";
+
+    // MNIST sprite dataset (common TFJS tutorial dataset)
+    const MNIST_SPRITE = "https://storage.googleapis.com/learnjs-data/model-builder/mnist_images.png";
+    const MNIST_LABELS = "https://storage.googleapis.com/learnjs-data/model-builder/mnist_labels_uint8";
+    const SPRITE_COLS = 100;
+    const IMAGE_SIZE = 28;
+
+    const state = {
+      model: null,
+      outputClasses: 10,
+      spriteImg: null,
+      labels: null,
+
+      lastInput28: null,
+      lastInputTensor: null,
+
+      // Intermediate inspection
+      layerInfos: [],         // [{idx, name, className, config}]
+      layerModels: new Map(), // layerIdx -> tf.model outputs that layer
+      keyLayerIdxs: [],       // chosen conv/pool/logits layer indices
+
+      lastLayerOutputs: new Map(), // layerIdx -> tf.Tensor
+    };
+
+    function setModelStatus(s) { modelPill.textContent = `Model: ${s}`; }
+    function setIOStatus(s) { ioPill.textContent = `I/O: ${s}`; }
+    function setLog(s) { logBox.textContent = s; }
+
+    function disposeLastOutputs() {
+      for (const t of state.lastLayerOutputs.values()) t?.dispose?.();
+      state.lastLayerOutputs.clear();
     }
 
-    function invertCanvas() {
-      const img = ctx.getImageData(0,0,draw.width,draw.height);
-      const d = img.data;
-      for (let i=0;i<d.length;i+=4) {
-        d[i] = 255 - d[i];
-        d[i+1] = 255 - d[i+1];
-        d[i+2] = 255 - d[i+2];
-      }
-      ctx.putImageData(img,0,0);
-      inverted = !inverted;
-      renderSmallPreview();
+    function clearTF() {
+      disposeLastOutputs();
+      if (state.lastInputTensor) { state.lastInputTensor.dispose(); state.lastInputTensor = null; }
     }
 
-    function drawDot(x,y) {
-      ctx.fillStyle = "white";
-      ctx.beginPath();
-      ctx.arc(x,y,brushSize,0,Math.PI*2);
-      ctx.fill();
-    }
-
-    draw.addEventListener("pointerdown", (e) => {
-      drawing = true;
-      draw.setPointerCapture(e.pointerId);
-      const r = draw.getBoundingClientRect();
-      drawDot(e.clientX - r.left, e.clientY - r.top);
-      renderSmallPreview();
-    });
-
-    draw.addEventListener("pointermove", (e) => {
-      if (!drawing) return;
-      const r = draw.getBoundingClientRect();
-      drawDot(e.clientX - r.left, e.clientY - r.top);
-      renderSmallPreview();
-    });
-
-    draw.addEventListener("pointerup", () => { drawing = false; });
-    draw.addEventListener("pointercancel", () => { drawing = false; });
-
-    clearBtn.onclick = clearCanvas;
-    invertBtn.onclick = invertCanvas;
-
-    function renderSmallPreview() {
-      // Downsample 280x280 -> 28x28 and draw to small canvas
-      const sctx = small.getContext("2d");
-      const tmp = document.createElement("canvas");
-      tmp.width = 28; tmp.height = 28;
-      const tctx = tmp.getContext("2d");
-      tctx.imageSmoothingEnabled = true;
-      tctx.drawImage(draw, 0, 0, 28, 28);
-
-      // Optional: normalize contrast a bit (simple)
-      const img = tctx.getImageData(0,0,28,28);
-      const d = img.data;
-      for (let i=0;i<d.length;i+=4) {
-        // grayscale already because we draw in white on black; just keep red channel
-        const v = d[i];
-        d[i] = v; d[i+1] = v; d[i+2] = v; d[i+3] = 255;
-      }
-      tctx.putImageData(img,0,0);
-
-      sctx.imageSmoothingEnabled = false;
-      sctx.clearRect(0,0,28,28);
-      sctx.drawImage(tmp, 0, 0);
-
-      prepStatus.textContent = `Input: 28×28 (inverted=${inverted ? "yes":"no"})`;
-    }
-
-    function getInputTensor() {
-      // return shape [1,28,28,1] float32 in [0,1]
-      const sctx = small.getContext("2d");
-      const img = sctx.getImageData(0,0,28,28);
-      const d = img.data;
-      const arr = new Float32Array(28*28);
-      for (let i=0;i<28*28;i++) {
-        const v = d[i*4]; // 0..255
-        arr[i] = v / 255.0;
-      }
-      // MNIST usually: background 0, digit 1. Our draw is white on black so ok.
-      const x = tf.tensor4d(arr, [1,28,28,1]);
-      return x;
-    }
-
-    function buildStageModels(m) {
-      // Find layers by type (works across many MNIST CNN variants)
-      const layers = m.layers || [];
-      const convs = layers.filter(l => (l.getClassName?.() || "").toLowerCase().includes("conv2d"));
-      const pools = layers.filter(l => (l.getClassName?.() || "").toLowerCase().includes("maxpooling2d"));
-      const denses = layers.filter(l => (l.getClassName?.() || "").toLowerCase().includes("dense"));
-
-      if (convs.length < 1 || pools.length < 1) {
-        debugBox.textContent = "Could not find Conv2D/MaxPooling2D layers. This model may have a different topology.";
-        return null;
-      }
-
-      const conv1 = tf.model({ inputs: m.inputs, outputs: convs[0].output });
-      const pool1 = tf.model({ inputs: m.inputs, outputs: pools[0].output });
-
-      const conv2 = convs[1] ? tf.model({ inputs: m.inputs, outputs: convs[1].output }) : null;
-      const pool2 = pools[1] ? tf.model({ inputs: m.inputs, outputs: pools[1].output }) : null;
-
-      // logits/prob output: use final output
-      const logits = tf.model({ inputs: m.inputs, outputs: m.outputs[0] });
-
-      return { conv1, pool1, conv2, pool2, logits, convs, pools, denses };
-    }
-
-    async function loadModel() {
-      setModelStatus("loading…");
-      loadBtn.disabled = true;
-      try {
-        // Local path: ./model/mnist.json
-        model = await tf.loadLayersModel("./model/mnist.json");
-        stageModels = buildStageModels(model);
-
-        setModelStatus("loaded");
-        stepBtn.disabled = false;
-        autoBtn.disabled = false;
-        runBtn.disabled = false;
-
-        debugBox.textContent =
-          `Loaded.\n` +
-          `Inputs: ${model.inputs.map(t => t.shape).join(", ")}\n` +
-          `Output: ${model.outputs[0].shape}\n` +
-          `Layers: ${model.layers.length}\n` +
-          `Conv2D layers: ${stageModels?.convs?.length ?? 0}\n` +
-          `MaxPool layers: ${stageModels?.pools?.length ?? 0}\n`;
-
-        renderSmallPreview();
-        stageIndex = 0;
-        setStagePill();
-        await runStage();
-      } catch (e) {
-        console.error(e);
-        setModelStatus("failed (check console)");
-        loadBtn.disabled = false;
-        debugBox.textContent = String(e);
-      }
-    }
-
-    loadBtn.onclick = loadModel;
-
-    function clearFeatureMaps() {
-      fmGrid.innerHTML = "";
-    }
-
-    function renderFeatureMaps(t) {
-      // t: [1,H,W,C]
-      clearFeatureMaps();
-      const [_, H, W, C] = t.shape;
-      const show = Math.min(16, C);
-
-      // get data once
-      const data = t.dataSync();
-
-      for (let ch = 0; ch < show; ch++) {
-        const c = document.createElement("div");
-        c.className = "fm";
-
-        const canv = document.createElement("canvas");
-        canv.width = W;
-        canv.height = H;
-        canv.style.imageRendering = "pixelated";
-
-        const cctx = canv.getContext("2d");
-        const img = cctx.createImageData(W, H);
-
-        // find min/max for this channel for normalization
-        let mn = Infinity, mx = -Infinity;
-        for (let y=0;y<H;y++) for (let x=0;x<W;x++) {
-          const idx = ((y*W + x)*C + ch);
-          const v = data[idx];
-          if (v < mn) mn = v;
-          if (v > mx) mx = v;
-        }
-        const denom = (mx - mn) || 1e-6;
-
-        for (let y=0;y<H;y++) for (let x=0;x<W;x++) {
-          const idx = ((y*W + x)*C + ch);
-          const v = (data[idx] - mn) / denom; // 0..1
-          const p = (y*W + x)*4;
-          const g = Math.max(0, Math.min(255, Math.round(v*255)));
-          img.data[p] = g;
-          img.data[p+1] = g;
-          img.data[p+2] = g;
-          img.data[p+3] = 255;
-        }
-        cctx.putImageData(img,0,0);
-
-        const label = document.createElement("div");
-        label.className = "small muted";
-        label.style.padding = "6px 8px";
-        label.textContent = `ch ${ch}`;
-
-        c.appendChild(canv);
-        c.appendChild(label);
-        fmGrid.appendChild(c);
-      }
-    }
-
-    function renderBars(probs) {
-      bars.innerHTML = "";
-      let best = 0, bestP = -1;
-      for (let i=0;i<10;i++) if (probs[i] > bestP) { bestP = probs[i]; best = i; }
-
-      for (let i=0;i<10;i++) {
+    // ---------- Bars ----------
+    function initBars(k) {
+      probBars.innerHTML = "";
+      for (let i = 0; i < k; i++) {
         const row = document.createElement("div");
         row.className = "barRow mono";
-
-        const lab = document.createElement("div");
-        lab.textContent = String(i);
-
-        const wrap = document.createElement("div");
-        wrap.className = "barWrap";
-        const bar = document.createElement("div");
-        bar.className = "bar";
-        bar.style.width = `${Math.round(probs[i]*100)}%`;
-        bar.style.background = (i === best) ? "#777" : "#bbb";
-        wrap.appendChild(bar);
-
-        const val = document.createElement("div");
-        val.style.textAlign = "right";
-        val.textContent = (probs[i]*100).toFixed(1) + "%";
-
-        row.appendChild(lab);
-        row.appendChild(wrap);
-        row.appendChild(val);
-        bars.appendChild(row);
-      }
-      predLine.textContent = `Prediction: ${best}   (p=${bestP.toFixed(3)})`;
-    }
-
-    async function runStage() {
-      if (!model || !stageModels) return;
-
-      const x = getInputTensor();
-      try {
-        setStagePill();
-
-        if (STAGES[stageIndex] === "Input") {
-          explainBox.textContent = "Input stage: the 28×28 grayscale image is converted into a tensor of shape [1,28,28,1].";
-          clearFeatureMaps();
-          const probs = await stageModels.logits.predict(x).data();
-          renderBars(Array.from(probs));
-          return;
-        }
-
-        if (STAGES[stageIndex] === "Conv1") {
-          explainBox.textContent = "Conv1 stage: apply multiple 2D filters to detect strokes/edges. Each filter produces one feature map (channel).";
-          const t = stageModels.conv1.predict(x);
-          renderFeatureMaps(t);
-          const probs = await stageModels.logits.predict(x).data();
-          renderBars(Array.from(probs));
-          t.dispose();
-          return;
-        }
-
-        if (STAGES[stageIndex] === "Pool1") {
-          explainBox.textContent = "Pool1 stage: downsample (max pooling) to keep strong activations and reduce spatial size.";
-          const t = stageModels.pool1.predict(x);
-          renderFeatureMaps(t);
-          const probs = await stageModels.logits.predict(x).data();
-          renderBars(Array.from(probs));
-          t.dispose();
-          return;
-        }
-
-        if (STAGES[stageIndex] === "Conv2") {
-          if (!stageModels.conv2) {
-            explainBox.textContent = "This model has no second conv layer detected.";
-            clearFeatureMaps();
-          } else {
-            explainBox.textContent = "Conv2 stage: deeper filters combine earlier stroke features into higher-level patterns.";
-            const t = stageModels.conv2.predict(x);
-            renderFeatureMaps(t);
-            t.dispose();
-          }
-          const probs = await stageModels.logits.predict(x).data();
-          renderBars(Array.from(probs));
-          return;
-        }
-
-        if (STAGES[stageIndex] === "Pool2") {
-          if (!stageModels.pool2) {
-            explainBox.textContent = "This model has no second pooling layer detected.";
-            clearFeatureMaps();
-          } else {
-            explainBox.textContent = "Pool2 stage: further downsample to prepare for dense classification layers.";
-            const t = stageModels.pool2.predict(x);
-            renderFeatureMaps(t);
-            t.dispose();
-          }
-          const probs = await stageModels.logits.predict(x).data();
-          renderBars(Array.from(probs));
-          return;
-        }
-
-        if (STAGES[stageIndex] === "Logits") {
-          explainBox.textContent = "Logits/Softmax stage: dense layers produce 10 scores, softmax turns them into probabilities for digits 0–9.";
-          clearFeatureMaps();
-          const probs = await stageModels.logits.predict(x).data();
-          renderBars(Array.from(probs));
-          return;
-        }
-      } finally {
-        x.dispose();
+        row.innerHTML = `
+          <div>${i}</div>
+          <div class="barWrap"><div class="bar" id="bar${i}"></div></div>
+          <div id="pct${i}" style="text-align:right;">0.0%</div>
+        `;
+        probBars.appendChild(row);
       }
     }
 
-    stepBtn.onclick = async () => {
-      stageIndex = (stageIndex + 1) % STAGES.length;
-      await runStage();
+    function updateBars(probs) {
+      const max = Math.max(...probs, 1e-9);
+      for (let i = 0; i < probs.length; i++) {
+        const p = probs[i];
+        const w = Math.max(1, Math.round((p / max) * 100));
+        const bar = document.getElementById(`bar${i}`);
+        const pct = document.getElementById(`pct${i}`);
+        if (bar) bar.style.width = `${w}%`;
+        if (pct) pct.textContent = `${(p * 100).toFixed(1)}%`;
+      }
+    }
+
+    // ---------- Drawing ----------
+    const ctx = drawCanvas.getContext("2d");
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+    let drawing = false;
+    let last = null;
+
+    function drawLine(x0, y0, x1, y1) {
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 18;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+    }
+
+    function getPos(ev) {
+      const r = drawCanvas.getBoundingClientRect();
+      const x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+      const y = (ev.touches ? ev.touches[0].clientY : ev.clientY) - r.top;
+      return { x, y };
+    }
+
+    function start(ev) { drawing = true; last = getPos(ev); ev.preventDefault(); }
+    function move(ev) {
+      if (!drawing) return;
+      const p = getPos(ev);
+      drawLine(last.x, last.y, p.x, p.y);
+      last = p;
+      ev.preventDefault();
+      preprocessTo28();
+    }
+    function end(ev) { drawing = false; last = null; ev.preventDefault(); preprocessTo28(); }
+
+    drawCanvas.addEventListener("mousedown", start);
+    drawCanvas.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", end);
+
+    drawCanvas.addEventListener("touchstart", start, { passive:false });
+    drawCanvas.addEventListener("touchmove", move, { passive:false });
+    window.addEventListener("touchend", end, { passive:false });
+
+    clearBtn.onclick = () => {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+      preprocessTo28();
+      setLog("Cleared.");
     };
 
-    runBtn.onclick = async () => {
-      // run all stages quickly, ending at logits
-      stageIndex = STAGES.length - 1;
-      await runStage();
-    };
+    // ---------- Preprocess ----------
+    function preprocessTo28() {
+      const mctx = miniCanvas.getContext("2d");
+      mctx.imageSmoothingEnabled = true;
+      mctx.clearRect(0,0,28,28);
+      mctx.drawImage(drawCanvas, 0, 0, 28, 28);
 
-    autoBtn.onclick = () => {
-      if (!model) return;
-      stepBtn.disabled = true;
-      autoBtn.disabled = true;
-      stopBtn.disabled = false;
-      timer = setInterval(async () => {
-        stageIndex = (stageIndex + 1) % STAGES.length;
-        await runStage();
-      }, 650);
-    };
+      const img = mctx.getImageData(0,0,28,28);
+      const data = img.data;
 
-    stopBtn.onclick = () => {
-      if (timer) clearInterval(timer);
-      timer = null;
-      stepBtn.disabled = false;
-      autoBtn.disabled = false;
-      stopBtn.disabled = true;
-    };
+      const arr = new Float32Array(28*28);
+      for (let i = 0; i < 28*28; i++) {
+        const r = data[i*4+0];
+        const g = data[i*4+1];
+        const b = data[i*4+2];
+        const gray = (r + g + b) / (3 * 255);
+        arr[i] = gray;
+      }
 
-    // update preview + inference as you draw (lightweight)
-    // (we only re-run the current stage; avoid being too heavy)
-    let rafPending = false;
-    function scheduleRerun() {
-      if (!model) return;
-      if (rafPending) return;
-      rafPending = true;
-      requestAnimationFrame(async () => {
-        rafPending = false;
-        await runStage();
+      state.lastInput28 = arr;
+      clearTF();
+      state.lastInputTensor = tf.tensor4d(arr, [1, 28, 28, 1]);
+
+      if (state.model) calcConvBtn.disabled = false;
+    }
+
+    // ---------- MNIST sprite loader ----------
+    async function loadMnistSprite() {
+      dataPill.textContent = "MNIST sprite: loading…";
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = MNIST_SPRITE;
+
+      await new Promise((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error("Failed to load MNIST sprite"));
       });
+
+      const labRes = await fetch(MNIST_LABELS);
+      const labBuf = await labRes.arrayBuffer();
+      const labels = new Uint8Array(labBuf);
+
+      state.spriteImg = img;
+      state.labels = labels;
+
+      dataPill.textContent = `MNIST sprite: loaded (${labels.length} labels)`;
+      sampleBtn.disabled = false;
     }
-    draw.addEventListener("pointermove", () => scheduleRerun());
-    draw.addEventListener("pointerdown", () => scheduleRerun());
+
+    function drawSample(index) {
+      const img = state.spriteImg;
+      const labels = state.labels;
+      if (!img || !labels) return;
+
+      const cols = SPRITE_COLS;
+      const sx = (index % cols) * IMAGE_SIZE;
+      const sy = Math.floor(index / cols) * IMAGE_SIZE;
+
+      const off = document.createElement("canvas");
+      off.width = 28; off.height = 28;
+      const octx = off.getContext("2d");
+      octx.drawImage(img, sx, sy, 28, 28, 0, 0, 28, 28);
+
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0,0,280,280);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(off, 0, 0, 280, 280);
+
+      preprocessTo28();
+      setLog(`Loaded sample index=${index}, label=${labels[index] ?? "?"}`);
+    }
+
+    sampleBtn.onclick = () => {
+      const n = state.labels?.length ?? 0;
+      if (n === 0) return;
+      const idx = Math.floor(Math.random() * n);
+      drawSample(idx);
+    };
+
+    // ---------- Layer inspector helpers ----------
+    function safeGetConfig(layer) {
+      try { return layer.getConfig ? layer.getConfig() : {}; } catch { return {}; }
+    }
+
+    function fmtShape(shape) {
+      if (!shape) return "—";
+      return JSON.stringify(shape);
+    }
+
+    function layerSummary(layer) {
+      const cls = layer.getClassName?.() || layer.className || "Layer";
+      const cfg = safeGetConfig(layer);
+
+      const parts = [];
+      if (cfg.kernelSize) parts.push(`k=${Array.isArray(cfg.kernelSize)?cfg.kernelSize.join("x"):cfg.kernelSize}`);
+      if (cfg.strides) parts.push(`s=${Array.isArray(cfg.strides)?cfg.strides.join("x"):cfg.strides}`);
+      if (cfg.padding) parts.push(`pad=${cfg.padding}`);
+      if (cfg.activation) parts.push(`act=${cfg.activation}`);
+      if (cfg.poolSize) parts.push(`pool=${Array.isArray(cfg.poolSize)?cfg.poolSize.join("x"):cfg.poolSize}`);
+      if (cfg.filters) parts.push(`filters=${cfg.filters}`);
+
+      return { cls, cfg, desc: parts.join(" ") || "—" };
+    }
+
+    function isConv(layer) { return (layer.getClassName?.() === "Conv2D"); }
+    function isPool(layer) {
+      const c = layer.getClassName?.();
+      return c === "MaxPooling2D" || c === "AveragePooling2D";
+    }
+
+    function pickKeyLayers(model) {
+      const convIdxs = [];
+      const poolIdxs = [];
+      for (let i = 0; i < model.layers.length; i++) {
+        const l = model.layers[i];
+        if (isConv(l)) convIdxs.push(i);
+        if (isPool(l)) poolIdxs.push(i);
+      }
+      // choose: conv1, pool1, conv2, pool2, logits (= last layer)
+      const keys = [];
+      if (convIdxs[0] != null) keys.push(convIdxs[0]);
+      if (poolIdxs[0] != null) keys.push(poolIdxs[0]);
+      if (convIdxs[1] != null) keys.push(convIdxs[1]);
+      if (poolIdxs[1] != null) keys.push(poolIdxs[1]);
+      keys.push(model.layers.length - 1);
+      // unique
+      return Array.from(new Set(keys));
+    }
+
+    function buildLayerModels() {
+      state.layerModels.clear();
+      for (let i = 0; i < state.model.layers.length; i++) {
+        const layer = state.model.layers[i];
+        // Some layers may not be usable as model outputs (rare), but usually are.
+        try {
+          const m = tf.model({ inputs: state.model.inputs, outputs: layer.output });
+          state.layerModels.set(i, m);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    function renderLayerSelect() {
+      layerSelect.innerHTML = "";
+      for (let i = 0; i < state.model.layers.length; i++) {
+        const l = state.model.layers[i];
+        const { cls, desc } = layerSummary(l);
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = `${i}: ${l.name || cls}  (${cls})  ${desc}`;
+        layerSelect.appendChild(opt);
+      }
+      // default: first conv or layer 0
+      const firstConv = state.model.layers.findIndex(isConv);
+      layerSelect.value = String(firstConv >= 0 ? firstConv : 0);
+    }
+
+    function renderLayerTable(outputShapesByIdx) {
+      layerTable.innerHTML = "";
+      const head = document.createElement("div");
+      head.className = "tRow tHead";
+      head.innerHTML = `<div>Layer</div><div>Type</div><div>Config (k/s/pad/act/pool)</div><div>Output shape</div>`;
+      layerTable.appendChild(head);
+
+      for (let i = 0; i < state.model.layers.length; i++) {
+        const l = state.model.layers[i];
+        const { cls, desc } = layerSummary(l);
+
+        const row = document.createElement("div");
+        row.className = "tRow";
+        const name = l.name ? l.name : `layer_${i}`;
+        row.innerHTML = `
+          <div>${i}: ${name}</div>
+          <div>${cls}</div>
+          <div>${desc}</div>
+          <div>${outputShapesByIdx.get(i) || "—"}</div>
+        `;
+        layerTable.appendChild(row);
+      }
+    }
+
+    // ---------- Feature map rendering ----------
+    function clearFM(container) { container.innerHTML = ""; }
+
+    function tensorToChannelCanvas2D(data2d, scale = 10) {
+      // data2d: h x w numbers
+      const h = data2d.length;
+      const w = data2d[0].length;
+
+      let min = Infinity, max = -Infinity;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const v = data2d[y][x];
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+      const denom = (max - min) || 1e-6;
+
+      const cv = document.createElement("canvas");
+      cv.width = w;
+      cv.height = h;
+
+      const cctx = cv.getContext("2d");
+      const img = cctx.createImageData(w, h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const v = (data2d[y][x] - min) / denom;
+        const g = Math.max(0, Math.min(255, Math.round(v * 255)));
+        const i = (y*w + x) * 4;
+        img.data[i+0] = g;
+        img.data[i+1] = g;
+        img.data[i+2] = g;
+        img.data[i+3] = 255;
+      }
+      cctx.putImageData(img, 0, 0);
+
+      return { cv, min, max, h, w };
+    }
+
+    function openModal({ title, shapeText, min, max, data2d }) {
+      modalTitle.textContent = title;
+      modalShape.textContent = `shape=${shapeText}`;
+      modalStats.textContent = `min=${min.toFixed(4)} max=${max.toFixed(4)}`;
+
+      // Draw scaled to modal canvas (nearest-neighbor)
+      const h = data2d.length;
+      const w = data2d[0].length;
+
+      const { cv } = tensorToChannelCanvas2D(data2d);
+
+      const mctx = modalCanvas.getContext("2d");
+      mctx.imageSmoothingEnabled = false;
+      mctx.clearRect(0,0,modalCanvas.width, modalCanvas.height);
+
+      const scale = Math.floor(Math.min(modalCanvas.width / w, modalCanvas.height / h));
+      const dw = w * scale;
+      const dh = h * scale;
+
+      const ox = Math.floor((modalCanvas.width - dw)/2);
+      const oy = Math.floor((modalCanvas.height - dh)/2);
+
+      mctx.drawImage(cv, 0, 0, w, h, ox, oy, dw, dh);
+
+      modalBack.style.display = "flex";
+    }
+
+    modalClose.onclick = () => { modalBack.style.display = "none"; };
+    modalBack.onclick = (e) => { if (e.target === modalBack) modalBack.style.display = "none"; };
+
+    function renderFeatureMaps(container, actTensor, labelPrefix, maxChannels = 16) {
+      clearFM(container);
+      if (!actTensor) return;
+
+      const shape = actTensor.shape; // [1,h,w,c] or [1,h,w] etc.
+      if (shape.length !== 4) {
+        const div = document.createElement("div");
+        div.className = "outbox mono";
+        div.textContent = `Unexpected activation shape: ${JSON.stringify(shape)}`;
+        container.appendChild(div);
+        return;
+      }
+
+      const [_, h, w, c] = shape;
+      const channels = Math.min(c, maxChannels);
+
+      const act = actTensor.squeeze([0]); // [h,w,c]
+      const data = act.arraySync();       // h x w x c
+
+      for (let ch = 0; ch < channels; ch++) {
+        const item = document.createElement("div");
+        item.className = "fmItem";
+
+        const label = document.createElement("div");
+        label.className = "small muted mono";
+        label.textContent = `${labelPrefix} ch${ch} (${h}×${w})`;
+        label.style.marginBottom = "6px";
+
+        // Build 2d data for channel
+        const d2 = new Array(h);
+        for (let y = 0; y < h; y++) {
+          const row = new Array(w);
+          for (let x = 0; x < w; x++) row[x] = data[y][x][ch];
+          d2[y] = row;
+        }
+
+        const { cv, min, max } = tensorToChannelCanvas2D(d2);
+
+        item.appendChild(label);
+        item.appendChild(cv);
+
+        item.onclick = () => {
+          openModal({
+            title: `${labelPrefix} channel ${ch}`,
+            shapeText: `[${h},${w}]`,
+            min,
+            max,
+            data2d: d2
+          });
+        };
+
+        container.appendChild(item);
+      }
+
+      act.dispose();
+    }
+
+    // ---------- Kernel visualization ----------
+    function clearKernels() { kernelGrid.innerHTML = ""; kernelInfo.textContent = "—"; }
+
+    function renderKernelHeatmap(kernel2d) {
+      // kernel2d: kh x kw
+      const kh = kernel2d.length;
+      const kw = kernel2d[0].length;
+
+      let min = Infinity, max = -Infinity;
+      for (let y = 0; y < kh; y++) for (let x = 0; x < kw; x++) {
+        const v = kernel2d[y][x];
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+      const denom = (max - min) || 1e-6;
+
+      const cv = document.createElement("canvas");
+      cv.width = kw;
+      cv.height = kh;
+
+      const cctx = cv.getContext("2d");
+      const img = cctx.createImageData(kw, kh);
+
+      for (let y = 0; y < kh; y++) for (let x = 0; x < kw; x++) {
+        const v = (kernel2d[y][x] - min) / denom;
+        const g = Math.max(0, Math.min(255, Math.round(v * 255)));
+        const i = (y*kw + x) * 4;
+        img.data[i+0] = g;
+        img.data[i+1] = g;
+        img.data[i+2] = g;
+        img.data[i+3] = 255;
+      }
+      cctx.putImageData(img, 0, 0);
+
+      return { cv, min, max };
+    }
+
+    function renderSelectedKernel() {
+      clearKernels();
+      if (!state.model) return;
+
+      const layerIdx = parseInt(kernelLayerSelect.value, 10);
+      const layer = state.model.layers[layerIdx];
+      if (!layer || !isConv(layer)) {
+        kernelInfo.textContent = "Selected layer is not Conv2D.";
+        return;
+      }
+
+      const ws = layer.getWeights();
+      if (!ws || ws.length === 0) {
+        kernelInfo.textContent = "No weights found.";
+        return;
+      }
+
+      const kernel = ws[0]; // [kh,kw,inC,outC]
+      const [kh, kw, inC, outC] = kernel.shape;
+
+      let fi = parseInt(kernelFilterIdx.value || "0", 10);
+      fi = Math.max(0, Math.min(outC - 1, fi));
+      kernelFilterIdx.value = String(fi);
+
+      const K = kernel.arraySync(); // kh x kw x inC x outC
+
+      kernelInfo.textContent = `kernel shape=[${kh},${kw},${inC},${outC}]  filter=${fi}`;
+
+      for (let ic = 0; ic < inC; ic++) {
+        const item = document.createElement("div");
+        item.className = "kernelItem";
+
+        const title = document.createElement("div");
+        title.className = "small muted mono";
+        title.textContent = `inC ${ic} → outC ${fi}`;
+        title.style.marginBottom = "6px";
+
+        const k2 = new Array(kh);
+        for (let y = 0; y < kh; y++) {
+          const row = new Array(kw);
+          for (let x = 0; x < kw; x++) row[x] = K[y][x][ic][fi];
+          k2[y] = row;
+        }
+
+        const { cv, min, max } = renderKernelHeatmap(k2);
+
+        const stats = document.createElement("div");
+        stats.className = "small muted mono";
+        stats.textContent = `min=${min.toFixed(4)} max=${max.toFixed(4)}`;
+
+        item.appendChild(title);
+        item.appendChild(cv);
+        item.appendChild(stats);
+        kernelGrid.appendChild(item);
+      }
+    }
+
+    // ---------- Manual conv (3×3) ----------
+    function getFirstConvLayer() {
+      if (!state.model) return null;
+      const idx = state.model.layers.findIndex(isConv);
+      return idx >= 0 ? { idx, layer: state.model.layers[idx] } : null;
+    }
+
+    function computeManualConv() {
+      if (!state.lastInput28) { convBox.textContent = "Run preprocess first."; return; }
+      const first = getFirstConvLayer();
+      if (!first) { convBox.textContent = "No Conv2D layer found."; return; }
+
+      const layer = first.layer;
+      const ws = layer.getWeights();
+      if (!ws || ws.length === 0) { convBox.textContent = "No conv weights found."; return; }
+
+      const kernel = ws[0]; // [kh,kw,inC,outC]
+      const [kh, kw, inC, outC] = kernel.shape;
+
+      if (kh !== 3 || kw !== 3 || inC !== 1) {
+        convBox.textContent =
+          `Manual conv is implemented for a 3×3 kernel with 1 input channel.\n` +
+          `This model's first conv kernel shape is [${kh},${kw},${inC},${outC}].`;
+        return;
+      }
+
+      const fi = Math.max(0, Math.min(outC - 1, parseInt(fIdxEl.value || "0", 10)));
+      const px = Math.max(0, Math.min(28 - kw, parseInt(pxEl.value || "0", 10)));
+      const py = Math.max(0, Math.min(28 - kh, parseInt(pyEl.value || "0", 10)));
+
+      fIdxEl.value = String(fi);
+      pxEl.value = String(px);
+      pyEl.value = String(py);
+
+      const K = kernel.arraySync(); // 3 x 3 x 1 x outC
+      let sum = 0;
+      const lines = [];
+      lines.push(`Manual 3×3 conv (first Conv2D), one output channel`);
+      lines.push(`kernel shape=[${kh},${kw},${inC},${outC}]  filter=${fi}  position=(x=${px},y=${py})`);
+      lines.push("");
+
+      for (let y = 0; y < 3; y++) {
+        const row = [];
+        for (let x = 0; x < 3; x++) {
+          const w = K[y][x][0][fi];
+          const v = state.lastInput28[(py + y) * 28 + (px + x)];
+          sum += w * v;
+          row.push(`${w.toFixed(3)}*${v.toFixed(3)}`);
+        }
+        lines.push(row.join("  "));
+      }
+      lines.push("");
+      lines.push(`dot sum = ${sum.toFixed(4)}  (bias + activation not included)`);
+
+      convBox.textContent = lines.join("\n");
+    }
+
+    calcConvBtn.onclick = computeManualConv;
+
+    // ---------- Inference + step ----------
+    async function runLayerOutput(layerIdx) {
+      if (!state.model || !state.lastInputTensor) return null;
+      const m = state.layerModels.get(layerIdx);
+      if (!m) return null;
+
+      // Dispose previous output for that layer
+      const prev = state.lastLayerOutputs.get(layerIdx);
+      if (prev) prev.dispose();
+
+      const out = m.predict(state.lastInputTensor);
+      state.lastLayerOutputs.set(layerIdx, out);
+      return out;
+    }
+
+    async function computeAllKeyOutputs() {
+      disposeLastOutputs();
+      const outShapes = new Map();
+
+      for (const idx of state.keyLayerIdxs) {
+        const t = await runLayerOutput(idx);
+        if (t) outShapes.set(idx, fmtShape(t.shape));
+      }
+      return outShapes;
+    }
+
+    function bestIndex(probs) {
+      let bi = 0;
+      for (let i = 1; i < probs.length; i++) if (probs[i] > probs[bi]) bi = i;
+      return bi;
+    }
+
+    async function runInference() {
+      if (!state.model || !state.lastInputTensor) return;
+
+      setLog("Running inference…");
+      await tf.nextFrame();
+
+      // Final output
+      const logits = state.model.predict(state.lastInputTensor);
+      const probsT = tf.softmax(logits);
+      const probs = Array.from(await probsT.data());
+      const bi = bestIndex(probs);
+
+      updateBars(probs);
+
+      // Compute and show key outputs + shapes
+      const shapes = await computeAllKeyOutputs();
+      // Also compute shapes for all layers shown in the table (by stepping each layer would be slow),
+      // so we only fill output shapes for layers we computed; others show "—".
+      renderLayerTable(shapes);
+
+      // Render feature maps from first two "key layers" that are 4D
+      const keyTensors = state.keyLayerIdxs
+        .map(i => ({ i, t: state.lastLayerOutputs.get(i) }))
+        .filter(x => x.t && x.t.shape && x.t.shape.length === 4);
+
+      const A = keyTensors[0]?.t || null;
+      const B = keyTensors[1]?.t || null;
+
+      if (A) renderFeatureMaps(fmA, A, `L${keyTensors[0].i}`, 16); else fmA.innerHTML = "";
+      if (B) renderFeatureMaps(fmB, B, `L${keyTensors[1].i}`, 16); else fmB.innerHTML = "";
+
+      setLog(
+        `Prediction: ${bi}\n` +
+        `Output classes: ${state.outputClasses}\n` +
+        `probs: [${probs.map(x => x.toFixed(3)).join(", ")}]\n\n` +
+        `Tip: Use "Step selected layer" to inspect any intermediate layer output and see its shape.`
+      );
+
+      tf.dispose([logits, probsT]);
+    }
+
+    async function stepSelectedLayer() {
+      if (!state.model) return;
+      if (!state.lastInputTensor) preprocessTo28();
+
+      const idx = parseInt(layerSelect.value, 10);
+      const layer = state.model.layers[idx];
+      const { cls, desc } = layerSummary(layer);
+
+      setLog(`Stepping layer ${idx} (${cls})…`);
+      await tf.nextFrame();
+
+      const out = await runLayerOutput(idx);
+      if (!out) {
+        setLog(`Cannot compute output for layer ${idx}.`);
+        return;
+      }
+
+      const shapeStr = fmtShape(out.shape);
+      setLog(`Layer ${idx}: ${layer.name || "—"} (${cls})\nconfig: ${desc}\noutput shape: ${shapeStr}\n\nIf this is 4D [1,h,w,c], you can visualize it as feature maps by picking conv/pool outputs.`);
+
+      // If 4D, show as fmA immediately
+      if (out.shape.length === 4) {
+        renderFeatureMaps(fmA, out, `L${idx}`, 16);
+      }
+    }
+
+    runBtn.onclick = runInference;
+    stepBtn.onclick = stepSelectedLayer;
+
+    // ---------- Model loading ----------
+    async function loadModel() {
+      setModelStatus("loading…");
+      setIOStatus("—");
+      loadModelBtn.disabled = true;
+
+      try {
+        const model = await tf.loadLayersModel(MODEL_URL);
+        state.model = model;
+
+        const inShape = model.inputs[0].shape;
+        const outShape = model.outputs[0].shape;
+        const outDim = outShape[outShape.length - 1];
+        state.outputClasses = outDim;
+
+        setModelStatus("loaded");
+        setIOStatus(`${JSON.stringify(inShape)} → ${JSON.stringify(outShape)}`);
+
+        initBars(state.outputClasses);
+
+        // Build layer infos and intermediate models
+        state.layerInfos = model.layers.map((l, idx) => {
+          const { cls, cfg, desc } = layerSummary(l);
+          return { idx, name: l.name || `layer_${idx}`, className: cls, config: cfg, desc };
+        });
+
+        buildLayerModels();
+
+        // Key pipeline layers
+        state.keyLayerIdxs = pickKeyLayers(model);
+
+        // Populate layer selector
+        renderLayerSelect();
+        layerSelect.disabled = false;
+        stepBtn.disabled = false;
+
+        // Kernel controls: list Conv2D layers
+        kernelLayerSelect.innerHTML = "";
+        const convIdxs = model.layers.map((l,i) => ({l,i})).filter(x => isConv(x.l)).map(x => x.i);
+        for (const idx of convIdxs) {
+          const l = model.layers[idx];
+          const opt = document.createElement("option");
+          opt.value = String(idx);
+          opt.textContent = `${idx}: ${l.name || "Conv2D"}`;
+          kernelLayerSelect.appendChild(opt);
+        }
+        kernelLayerSelect.disabled = convIdxs.length === 0;
+        renderKernelBtn.disabled = convIdxs.length === 0;
+
+        renderKernelBtn.onclick = renderSelectedKernel;
+        kernelLayerSelect.onchange = () => { clearKernels(); };
+        kernelFilterIdx.oninput = () => { /* keep */ };
+
+        // Enable UI
+        runBtn.disabled = false;
+        sampleBtn.disabled = false;
+        calcConvBtn.disabled = false;
+
+        preprocessTo28();
+
+        // Load MNIST sprite
+        loadMnistSprite().catch(() => {
+          dataPill.textContent = "MNIST sprite: failed to load";
+        });
+
+        setLog(
+          `Model loaded.\n` +
+          `Output classes=${state.outputClasses}.\n` +
+          `Draw a digit and click "Run inference".\n` +
+          `Then use: Layer inspector / Step selected layer / Feature map modal / Kernel heatmaps.`
+        );
+
+        // Initial layer table with only key shapes (computed after first inference)
+        renderLayerTable(new Map());
+
+      } catch (e) {
+        console.error(e);
+        setModelStatus("failed (see console)");
+        setIOStatus("—");
+        loadModelBtn.disabled = false;
+        setLog("Failed to load model. Check console.");
+      }
+    }
+
+    loadModelBtn.onclick = loadModel;
+
+    // ---------- Sample + init ----------
+    function initLayerSelectPlaceholder() {
+      layerSelect.innerHTML = "";
+      const opt = document.createElement("option");
+      opt.textContent = "Load model first";
+      opt.value = "0";
+      layerSelect.appendChild(opt);
+    }
+    initLayerSelectPlaceholder();
+
+    // ---------- clear all ----------
+    function clearAllInternals() {
+      clearFM(fmA);
+      clearFM(fmB);
+      clearKernels();
+      renderLayerTable(new Map());
+      setLog("Cleared internals.");
+    }
+
+    // Clear only drawing does not clear model, but resets input tensors
+    clearBtn.addEventListener("click", () => {
+      clearAllInternals();
+    });
 
     // init
-    renderSmallPreview();
-    setStagePill();
+    preprocessTo28();
+    initBars(10);
+    setModelStatus("not loaded");
+    setIOStatus("—");
+    setLog("Draw a digit, then load the model.");
   </script>
 </body>
 </html>
