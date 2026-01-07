@@ -1,0 +1,1170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Client-side GPT-2-like NLP Demo (Transformers.js)</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --panel: #111827;
+      --panel2: #0f172a;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #60a5fa;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --err: #fb7185;
+      --border: rgba(148,163,184,.25);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 15% 10%, rgba(96,165,250,.15), transparent 60%),
+                  radial-gradient(900px 700px at 80% 20%, rgba(52,211,153,.12), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    header {
+      padding: 20px 18px 14px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(10px);
+      background: rgba(11,15,25,.65);
+      z-index: 10;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      letter-spacing: .2px;
+    }
+
+    .sub {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      user-select: none;
+    }
+
+    select, input[type="text"], input[type="number"], textarea {
+      background: rgba(17,24,39,.75);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      border-color: rgba(96,165,250,.55);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.15);
+    }
+
+    textarea { width: 100%; min-height: 110px; resize: vertical; }
+
+    button {
+      background: linear-gradient(180deg, rgba(96,165,250,.95), rgba(59,130,246,.85));
+      border: 0;
+      color: white;
+      padding: 9px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform .04s ease, filter .12s ease;
+      user-select: none;
+    }
+
+    button:active { transform: translateY(1px); }
+    button.secondary {
+      background: rgba(148,163,184,.15);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    button.danger {
+      background: rgba(251,113,133,.15);
+      border: 1px solid rgba(251,113,133,.35);
+      color: var(--text);
+    }
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      filter: grayscale(.2);
+    }
+
+    .status {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(15,23,42,.65);
+      min-width: 260px;
+    }
+    .status.ok { border-color: rgba(52,211,153,.35); color: rgba(209,250,229,.9); }
+    .status.warn { border-color: rgba(251,191,36,.35); color: rgba(254,243,199,.95); }
+    .status.err { border-color: rgba(251,113,133,.45); color: rgba(255,228,230,.95); }
+
+    main { padding: 14px 18px 30px; max-width: 1100px; margin: 0 auto; }
+
+    details {
+      background: rgba(17,24,39,.55);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px 12px 14px;
+      margin: 12px 0;
+      overflow: hidden;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 650;
+      letter-spacing: .2px;
+      list-style: none;
+      outline: none;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    summary::-webkit-details-marker { display: none; }
+
+    .tag {
+      font-weight: 600;
+      font-size: 11px;
+      color: rgba(226,232,240,.9);
+      background: rgba(96,165,250,.15);
+      border: 1px solid rgba(96,165,250,.25);
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+    .tag.gray {
+      background: rgba(148,163,184,.12);
+      border-color: rgba(148,163,184,.25);
+      color: rgba(226,232,240,.85);
+    }
+
+    .grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: rgba(15,23,42,.55);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .row > * { flex: 0 0 auto; }
+
+    .help {
+      margin: 8px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    pre {
+      margin: 0;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(3,7,18,.55);
+      overflow: auto;
+      max-height: 320px;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    .hl mark {
+      background: rgba(251,191,36,.22);
+      border: 1px solid rgba(251,191,36,.35);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 0 4px;
+    }
+
+    .chatlog {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 320px;
+      overflow: auto;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(3,7,18,.35);
+    }
+
+    .msg {
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(148,163,184,.10);
+    }
+    .msg .who { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .msg.user { background: rgba(96,165,250,.10); border-color: rgba(96,165,250,.25); }
+    .msg.bot  { background: rgba(52,211,153,.08); border-color: rgba(52,211,153,.22); }
+
+    footer {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 18px 24px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>Browser-only GPT-2-like NLP Demo (Generation / Classification / Quality / NER / Embeddings / Translation / Summarization / Chat / QA)</h1>
+  <p class="sub">
+    Runs fully on the client (the browser downloads model files from the Hub). Open a section and click “Run”.
+  </p>
+
+  <div class="bar">
+    <div class="controls">
+      <label>Runtime
+        <select id="globalDevice">
+          <option value="auto" selected>auto (recommended)</option>
+          <option value="wasm">wasm (CPU)</option>
+          <option value="webgpu">webgpu (GPU)</option>
+        </select>
+      </label>
+
+      <label>dtype (quantization/precision)
+        <select id="globalDtype">
+          <option value="auto" selected>auto (recommended)</option>
+          <option value="q4">q4 (lighter/faster often)</option>
+          <option value="q8">q8</option>
+          <option value="fp16">fp16</option>
+          <option value="fp32">fp32</option>
+        </select>
+      </label>
+
+      <button class="secondary" id="btnClearPipelines" title="Clears in-page pipeline cache (browser download cache may remain).">
+        Clear pipeline cache
+      </button>
+    </div>
+
+    <div id="globalStatus" class="status">Initializing…</div>
+  </div>
+</header>
+
+<main>
+  <!-- 1) Text generation -->
+  <details open>
+    <summary>
+      Text Generation (GPT-2-like)
+      <span class="tag">text-generation</span>
+      <span class="tag gray">default: Xenova/distilgpt2</span>
+    </summary>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="row">
+          <label>Model ID
+            <input id="genModel" type="text" size="42" value="Xenova/distilgpt2" />
+          </label>
+        </div>
+
+        <p class="help">Enter a prompt and generate. Tweaking temperature / max_new_tokens makes differences obvious.</p>
+        <textarea id="genPrompt">Once upon a time,</textarea>
+
+        <div class="row" style="margin-top:10px;">
+          <label>max_new_tokens <input id="genMaxNew" type="number" min="1" max="256" value="80" /></label>
+          <label>temperature <input id="genTemp" type="number" step="0.1" min="0" max="2" value="0.9" /></label>
+          <label>top_p <input id="genTopP" type="number" step="0.05" min="0" max="1" value="0.95" /></label>
+          <label>repetition_penalty <input id="genRepPenalty" type="number" step="0.1" min="0.5" max="2" value="1.1" /></label>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="btnGenRun">Generate</button>
+          <button class="secondary" id="btnGenExample">Insert example</button>
+        </div>
+
+        <pre class="mono" id="genCode" style="margin-top:10px;"></pre>
+      </div>
+
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;">
+          <div class="help" id="genMeta">—</div>
+          <button class="secondary" id="btnGenCopy">Copy output</button>
+        </div>
+        <pre id="genOut"></pre>
+      </div>
+    </div>
+  </details>
+
+  <!-- 2) Classification -->
+  <details>
+    <summary>
+      Classification (e.g., Sentiment)
+      <span class="tag">sentiment-analysis</span>
+      <span class="tag gray">default: Xenova/distilbert-base-uncased-finetuned-sst-2-english</span>
+    </summary>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="row">
+          <label>Model ID
+            <input id="clsModel" type="text" size="54" value="Xenova/distilbert-base-uncased-finetuned-sst-2-english" />
+          </label>
+        </div>
+
+        <p class="help">Classify input text and return label + score (confidence).</p>
+        <textarea id="clsText">I absolutely loved this movie. The acting was fantastic!</textarea>
+
+        <div class="row" style="margin-top:10px;">
+          <label>top_k <input id="clsTopK" type="number" min="1" max="10" value="1" /></label>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="btnClsRun">Run classification</button>
+        </div>
+
+        <pre class="mono" id="clsCode" style="margin-top:10px;"></pre>
+      </div>
+
+      <div class="panel">
+        <div class="help" id="clsMeta">—</div>
+        <pre id="clsOut"></pre>
+      </div>
+    </div>
+  </details>
+
+  <!-- 3) Quality estimation -->
+  <details>
+    <summary>
+      Quality Estimation (e.g., Acceptability / “Does this sound grammatical?”)
+      <span class="tag">text-classification</span>
+      <span class="tag gray">default: bdx33/distilbert-base-cased-CoLA</span>
+    </summary>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="row">
+          <label>Model ID
+            <input id="qeModel" type="text" size="54" value="bdx33/distilbert-base-cased-CoLA" />
+          </label>
+        </div>
+
+        <p class="help">
+          Example: use a CoLA-style acceptability model as a simple “quality” signal. Labels are model-specific.
+        </p>
+
+        <textarea id="qeText">The book that I read yesterday was very interesting.</textarea>
+
+        <div class="row" style="margin-top:10px;">
+          <label>top_k <input id="qeTopK" type="number" min="1" max="10" value="2" /></label>
+          <button id="btnQeRun">Estimate quality</button>
+        </div>
+
+        <pre class="mono" id="qeCode" style="margin-top:10px;"></pre>
+      </div>
+
+      <div class="panel">
+        <div class="help" id="qeMeta">—</div>
+        <pre id="qeOut"></pre>
+      </div>
+    </div>
+  </details>
+
+  <!-- 4) NER -->
+  <details>
+    <summary>
+      Entity Extraction (Named Entity Recognition / NER)
+      <span class="tag">token-classification</span>
+      <span class="tag gray">default: Xenova/distilbert-base-multilingual-cased-ner-hrl</span>
+    </summary>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="row">
+          <label>Model ID
+            <input id="nerModel" type="text" size="62" value="Xenova/distilbert-base-multilingual-cased-ner-hrl" />
+          </label>
+        </div>
+
+        <p class="help">Extract entities (person / organization / location, etc.). Label scheme depends on the model.</p>
+        <textarea id="nerText">Barack Obama visited Tokyo and met the Prime Minister of Japan.</textarea>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="btnNerRun">Extract entities</button>
+        </div>
+
+        <pre class="mono" id="nerCode" style="margin-top:10px;"></pre>
+      </div>
+
+      <div class="panel">
+        <div class="help" id="nerMeta">—</div>
+        <div class="panel hl" style="margin-bottom:10px;">
+          <div class="help" style="margin-bottom:6px;">Highlighted text</div>
+          <div id="nerHighlight" style="white-space:pre-wrap;"></div>
+        </div>
+        <pre id="nerOut"></pre>
+      </div>
+    </div>
+  </details>
+
+  <!-- 5) Embeddings -->
+  <details>
+    <summary>
+      Embeddings (Feature Extraction + Similarity)
+      <span class="tag">feature-extraction</span>
+      <span class="tag gray">default: Xenova/all-MiniLM-L6-v2</span>
+    </summary>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="row">
+          <label>Model ID
+            <input id="embModel" type="text" size="46" value="Xenova/all-MiniLM-L6-v2" />
+          </label>
+        </div>
+
+        <p class="help">
+          Builds sentence embeddings with pooling(mean) + normalize(true), then reports cosine similarity.
+        </p>
+
+        <label style="display:block;margin-top:8px;">Sentence A</label>
+        <textarea id="embTextA">I'm very happy today.</textarea>
+
+        <label style="display:block;margin-top:8px;">Sentence B</label>
+        <textarea id="embTextB">I'm filled with happiness.</textarea>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="btnEmbRun">Embed & compare</button>
+        </div>
+
+        <pre class="mono" id="embCode" style="margin-top:10px;"></pre>
+      </div>
+
+      <div class="panel">
+        <div class="help" id="embMeta">—</div>
+        <pre id="embOut"></pre>
+      </div>
+    </div>
+  </details>
+
+  <!-- 6) Translation -->
+  <details>
+    <summary>
+      Machine Translation
+      <span class="tag">translation</span>
+      <span class="tag gray">default: Xenova/opus-mt-ja-en (Japanese → English)</span>
+    </summary>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="row">
+          <label>Model ID
+            <input id="mtModel" type="text" size="46" value="Xenova/opus-mt-ja-en" />
+          </label>
+        </div>
+
+        <p class="help">
+          Translation models can be larger. If it’s slow, try dtype=q4/q8 or switch to a smaller model.
+        </p>
+
+        <textarea id="mtText">私は昨日、友達と新しいカフェに行きました。コーヒーがとても美味しかったです。</textarea>
+
+        <div class="row" style="margin-top:10px;">
+          <label>max_new_tokens <input id="mtMaxNew" type="number" min="1" max="256" value="96" /></label>
+          <button id="btnMtRun">Translate</button>
+        </div>
+
+        <pre class="mono" id="mtCode" style="margin-top:10px;"></pre>
+      </div>
+
+      <div class="panel">
+        <div class="help" id="mtMeta">—</div>
+        <pre id="mtOut"></pre>
+      </div>
+    </div>
+  </details>
+
+  <!-- 7) Summarization -->
+  <details>
+    <summary>
+      Summarization
+      <span class="tag">summarization</span>
+      <span class="tag gray">default: Xenova/distilbart-cnn-12-6 (English summarization)</span>
+    </summary>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="row">
+          <label>Model ID
+            <input id="sumModel" type="text" size="46" value="Xenova/distilbart-cnn-12-6" />
+          </label>
+        </div>
+
+        <p class="help">Summarize input text. (Language depends on the model you choose.)</p>
+
+        <textarea id="sumText">Transformers are a type of neural network architecture that has become the dominant approach for natural language processing tasks. They rely on self-attention mechanisms to capture relationships between words in a sequence, enabling parallel computation and improved performance on tasks like translation, summarization, and question answering. Over time, Transformer-based models have grown in size and capability, leading to remarkable results across many benchmarks.</textarea>
+
+        <div class="row" style="margin-top:10px;">
+          <label>max_new_tokens <input id="sumMaxNew" type="number" min="1" max="256" value="70" /></label>
+          <button id="btnSumRun">Summarize</button>
+        </div>
+
+        <pre class="mono" id="sumCode" style="margin-top:10px;"></pre>
+      </div>
+
+      <div class="panel">
+        <div class="help" id="sumMeta">—</div>
+        <pre id="sumOut"></pre>
+      </div>
+    </div>
+  </details>
+
+  <!-- 8) Dialogue -->
+  <details>
+    <summary>
+      Dialogue (Simple Chat Prompting)
+      <span class="tag">text-generation</span>
+      <span class="tag gray">default: Xenova/distilgpt2</span>
+    </summary>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="row">
+          <label>Model ID
+            <input id="chatModel" type="text" size="42" value="Xenova/distilgpt2" />
+          </label>
+        </div>
+
+        <p class="help">
+          This is a simple “User: / Assistant:” prompt loop. GPT-2 is not strongly instruction-following, so keep prompts short and structured.
+        </p>
+
+        <div class="row" style="margin-top:10px;">
+          <label>max_new_tokens <input id="chatMaxNew" type="number" min="1" max="256" value="80" /></label>
+          <label>temperature <input id="chatTemp" type="number" step="0.1" min="0" max="2" value="0.9" /></label>
+          <label>top_p <input id="chatTopP" type="number" step="0.05" min="0" max="1" value="0.95" /></label>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <input id="chatInput" type="text" style="flex:1 1 auto; min-width: 260px;" placeholder="Type a message…" />
+          <button id="btnChatSend">Send</button>
+          <button class="secondary" id="btnChatReset">Reset chat</button>
+        </div>
+
+        <pre class="mono" id="chatCode" style="margin-top:10px;"></pre>
+      </div>
+
+      <div class="panel">
+        <div class="help" id="chatMeta">—</div>
+        <div id="chatLog" class="chatlog" aria-label="Chat log"></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- 9) QA -->
+  <details>
+    <summary>
+      Question Answering (Extractive QA)
+      <span class="tag">question-answering</span>
+      <span class="tag gray">default: Xenova/distilbert-base-cased-distilled-squad</span>
+    </summary>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="row">
+          <label>Model ID
+            <input id="qaModel" type="text" size="56" value="Xenova/distilbert-base-cased-distilled-squad" />
+          </label>
+        </div>
+
+        <p class="help">Extracts an answer span from the context (not generative QA).</p>
+
+        <label style="display:block;margin-top:8px;">Question</label>
+        <input id="qaQuestion" type="text" style="width:100%;" value="What does the Transformer architecture rely on?" />
+
+        <label style="display:block;margin-top:8px;">Context</label>
+        <textarea id="qaContext">Transformers are a type of neural network architecture that has become the dominant approach for natural language processing tasks. They rely on self-attention mechanisms to capture relationships between words in a sequence.</textarea>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="btnQaRun">Answer</button>
+        </div>
+
+        <pre class="mono" id="qaCode" style="margin-top:10px;"></pre>
+      </div>
+
+      <div class="panel">
+        <div class="help" id="qaMeta">—</div>
+        <pre id="qaOut"></pre>
+      </div>
+    </div>
+  </details>
+</main>
+
+<footer>
+  <div>
+    <div style="margin-bottom:6px;">Notes</div>
+    <ul style="margin:0; padding-left: 18px;">
+      <li>If your browser supports WebGPU (Chrome/Edge), try <span class="mono">runtime=webgpu</span> for speed.</li>
+      <li>If it’s heavy/slow, try <span class="mono">dtype=q4</span>. (Some models may not support every dtype.)</li>
+      <li>This is a minimal teaching/demo scaffold. Feel free to extend UI, prompts, and tasks.</li>
+    </ul>
+  </div>
+</footer>
+
+<script type="module">
+  import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+
+  const $ = (sel) => document.querySelector(sel);
+
+  function nowMs() { return performance.now(); }
+  function fmtMs(ms) { return `${ms.toFixed(0)} ms`; }
+
+  function escapeHtml(str) {
+    return (str ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  function prettyJSON(x) {
+    try { return JSON.stringify(x, null, 2); }
+    catch { return String(x); }
+  }
+
+  function setStatus(msg, kind = "info") {
+    const el = $("#globalStatus");
+    el.textContent = msg;
+    el.classList.remove("ok", "warn", "err");
+    if (kind === "ok") el.classList.add("ok");
+    if (kind === "warn") el.classList.add("warn");
+    if (kind === "err") el.classList.add("err");
+  }
+
+  function setMeta(el, msg) { el.textContent = msg; }
+  function setPre(el, content) { el.textContent = content ?? ""; }
+
+  async function disableWhile(btn, fn) {
+    const prev = btn.disabled;
+    btn.disabled = true;
+    try { return await fn(); }
+    finally { btn.disabled = prev; }
+  }
+
+  function dot(a, b) {
+    let s = 0;
+    for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+    return s;
+  }
+
+  async function detectWebGPU() {
+    if (!("gpu" in navigator)) return false;
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      return !!adapter;
+    } catch {
+      return false;
+    }
+  }
+
+  const webgpuAvailable = await detectWebGPU();
+
+  function getRuntimeOptions() {
+    const deviceChoice = $("#globalDevice").value;
+    const dtypeChoice  = $("#globalDtype").value;
+
+    let device = deviceChoice;
+    if (deviceChoice === "auto") device = webgpuAvailable ? "webgpu" : "wasm";
+
+    const opt = { device };
+    if (dtypeChoice !== "auto") opt.dtype = dtypeChoice;
+    return opt;
+  }
+
+  const PIPE_CACHE = new Map();
+
+  async function getPipe(task, modelId, extra = {}) {
+    const runtime = getRuntimeOptions();
+    const options = { ...runtime, ...extra };
+    const key = JSON.stringify({ task, modelId, options });
+
+    if (PIPE_CACHE.has(key)) return PIPE_CACHE.get(key);
+
+    setStatus(`Loading: ${task} / ${modelId} (${options.device}${options.dtype ? ", " + options.dtype : ""}) …`);
+
+    const p = await pipeline(task, modelId, {
+      ...options,
+      progress_callback: (info) => {
+        if (!info) return;
+        const s = typeof info === "string" ? info : (info.status || info.file || info.name || "");
+        if (s) setStatus(`Loading: ${task} / ${modelId} … ${s}`);
+      }
+    });
+
+    PIPE_CACHE.set(key, p);
+    setStatus(`Ready: ${task} / ${modelId}`, "ok");
+    return p;
+  }
+
+  function renderSnippet({ task, modelId, call, extraOptionsNote = "" }) {
+    const runtime = getRuntimeOptions();
+    const optLines = [];
+    optLines.push(`device: '${runtime.device}'`);
+    if (runtime.dtype) optLines.push(`dtype: '${runtime.dtype}'`);
+    if (extraOptionsNote) optLines.push(extraOptionsNote);
+
+    return [
+      `// Reference snippet (conceptual)`,
+      `import { pipeline } from '@huggingface/transformers';`,
+      ``,
+      `const pipe = await pipeline('${task}', '${modelId}', { ${optLines.join(", ")} });`,
+      call
+    ].join("\n");
+  }
+
+  $("#btnClearPipelines").addEventListener("click", () => {
+    PIPE_CACHE.clear();
+    setStatus("Cleared pipeline cache (pipelines will reload on next run).", "warn");
+  });
+
+  try { env.allowLocalModels = false; } catch {}
+
+  // ===== 1) Text Generation =====
+  const genExample = () => {
+    $("#genPrompt").value =
+`Once upon a time, there was a curious researcher who studied cat language.
+Every day, they wrote notes about “cat grammar.”
+One day, a cat looked up and said, “`;
+  };
+  $("#btnGenExample").addEventListener("click", genExample);
+
+  function updateGenCode() {
+    const modelId = $("#genModel").value.trim();
+    const max_new_tokens = Number($("#genMaxNew").value);
+    const temperature = Number($("#genTemp").value);
+    const top_p = Number($("#genTopP").value);
+    const repetition_penalty = Number($("#genRepPenalty").value);
+
+    $("#genCode").textContent = renderSnippet({
+      task: "text-generation",
+      modelId,
+      call: `const out = await pipe(prompt, { max_new_tokens: ${max_new_tokens}, temperature: ${temperature}, top_p: ${top_p}, repetition_penalty: ${repetition_penalty} });\n// out[0].generated_text`
+    });
+  }
+  ["genModel","genMaxNew","genTemp","genTopP","genRepPenalty"].forEach(id => {
+    $("#" + id).addEventListener("input", updateGenCode);
+  });
+  updateGenCode();
+
+  $("#btnGenRun").addEventListener("click", async () => {
+    await disableWhile($("#btnGenRun"), async () => {
+      const modelId = $("#genModel").value.trim();
+      const prompt = $("#genPrompt").value;
+
+      const max_new_tokens = Number($("#genMaxNew").value);
+      const temperature = Number($("#genTemp").value);
+      const top_p = Number($("#genTopP").value);
+      const repetition_penalty = Number($("#genRepPenalty").value);
+
+      const t0 = nowMs();
+      const gen = await getPipe("text-generation", modelId);
+      const t1 = nowMs();
+
+      const out = await gen(prompt, { max_new_tokens, temperature, top_p, repetition_penalty });
+      const t2 = nowMs();
+
+      const text = Array.isArray(out) ? (out[0]?.generated_text ?? prettyJSON(out)) : prettyJSON(out);
+      setPre($("#genOut"), text);
+
+      const ro = getRuntimeOptions();
+      setMeta($("#genMeta"), `Load: ${fmtMs(t1 - t0)} / Generate: ${fmtMs(t2 - t1)} / device=${ro.device}${ro.dtype ? ", dtype=" + ro.dtype : ""}`);
+    });
+  });
+
+  $("#btnGenCopy").addEventListener("click", async () => {
+    const txt = $("#genOut").textContent || "";
+    await navigator.clipboard.writeText(txt);
+    setStatus("Copied generation output to clipboard.", "ok");
+  });
+
+  // ===== 2) Classification =====
+  function updateClsCode() {
+    const modelId = $("#clsModel").value.trim();
+    const top_k = Number($("#clsTopK").value);
+    $("#clsCode").textContent = renderSnippet({
+      task: "sentiment-analysis",
+      modelId,
+      call: `const out = await pipe(text, { top_k: ${top_k} });\n// out => [{ label, score }, ...]`
+    });
+  }
+  ["clsModel","clsTopK"].forEach(id => $("#" + id).addEventListener("input", updateClsCode));
+  updateClsCode();
+
+  $("#btnClsRun").addEventListener("click", async () => {
+    await disableWhile($("#btnClsRun"), async () => {
+      const modelId = $("#clsModel").value.trim();
+      const text = $("#clsText").value;
+      const top_k = Number($("#clsTopK").value);
+
+      const t0 = nowMs();
+      const cls = await getPipe("sentiment-analysis", modelId);
+      const t1 = nowMs();
+
+      const out = await cls(text, { top_k });
+      const t2 = nowMs();
+
+      setPre($("#clsOut"), prettyJSON(out));
+      setMeta($("#clsMeta"), `Load: ${fmtMs(t1 - t0)} / Inference: ${fmtMs(t2 - t1)}`);
+    });
+  });
+
+  // ===== 3) Quality Estimation =====
+  function updateQeCode() {
+    const modelId = $("#qeModel").value.trim();
+    const top_k = Number($("#qeTopK").value);
+    $("#qeCode").textContent = renderSnippet({
+      task: "text-classification",
+      modelId,
+      call: `const out = await pipe(text, { top_k: ${top_k} });\n// out => [{ label, score }, ...]`
+    });
+  }
+  ["qeModel","qeTopK"].forEach(id => $("#" + id).addEventListener("input", updateQeCode));
+  updateQeCode();
+
+  $("#btnQeRun").addEventListener("click", async () => {
+    await disableWhile($("#btnQeRun"), async () => {
+      const modelId = $("#qeModel").value.trim();
+      const text = $("#qeText").value;
+      const top_k = Number($("#qeTopK").value);
+
+      const t0 = nowMs();
+      const qe = await getPipe("text-classification", modelId);
+      const t1 = nowMs();
+
+      const out = await qe(text, { top_k });
+      const t2 = nowMs();
+
+      setPre($("#qeOut"), prettyJSON(out));
+      setMeta($("#qeMeta"), `Load: ${fmtMs(t1 - t0)} / Inference: ${fmtMs(t2 - t1)}`);
+    });
+  });
+
+  // ===== 4) NER =====
+  function updateNerCode() {
+    const modelId = $("#nerModel").value.trim();
+    $("#nerCode").textContent = renderSnippet({
+      task: "token-classification",
+      modelId,
+      call: `const out = await pipe(text);\n// out => [{ entity/entity_group, score, word, start, end, ... }, ...]`
+    });
+  }
+  $("#nerModel").addEventListener("input", updateNerCode);
+  updateNerCode();
+
+  function highlightNER(text, entities) {
+    const usable = (entities || [])
+      .filter(e => Number.isFinite(e.start) && Number.isFinite(e.end))
+      .sort((a,b) => a.start - b.start);
+    if (!usable.length) return escapeHtml(text);
+
+    let pos = 0;
+    let html = "";
+    for (const e of usable) {
+      const s = e.start, t = e.end;
+      if (s < pos) continue;
+      html += escapeHtml(text.slice(pos, s));
+      const label = e.entity_group || e.entity || "ENT";
+      const score = (e.score != null) ? (e.score * 100).toFixed(1) + "%" : "";
+      html += `<mark title="${escapeHtml(label)} ${score}">${escapeHtml(text.slice(s, t))}</mark>`;
+      pos = t;
+    }
+    html += escapeHtml(text.slice(pos));
+    return html;
+  }
+
+  $("#btnNerRun").addEventListener("click", async () => {
+    await disableWhile($("#btnNerRun"), async () => {
+      const modelId = $("#nerModel").value.trim();
+      const text = $("#nerText").value;
+
+      const t0 = nowMs();
+      const ner = await getPipe("token-classification", modelId);
+      const t1 = nowMs();
+
+      const out = await ner(text);
+      const t2 = nowMs();
+
+      $("#nerHighlight").innerHTML = highlightNER(text, out);
+      setPre($("#nerOut"), prettyJSON(out));
+      setMeta($("#nerMeta"), `Load: ${fmtMs(t1 - t0)} / Inference: ${fmtMs(t2 - t1)}`);
+    });
+  });
+
+  // ===== 5) Embeddings =====
+  function updateEmbCode() {
+    const modelId = $("#embModel").value.trim();
+    $("#embCode").textContent = renderSnippet({
+      task: "feature-extraction",
+      modelId,
+      call: `const a = await pipe(textA, { pooling: 'mean', normalize: true });\nconst b = await pipe(textB, { pooling: 'mean', normalize: true });\n// a.data / b.data => embedding vectors\n// cosine similarity ~ dot(a,b) when normalize=true`
+    });
+  }
+  $("#embModel").addEventListener("input", updateEmbCode);
+  updateEmbCode();
+
+  $("#btnEmbRun").addEventListener("click", async () => {
+    await disableWhile($("#btnEmbRun"), async () => {
+      const modelId = $("#embModel").value.trim();
+      const textA = $("#embTextA").value.trim();
+      const textB = $("#embTextB").value.trim();
+
+      const t0 = nowMs();
+      const emb = await getPipe("feature-extraction", modelId);
+      const t1 = nowMs();
+
+      const a = await emb(textA, { pooling: "mean", normalize: true });
+      const b = await emb(textB, { pooling: "mean", normalize: true });
+      const t2 = nowMs();
+
+      const va = Array.from(a.data);
+      const vb = Array.from(b.data);
+      const sim = dot(va, vb);
+
+      const out = {
+        similarity: sim,
+        embedding_dim: va.length,
+        embedding_A_head: va.slice(0, 12),
+        embedding_B_head: vb.slice(0, 12),
+        note: "With normalize=true, dot(a,b) ≈ cosine similarity."
+      };
+
+      setPre($("#embOut"), prettyJSON(out));
+      setMeta($("#embMeta"), `Load: ${fmtMs(t1 - t0)} / Inference (2x): ${fmtMs(t2 - t1)}`);
+    });
+  });
+
+  // ===== 6) Translation =====
+  function updateMtCode() {
+    const modelId = $("#mtModel").value.trim();
+    const max_new_tokens = Number($("#mtMaxNew").value);
+    $("#mtCode").textContent = renderSnippet({
+      task: "translation",
+      modelId,
+      call: `const out = await pipe(text, { max_new_tokens: ${max_new_tokens} });\n// out[0].translation_text`
+    });
+  }
+  ["mtModel","mtMaxNew"].forEach(id => $("#" + id).addEventListener("input", updateMtCode));
+  updateMtCode();
+
+  $("#btnMtRun").addEventListener("click", async () => {
+    await disableWhile($("#btnMtRun"), async () => {
+      const modelId = $("#mtModel").value.trim();
+      const text = $("#mtText").value;
+      const max_new_tokens = Number($("#mtMaxNew").value);
+
+      const t0 = nowMs();
+      const mt = await getPipe("translation", modelId);
+      const t1 = nowMs();
+
+      const out = await mt(text, { max_new_tokens });
+      const t2 = nowMs();
+
+      const textOut = Array.isArray(out) ? (out[0]?.translation_text ?? prettyJSON(out)) : prettyJSON(out);
+      setPre($("#mtOut"), textOut);
+      setMeta($("#mtMeta"), `Load: ${fmtMs(t1 - t0)} / Translate: ${fmtMs(t2 - t1)}`);
+    });
+  });
+
+  // ===== 7) Summarization =====
+  function updateSumCode() {
+    const modelId = $("#sumModel").value.trim();
+    const max_new_tokens = Number($("#sumMaxNew").value);
+    $("#sumCode").textContent = renderSnippet({
+      task: "summarization",
+      modelId,
+      call: `const out = await pipe(text, { max_new_tokens: ${max_new_tokens} });\n// out[0].summary_text`
+    });
+  }
+  ["sumModel","sumMaxNew"].forEach(id => $("#" + id).addEventListener("input", updateSumCode));
+  updateSumCode();
+
+  $("#btnSumRun").addEventListener("click", async () => {
+    await disableWhile($("#btnSumRun"), async () => {
+      const modelId = $("#sumModel").value.trim();
+      const text = $("#sumText").value;
+      const max_new_tokens = Number($("#sumMaxNew").value);
+
+      const t0 = nowMs();
+      const sum = await getPipe("summarization", modelId);
+      const t1 = nowMs();
+
+      const out = await sum(text, { max_new_tokens });
+      const t2 = nowMs();
+
+      const textOut = Array.isArray(out) ? (out[0]?.summary_text ?? prettyJSON(out)) : prettyJSON(out);
+      setPre($("#sumOut"), textOut);
+      setMeta($("#sumMeta"), `Load: ${fmtMs(t1 - t0)} / Summarize: ${fmtMs(t2 - t1)}`);
+    });
+  });
+
+  // ===== 8) Chat =====
+  const CHAT = {
+    system: "You are a helpful assistant. Keep your answers concise.",
+    history: []
+  };
+
+  function renderChat() {
+    const el = $("#chatLog");
+    el.innerHTML = "";
+    for (const m of CHAT.history) {
+      const div = document.createElement("div");
+      div.className = "msg " + (m.role === "user" ? "user" : "bot");
+      div.innerHTML = `<div class="who">${m.role === "user" ? "User" : "Assistant"}</div><div class="txt">${escapeHtml(m.content)}</div>`;
+      el.appendChild(div);
+    }
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function buildChatPrompt() {
+    let p = `${CHAT.system}\n\n`;
+    for (const m of CHAT.history.slice(-8)) {
+      p += (m.role === "user" ? "User: " : "Assistant: ") + m.content.trim() + "\n";
+    }
+    p += "Assistant: ";
+    return p;
+  }
+
+  function updateChatCode() {
+    const modelId = $("#chatModel").value.trim();
+    const max_new_tokens = Number($("#chatMaxNew").value);
+    const temperature = Number($("#chatTemp").value);
+    const top_p = Number($("#chatTopP").value);
+
+    $("#chatCode").textContent = renderSnippet({
+      task: "text-generation",
+      modelId,
+      call:
+`const prompt = buildChatPrompt();
+const out = await pipe(prompt, { max_new_tokens: ${max_new_tokens}, temperature: ${temperature}, top_p: ${top_p} });
+// Remove the prompt prefix and keep only the assistant reply.`
+    });
+  }
+  ["chatModel","chatMaxNew","chatTemp","chatTopP"].forEach(id => $("#" + id).addEventListener("input", updateChatCode));
+  updateChatCode();
+
+  $("#btnChatReset").addEventListener("click", () => {
+    CHAT.history = [];
+    renderChat();
+    setMeta($("#chatMeta"), "—");
+    setStatus("Chat reset.", "ok");
+  });
+
+  $("#btnChatSend").addEventListener("click", async () => {
+    await disableWhile($("#btnChatSend"), async () => {
+      const modelId = $("#chatModel").value.trim();
+      const userText = $("#chatInput").value.trim();
+      if (!userText) return;
+
+      $("#chatInput").value = "";
+      CHAT.history.push({ role: "user", content: userText });
+      renderChat();
+
+      const max_new_tokens = Number($("#chatMaxNew").value);
+      const temperature = Number($("#chatTemp").value);
+      const top_p = Number($("#chatTopP").value);
+
+      const prompt = buildChatPrompt();
+
+      const t0 = nowMs();
+      const gen = await getPipe("text-generation", modelId);
+      const t1 = nowMs();
+
+      const out = await gen(prompt, { max_new_tokens, temperature, top_p, repetition_penalty: 1.1 });
+      const t2 = nowMs();
+
+      const full = Array.isArray(out) ? (out[0]?.generated_text ?? "") : "";
+      let reply = full.startsWith(prompt) ? full.slice(prompt.length) : full;
+
+      reply = reply.split("\nUser:")[0].split("\nAssistant:")[0].trim();
+      if (!reply) reply = "(no output)";
+
+      CHAT.history.push({ role: "assistant", content: reply });
+      renderChat();
+
+      setMeta($("#chatMeta"), `Load: ${fmtMs(t1 - t0)} / Generate: ${fmtMs(t2 - t1)}`);
+    });
+  });
+
+  $("#chatInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("#btnChatSend").click();
+  });
+
+  // ===== 9) QA =====
+  function updateQaCode() {
+    const modelId = $("#qaModel").value.trim();
+    $("#qaCode").textContent = renderSnippet({
+      task: "question-answering",
+      modelId,
+      call: `const out = await pipe({ question, context });\n// out => { answer, score, start, end }`
+    });
+  }
+  $("#qaModel").addEventListener("input", updateQaCode);
+  updateQaCode();
+
+  $("#btnQaRun").addEventListener("click", async () => {
+    await disableWhile($("#btnQaRun"), async () => {
+      const modelId = $("#qaModel").value.trim();
+      const question = $("#qaQuestion").value.trim();
+      const context = $("#qaContext").value;
+
+      const t0 = nowMs();
+      const qa = await getPipe("question-answering", modelId);
+      const t1 = nowMs();
+
+      const out = await qa({ question, context });
+      const t2 = nowMs();
+
+      setPre($("#qaOut"), prettyJSON(out));
+      setMeta($("#qaMeta"), `Load: ${fmtMs(t1 - t0)} / Inference: ${fmtMs(t2 - t1)}`);
+    });
+  });
+
+  setStatus(`Ready (WebGPU: ${webgpuAvailable ? "available" : "unavailable"} / auto→${webgpuAvailable ? "webgpu" : "wasm"})`, "ok");
+  renderChat();
+</script>
+</body>
+</html>

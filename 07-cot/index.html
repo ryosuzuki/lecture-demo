@@ -3,56 +3,59 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Reasoning Prompt Demo (Normal vs CoT vs Step-by-step) — WebLLM</title>
+  <title>CoT Prompting Demo — Normal vs Few-shot CoT vs Zero-shot “Let’s think step by step” (WebLLM)</title>
   <style>
     :root { --bg:#0b0f14; --card:#121826; --muted:#93a4b8; --text:#e8eef6; --line:#233043; --accent:#6ee7ff; }
-    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      background: var(--bg); color: var(--text); }
-    header { padding: 18px 16px; border-bottom: 1px solid var(--line); position: sticky; top:0;
-      background: rgba(11,15,20,.92); backdrop-filter: blur(8px); z-index: 10; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background: var(--bg); color: var(--text); }
+    header { padding: 18px 16px; border-bottom: 1px solid var(--line); position: sticky; top:0; background: rgba(11,15,20,.92); backdrop-filter: blur(8px); z-index: 10; }
     header h1 { margin:0; font-size: 16px; }
     header p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
-    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
-    .grid { display: grid; grid-template-columns: 380px 1fr; gap: 12px; }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px;
-      box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+
+    .wrap { max-width: 1250px; margin: 0 auto; padding: 16px; }
+    .grid { display: grid; grid-template-columns: 420px 1fr; gap: 12px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+
+    .row { display:flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .pill { font-size: 11px; color: var(--muted); border: 1px solid var(--line); padding: 4px 8px; border-radius: 999px; }
+    .accent { color: var(--accent); }
+    .tiny { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
     label { font-size: 12px; color: var(--muted); display:block; margin: 10px 0 6px; }
     select, textarea, input, button {
       font: inherit; border-radius: 10px; border: 1px solid var(--line);
       background: #0f1623; color: var(--text); padding: 10px; outline: none;
     }
-    textarea { width: 100%; min-height: 120px; resize: vertical; line-height: 1.35; }
-    input[type="number"] { width: 140px; }
+    textarea { width: 100%; min-height: 130px; resize: vertical; line-height: 1.35; }
+    input[type="number"] { width: 150px; }
     button { cursor: pointer; }
     button.primary { background: linear-gradient(180deg, rgba(110,231,255,.18), rgba(110,231,255,.06)); border-color: rgba(110,231,255,.35); }
     button:disabled { opacity: .5; cursor: not-allowed; }
-    .tiny { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
     .status { padding: 10px; border-radius: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; }
+
     .outGrid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
-    pre { margin:0; white-space: pre-wrap; word-break: break-word; background:#0c1320; border:1px solid var(--line);
-      padding: 10px; border-radius: 12px; min-height: 150px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
-    .pill { font-size: 11px; color: var(--muted); border: 1px solid var(--line); padding: 4px 8px; border-radius: 999px; }
-    .accent { color: var(--accent); }
+    pre { margin:0; white-space: pre-wrap; word-break: break-word; background:#0c1320; border:1px solid var(--line); padding: 10px; border-radius: 12px; min-height: 160px; }
+
     details summary { cursor:pointer; color: var(--muted); font-size: 12px; }
   </style>
 </head>
 <body>
 <header>
-  <h1>Reasoning Prompt Demo — <span class="accent">Normal</span> vs <span class="accent">CoT (hidden)</span> vs <span class="accent">Step-by-step (brief)</span></h1>
+  <h1>CoT Prompting Demo — <span class="accent">Normal</span> vs <span class="accent">Few-shot CoT</span> vs <span class="accent">Zero-shot “Let’s think step by step”</span></h1>
   <p>
-    Browser-only LLM (WebGPU). Shows how different prompting styles change accuracy/formatting.
-    Note: This demo does NOT display full internal chain-of-thought; it shows final answers (and optionally brief justification).
+    Browser-only LLM (WebGPU) using WebLLM. Shows the prompts used (collapsible) + outputs side-by-side.
   </p>
 </header>
 
 <div class="wrap">
   <div class="grid">
+
     <div class="card">
-      <div class="tiny">
+      <div class="row">
         <span class="pill">browser-only</span>
-        <span class="pill">3 prompting modes</span>
         <span class="pill">10 samples</span>
+        <span class="pill">3 prompting styles</span>
       </div>
 
       <label>Model</label>
@@ -63,17 +66,28 @@
         <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-1.5B-Instruct (q4) — stronger</option>
       </select>
 
-      <label>Sample set (10)</label>
+      <label>Sample (10)</label>
       <select id="sample"></select>
 
-      <label>Problem</label>
+      <label>Problem (editable)</label>
       <textarea id="problem" class="mono"></textarea>
 
+      <label>Answer type (for Zero-shot-CoT stage-2 extraction)</label>
+      <select id="answerType">
+        <option value="number" selected>Number</option>
+        <option value="yesno">Yes/No</option>
+        <option value="time">Time (HH:MM AM/PM)</option>
+        <option value="name">Single name</option>
+        <option value="sentence">Single short sentence</option>
+        <option value="translation_es">Spanish translation only</option>
+        <option value="generic">Generic (final answer only)</option>
+      </select>
+
       <label>Max output tokens</label>
-      <input id="maxTok" type="number" min="32" max="512" value="128" />
+      <input id="maxTok" type="number" min="32" max="512" value="160" />
 
       <label>Sampling</label>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="row">
         <div>
           <div class="tiny">Temperature</div>
           <input id="temp" type="number" min="0" max="2" step="0.1" value="0.2" />
@@ -84,21 +98,21 @@
         </div>
       </div>
 
-      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="row" style="margin-top:12px;">
         <button id="btnInit" class="primary">Init / Load model</button>
-        <button id="btnRun" class="primary" disabled>Run (Normal / CoT / Step)</button>
+        <button id="btnRun" class="primary" disabled>Run (Normal / Few-shot CoT / Zero-shot-CoT)</button>
         <button id="btnReset">Reset sample</button>
       </div>
 
       <div id="status" class="status" style="margin-top:12px;">Status: not initialized</div>
 
       <details style="margin-top:12px;">
-        <summary>What each mode does</summary>
+        <summary>What’s implemented (paper-faithful templates)</summary>
         <div class="tiny" style="margin-top:8px;">
           <ul>
-            <li><b>Normal</b>: Answer directly.</li>
-            <li><b>CoT (hidden)</b>: Think step-by-step internally, but output only the final answer.</li>
-            <li><b>Step-by-step (brief)</b>: Provide final answer + 2–3 short bullets of justification (not a full reasoning trace).</li>
+            <li><b>Normal</b>: <span class="mono">Q: ... A:</span> (answer directly)</li>
+            <li><b>Few-shot CoT (Wei-style)</b>: multiple <span class="mono">Q/A</span> exemplars with short rationales + <span class="mono">The answer is ...</span>, then the test <span class="mono">Q/A</span>.</li>
+            <li><b>Zero-shot-CoT (Kojima-style)</b>: Stage 1 prompt ends with <span class="mono">A: Let’s think step by step.</span>, then Stage 2 extracts the answer using a task-specific trigger.</li>
           </ul>
         </div>
       </details>
@@ -113,43 +127,54 @@
           <pre id="outN" class="mono"></pre>
         </div>
         <div>
-          <div class="tiny">CoT (hidden) output</div>
-          <pre id="outC" class="mono"></pre>
+          <div class="tiny">Few-shot CoT output</div>
+          <pre id="outF" class="mono"></pre>
         </div>
         <div>
-          <div class="tiny">Step-by-step (brief) output</div>
-          <pre id="outS" class="mono"></pre>
+          <div class="tiny">Zero-shot “Let’s think step by step” output (final)</div>
+          <pre id="outZ" class="mono"></pre>
         </div>
       </div>
 
       <div style="margin-top:12px;">
         <details>
-          <summary>Show prompts (Normal / CoT / Step)</summary>
+          <summary>Show prompts used (Normal / Few-shot CoT / Zero-shot-CoT Stage 1 & Stage 2)</summary>
           <div class="outGrid" style="margin-top:10px;">
             <div>
               <div class="tiny">Normal prompt</div>
               <pre id="pN" class="mono" style="min-height:140px;"></pre>
             </div>
             <div>
-              <div class="tiny">CoT (hidden) prompt</div>
-              <pre id="pC" class="mono" style="min-height:140px;"></pre>
+              <div class="tiny">Few-shot CoT prompt</div>
+              <pre id="pF" class="mono" style="min-height:140px;"></pre>
             </div>
             <div>
-              <div class="tiny">Step-by-step (brief) prompt</div>
-              <pre id="pS" class="mono" style="min-height:140px;"></pre>
+              <div class="tiny">Zero-shot-CoT prompts</div>
+              <div class="tiny" style="margin:6px 0;">Stage 1 (reasoning extraction)</div>
+              <pre id="pZ1" class="mono" style="min-height:120px;"></pre>
+              <div class="tiny" style="margin:10px 0 6px;">Stage 2 (answer extraction)</div>
+              <pre id="pZ2" class="mono" style="min-height:120px;"></pre>
             </div>
           </div>
         </details>
       </div>
 
       <div style="margin-top:12px;">
+        <details>
+          <summary>Show Zero-shot-CoT Stage 1 reasoning text (model output)</summary>
+          <pre id="zRationale" class="mono" style="min-height:140px;"></pre>
+        </details>
+      </div>
+
+      <div style="margin-top:12px;">
         <details open>
-          <summary>Prompt preview (Step-by-step)</summary>
+          <summary>Prompt preview (Few-shot CoT)</summary>
           <pre id="preview" class="mono"></pre>
         </details>
       </div>
 
     </div>
+
   </div>
 </div>
 
@@ -161,6 +186,8 @@
   const modelSel = $("model");
   const sampleSel = $("sample");
   const problemEl = $("problem");
+  const answerTypeSel = $("answerType");
+
   const maxTokEl = $("maxTok");
   const tempEl = $("temp");
   const toppEl = $("topp");
@@ -171,106 +198,107 @@
   const statusEl = $("status");
 
   const outN = $("outN");
-  const outC = $("outC");
-  const outS = $("outS");
+  const outF = $("outF");
+  const outZ = $("outZ");
 
   const pN = $("pN");
-  const pC = $("pC");
-  const pS = $("pS");
+  const pF = $("pF");
+  const pZ1 = $("pZ1");
+  const pZ2 = $("pZ2");
+
+  const zRationale = $("zRationale");
   const preview = $("preview");
 
   let engine = null;
 
+  // Few-shot CoT exemplars (Wei-style Q/A with short rationale + "The answer is ...")
+  const COT_EXEMPLARS = `Q: There are 15 trees in the grove. Grove workers will plant trees in the grove today. After they are done, there will be 21 trees. How many trees did the grove workers plant today?
+A: There are 21 trees now and 15 trees in the beginning, so the workers plant 21 - 15 = 6 trees. The answer is 6.
+
+Q: If there are 3 cars in the parking lot and 2 more cars arrive, how many cars are in the parking lot?
+A: There are originally 3 cars and 2 more arrive, so 3 + 2 = 5. The answer is 5.`;
+
   const SAMPLES = [
-    {
-      title: "1) Arithmetic (multi-step)",
-      problem: "A book costs $12. You buy 3 books and pay with a $50 bill. How much change do you get? Answer with a number."
-    },
-    {
-      title: "2) Unit conversion",
-      problem: "Convert 3.5 kilometers to meters. Answer with a number."
-    },
-    {
-      title: "3) Logic (constraint)",
-      problem: "If all zorps are flargs, and no flargs are blins, can a zorp be a blin? Answer Yes or No."
-    },
-    {
-      title: "4) Simple probability",
-      problem: "A fair coin is flipped 3 times. What is the probability of getting exactly 2 heads? Give a simplified fraction."
-    },
-    {
-      title: "5) Scheduling / counting",
-      problem: "A meeting starts at 9:20 AM and lasts 1 hour 35 minutes. What time does it end? Answer in HH:MM AM/PM."
-    },
-    {
-      title: "6) Table reasoning (tiny)",
+    { title: "1) Arithmetic (multi-step)", type: "number",
+      problem: "A book costs $12. You buy 3 books and pay with a $50 bill. How much change do you get? Answer with a number." },
+    { title: "2) Unit conversion", type: "number",
+      problem: "Convert 3.5 kilometers to meters. Answer with a number." },
+    { title: "3) Logic (constraint)", type: "yesno",
+      problem: "If all zorps are flargs, and no flargs are blins, can a zorp be a blin? Answer Yes or No." },
+    { title: "4) Probability", type: "generic",
+      problem: "A fair coin is flipped 3 times. What is the probability of getting exactly 2 heads? Give a simplified fraction." },
+    { title: "5) Time arithmetic", type: "time",
+      problem: "A meeting starts at 9:20 AM and lasts 1 hour 35 minutes. What time does it end? Answer in HH:MM AM/PM." },
+    { title: "6) Tiny table reasoning", type: "name",
       problem:
 `You have this table:
 - Alice: 2 apples
 - Bob: 5 apples
 - Cara: 3 apples
-Who has the most apples? Answer with one name.`
-    },
-    {
-      title: "7) Common-sense physics",
-      problem: "You put an ice cube in a warm room. After some time, what happens to it? Answer in one short sentence."
-    },
-    {
-      title: "8) Short QA (definition)",
-      problem: "What is 'in-context learning' in language models? Answer in one sentence."
-    },
-    {
-      title: "9) Pattern completion",
-      problem: "Complete the pattern: 2, 4, 8, 16, __. Answer with a number."
-    },
-    {
-      title: "10) Translation (EN → ES)",
-      problem: "Translate to Spanish: 'Please submit the PDF by Wednesday morning.' Return ONLY the Spanish translation."
-    },
+Who has the most apples? Answer with one name.` },
+    { title: "7) Common-sense physics", type: "sentence",
+      problem: "You put an ice cube in a warm room. After some time, what happens to it? Answer in one short sentence." },
+    { title: "8) Definition (short)", type: "sentence",
+      problem: "What is 'in-context learning' in language models? Answer in one short sentence." },
+    { title: "9) Pattern completion", type: "number",
+      problem: "Complete the pattern: 2, 4, 8, 16, __. Answer with a number." },
+    { title: "10) Translation (EN → ES)", type: "translation_es",
+      problem: "Translate to Spanish: 'Please submit the PDF by Wednesday morning.' Return ONLY the Spanish translation." },
   ];
 
   function setStatus(s) { statusEl.textContent = "Status: " + s; }
-  function clearOut() { outN.textContent = ""; outC.textContent = ""; outS.textContent = ""; }
+  function clearOut() {
+    outN.textContent = "";
+    outF.textContent = "";
+    outZ.textContent = "";
+    zRationale.textContent = "";
+  }
 
-  function buildPrompts(problem) {
-    const sys = "You are a helpful assistant. Follow the instructions strictly.";
+  function answerTriggerFor(type) {
+    if (type === "number") return "Therefore, the answer (Arabic numerals) is";
+    if (type === "yesno") return "Therefore, the answer (Yes or No) is";
+    if (type === "time") return "Therefore, the answer (time) is";
+    if (type === "name") return "Therefore, the answer (name) is";
+    if (type === "sentence") return "Therefore, the final answer (one short sentence) is";
+    if (type === "translation_es") return "Therefore, the Spanish translation is";
+    return "Therefore, the final answer is";
+  }
 
+  function buildPrompts(problem, answerType) {
     const normal =
-`System: ${sys}
-User: Solve the task. Give the final answer only (no extra commentary).
+`Q: ${problem}
+A:`;
 
-Task:
-${problem}`;
+    const fewShotCoT =
+`${COT_EXEMPLARS}
 
-    const cotHidden =
-`System: ${sys}
-User: Solve the task. Think step-by-step internally, but do NOT reveal your reasoning.
-Output ONLY the final answer.
+Q: ${problem}
+A:`;
 
-Task:
-${problem}`;
+    const zeroShotCoT_stage1 =
+`Q: ${problem}
+A: Let's think step by step.`;
 
-    const stepBrief =
-`System: ${sys}
-User: Solve the task. Think step-by-step internally.
-Output:
-1) Final answer: <your final answer>
-2) Brief justification: 2–3 short bullet points (no long reasoning, no scratchpad)
+    const trigger = answerTriggerFor(answerType);
 
-Task:
-${problem}`;
-
-    return { normal, cotHidden, stepBrief };
+    return { normal, fewShotCoT, zeroShotCoT_stage1, trigger };
   }
 
   function refreshPromptViews() {
     const problem = problemEl.value.trim();
-    const { normal, cotHidden, stepBrief } = buildPrompts(problem);
+    const answerType = answerTypeSel.value;
+    const { normal, fewShotCoT, zeroShotCoT_stage1, trigger } = buildPrompts(problem, answerType);
+
     pN.textContent = normal;
-    pC.textContent = cotHidden;
-    pS.textContent = stepBrief;
-    preview.textContent = stepBrief;
-    return { normal, cotHidden, stepBrief };
+    pF.textContent = fewShotCoT;
+    pZ1.textContent = zeroShotCoT_stage1;
+
+    preview.textContent = fewShotCoT;
+
+    // Stage 2 is constructed after stage 1 rationale is generated (see runZeroShotCoT).
+    pZ2.textContent = `(Stage 2 prompt will appear after running Zero-shot-CoT)\nTrigger: ${trigger}`;
+
+    return { normal, fewShotCoT, zeroShotCoT_stage1, trigger };
   }
 
   async function init() {
@@ -300,7 +328,7 @@ ${problem}`;
   }
 
   async function complete(prompt) {
-    const max_tokens = Math.max(32, Math.min(512, Number(maxTokEl.value || 128)));
+    const max_tokens = Math.max(32, Math.min(512, Number(maxTokEl.value || 160)));
     const temperature = Number(tempEl.value || 0.2);
     const top_p = Number(toppEl.value || 0.9);
 
@@ -314,6 +342,24 @@ ${problem}`;
     return res.choices?.[0]?.message?.content?.trim?.() ?? "";
   }
 
+  async function runZeroShotCoT(problem, answerType) {
+    const { zeroShotCoT_stage1, trigger } = buildPrompts(problem, answerType);
+
+    // Stage 1: reasoning extraction
+    const rationale = await complete(zeroShotCoT_stage1);
+
+    // Stage 2: answer extraction
+    const stage2 =
+`${zeroShotCoT_stage1}
+${rationale}
+
+${trigger}`;
+
+    const final = await complete(stage2);
+
+    return { rationale, stage2, final };
+  }
+
   async function runAll() {
     if (!engine) return;
 
@@ -321,17 +367,24 @@ ${problem}`;
     btnInit.disabled = true;
     clearOut();
 
-    const { normal, cotHidden, stepBrief } = refreshPromptViews();
+    const problem = problemEl.value.trim();
+    const answerType = answerTypeSel.value;
+
+    const { normal, fewShotCoT } = refreshPromptViews();
 
     try {
       setStatus("Running Normal…");
       outN.textContent = await complete(normal);
 
-      setStatus("Running CoT (hidden)…");
-      outC.textContent = await complete(cotHidden);
+      setStatus("Running Few-shot CoT…");
+      outF.textContent = await complete(fewShotCoT);
 
-      setStatus("Running Step-by-step (brief)…");
-      outS.textContent = await complete(stepBrief);
+      setStatus("Running Zero-shot-CoT (2-stage)…");
+      const z = await runZeroShotCoT(problem, answerType);
+
+      zRationale.textContent = z.rationale;
+      pZ2.textContent = z.stage2;
+      outZ.textContent = z.final;
 
       setStatus("Done ✅");
     } catch (e) {
@@ -341,14 +394,6 @@ ${problem}`;
       btnRun.disabled = !engine;
       btnInit.disabled = false;
     }
-  }
-
-  function loadSample(i) {
-    const s = SAMPLES[i];
-    problemEl.value = s.problem;
-    refreshPromptViews();
-    clearOut();
-    setStatus(engine ? "Ready ✅" : "Not initialized");
   }
 
   function setupSamples() {
@@ -363,9 +408,19 @@ ${problem}`;
     loadSample(0);
   }
 
+  function loadSample(i) {
+    const s = SAMPLES[i];
+    problemEl.value = s.problem;
+    answerTypeSel.value = s.type || "generic";
+    refreshPromptViews();
+    clearOut();
+    setStatus(engine ? "Ready ✅" : "Not initialized");
+  }
+
   btnInit.addEventListener("click", init);
   btnRun.addEventListener("click", runAll);
   btnReset.addEventListener("click", () => loadSample(Number(sampleSel.value)));
+
   modelSel.addEventListener("change", () => {
     engine = null;
     btnRun.disabled = true;
@@ -375,6 +430,7 @@ ${problem}`;
   sampleSel.addEventListener("change", () => loadSample(Number(sampleSel.value)));
   ["input", "change"].forEach(evt => {
     problemEl.addEventListener(evt, refreshPromptViews);
+    answerTypeSel.addEventListener(evt, refreshPromptViews);
   });
 
   setupSamples();
