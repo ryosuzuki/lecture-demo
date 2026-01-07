@@ -3,429 +3,369 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>In-Context Learning Demo (Zero / One / Few-shot) — Browser-only LLM</title>
+  <title>In-Context Learning Demo (Zero / One / Few-shot) — WebLLM</title>
   <style>
     :root { --bg:#0b0f14; --card:#121826; --muted:#93a4b8; --text:#e8eef6; --line:#233043; --accent:#6ee7ff; }
     body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       background: var(--bg); color: var(--text); }
-    header { padding: 18px 16px; border-bottom: 1px solid var(--line); position: sticky; top:0; background: rgba(11,15,20,.92); backdrop-filter: blur(8px); z-index: 10; }
-    header h1 { margin:0; font-size: 16px; letter-spacing: .2px; }
+    header { padding: 18px 16px; border-bottom: 1px solid var(--line); position: sticky; top:0;
+      background: rgba(11,15,20,.92); backdrop-filter: blur(8px); z-index: 10; }
+    header h1 { margin:0; font-size: 16px; }
     header p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
     .grid { display: grid; grid-template-columns: 360px 1fr; gap: 12px; }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
-    .row { display:flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.25); }
     label { font-size: 12px; color: var(--muted); display:block; margin: 10px 0 6px; }
     select, textarea, input, button {
       font: inherit; border-radius: 10px; border: 1px solid var(--line);
       background: #0f1623; color: var(--text); padding: 10px; outline: none;
     }
     textarea { width: 100%; min-height: 110px; resize: vertical; line-height: 1.35; }
-    input[type="number"] { width: 110px; }
+    input[type="number"] { width: 120px; }
     button { cursor: pointer; }
     button.primary { background: linear-gradient(180deg, rgba(110,231,255,.18), rgba(110,231,255,.06)); border-color: rgba(110,231,255,.35); }
     button:disabled { opacity: .5; cursor: not-allowed; }
     .tiny { font-size: 12px; color: var(--muted); line-height: 1.4; }
     .status { padding: 10px; border-radius: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; }
-    .outGrid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .out h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .2px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .outGrid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
     pre { margin:0; white-space: pre-wrap; word-break: break-word; background:#0c1320; border:1px solid var(--line);
       padding: 10px; border-radius: 12px; min-height: 140px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
     .pill { font-size: 11px; color: var(--muted); border: 1px solid var(--line); padding: 4px 8px; border-radius: 999px; }
     .accent { color: var(--accent); }
     details summary { cursor:pointer; color: var(--muted); font-size: 12px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>In-Context Learning Demo (Zero / One / Few-shot) — <span class="accent">Browser-only</span></h1>
-    <p>
-      Loads a small local LLM in the browser and compares outputs under different numbers of exemplars.
-      No server, no API key. (Model files are fetched from Hugging Face.)
-    </p>
-  </header>
+<header>
+  <h1>In-Context Learning Demo (Zero / One / Few-shot) — <span class="accent">WebLLM</span></h1>
+  <p>Runs a small instruction-tuned LLM entirely in your browser (WebGPU). Compare how outputs change with 0/1/few examples.</p>
+</header>
 
-  <div class="wrap">
-    <div class="grid">
-      <div class="card">
-        <div class="row">
-          <span class="pill">1-file</span>
-          <span class="pill">LLM runs on device</span>
-          <span class="pill">Compare 0/1/few</span>
+<div class="wrap">
+  <div class="grid">
+    <div class="card">
+      <div class="tiny">
+        <span class="pill">browser-only</span>
+        <span class="pill">small instruct models</span>
+        <span class="pill">0/1/few compare</span>
+      </div>
+
+      <label>Model (pick a “GPT-3-ish” small one)</label>
+      <select id="model">
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5-0.5B-Instruct (q4) — recommended</option>
+        <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2-360M-Instruct (q4) — weaker</option>
+        <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2-1.7B-Instruct (q4) — stronger</option>
+        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-1.5B-Instruct (q4) — stronger</option>
+      </select>
+
+      <label>Task preset</label>
+      <select id="task">
+        <option value="cls" selected>Classification (Sentiment → label)</option>
+        <option value="extract">Extraction (Entity → JSON)</option>
+        <option value="translate">Translation (EN → ES)</option>
+        <option value="qa">Q&A (short answer)</option>
+        <option value="custom">Custom</option>
+      </select>
+
+      <label>Query / Input</label>
+      <textarea id="query"></textarea>
+
+      <label>Examples (edit live)</label>
+      <textarea id="examples" class="mono"></textarea>
+
+      <label>Few-shot N</label>
+      <input id="fewN" type="number" min="2" max="8" value="3" />
+
+      <label>Max output tokens</label>
+      <input id="maxTok" type="number" min="32" max="512" value="128" />
+
+      <label>Sampling (lower = more consistent formatting)</label>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <div>
+          <div class="tiny">Temperature</div>
+          <input id="temp" type="number" min="0" max="2" step="0.1" value="0.3" />
         </div>
-
-        <label>Model (small & nostalgic)</label>
-        <select id="model">
-          <option value="Xenova/distilgpt2" selected>Xenova/distilgpt2 (fast)</option>
-          <option value="Xenova/gpt2">Xenova/gpt2 (bigger)</option>
-        </select>
-
-        <label>Task preset</label>
-        <select id="task">
-          <option value="cls">Classification (Sentiment → label)</option>
-          <option value="extract">Extraction (Entity → JSON-ish)</option>
-          <option value="translate">Translation (EN → JA)</option>
-          <option value="qa">Q&A (short answer)</option>
-          <option value="custom">Custom (you write prompt)</option>
-        </select>
-
-        <label>Query / Input (the one you want the model to solve)</label>
-        <textarea id="query"></textarea>
-
-        <label>Shots</label>
-        <div class="row">
-          <div class="tiny">One-shot uses the first example only. Few-shot uses N examples.</div>
-        </div>
-        <div class="row">
-          <label style="margin:0">Few-shot N</label>
-          <input id="fewN" type="number" min="2" max="8" value="3" />
-          <label style="margin:0">Max new tokens</label>
-          <input id="maxNew" type="number" min="8" max="200" value="48" />
-        </div>
-
-        <label>Examples (edit these live)</label>
-        <textarea id="examples" class="mono"></textarea>
-
-        <label>Generation settings</label>
-        <div class="row">
-          <label style="margin:0">Temperature</label>
-          <input id="temp" type="number" min="0" max="2" step="0.1" value="0.7" />
-          <label style="margin:0">Top-p</label>
+        <div>
+          <div class="tiny">Top-p</div>
           <input id="topp" type="number" min="0" max="1" step="0.05" value="0.9" />
         </div>
+      </div>
 
-        <div class="row" style="margin-top: 12px;">
-          <button id="btnLoad" class="primary">Load model</button>
-          <button id="btnRun" class="primary" disabled>Run compare (0 / 1 / few)</button>
-          <button id="btnFill">Reset preset</button>
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="btnInit" class="primary">Init / Load model</button>
+        <button id="btnRun" class="primary" disabled>Run compare (0 / 1 / few)</button>
+        <button id="btnReset">Reset preset</button>
+      </div>
+
+      <div id="status" class="status" style="margin-top:12px;">Status: not initialized</div>
+      <div class="tiny" style="margin-top:10px;">
+        Tip: For a clearer ICL effect, keep examples short and the output format rigid (labels / JSON).
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tiny">Outputs + Prompts</div>
+
+      <div class="outGrid">
+        <div>
+          <div class="tiny">Zero-shot output</div>
+          <pre id="out0" class="mono"></pre>
         </div>
+        <div>
+          <div class="tiny">One-shot output</div>
+          <pre id="out1" class="mono"></pre>
+        </div>
+        <div>
+          <div class="tiny">Few-shot output</div>
+          <pre id="outF" class="mono"></pre>
+        </div>
+      </div>
 
-        <div style="margin-top: 12px;" class="status" id="status">Status: not loaded</div>
-
-        <details style="margin-top: 12px;">
-          <summary>What this demonstrates</summary>
-          <div class="tiny" style="margin-top: 8px;">
-            <ul>
-              <li><b>Zero-shot</b>: only instructions + the query.</li>
-              <li><b>One-shot</b>: adds a single input→output example.</li>
-              <li><b>Few-shot</b>: adds multiple examples; watch format consistency & accuracy change.</li>
-            </ul>
-            Tip: For the strongest “ICL effect”, use a <b>rigid output format</b> (labels / JSON) and keep examples consistent.
+      <div style="margin-top:12px;">
+        <details>
+          <summary>Show prompts (Zero / One / Few)</summary>
+          <div class="outGrid" style="margin-top:10px;">
+            <div>
+              <div class="tiny">Zero prompt</div>
+              <pre id="p0" class="mono" style="min-height:120px;"></pre>
+            </div>
+            <div>
+              <div class="tiny">One prompt</div>
+              <pre id="p1" class="mono" style="min-height:120px;"></pre>
+            </div>
+            <div>
+              <div class="tiny">Few prompt</div>
+              <pre id="pF" class="mono" style="min-height:120px;"></pre>
+            </div>
           </div>
         </details>
       </div>
 
-      <div class="card">
-        <div class="row" style="justify-content: space-between;">
-          <div>
-            <div class="tiny">Constructed prompts + outputs</div>
-            <div class="tiny">Try changing examples, then re-run. You’ll usually see the model “snap” to the demonstrated pattern.</div>
-          </div>
-          <span class="pill" id="backendPill">backend: (not loaded)</span>
-        </div>
-
-        <div style="margin-top: 12px;">
-          <details open>
-            <summary>Prompt (preview)</summary>
-            <pre id="promptPreview" class="mono"></pre>
-          </details>
-        </div>
-
-        <div style="margin-top: 12px;" class="outGrid">
-          <div class="out">
-            <h3>Zero-shot output</h3>
-            <pre id="out0" class="mono"></pre>
-          </div>
-          <div class="out">
-            <h3>One-shot output</h3>
-            <pre id="out1" class="mono"></pre>
-          </div>
-          <div class="out">
-            <h3>Few-shot output</h3>
-            <pre id="outF" class="mono"></pre>
-          </div>
-        </div>
-
-        <div style="margin-top: 12px;">
-          <details>
-            <summary>Zero / One / Few prompts (full text)</summary>
-            <div class="outGrid" style="margin-top:10px;">
-              <div><div class="tiny">Zero prompt</div><pre id="p0" class="mono"></pre></div>
-              <div><div class="tiny">One prompt</div><pre id="p1" class="mono"></pre></div>
-              <div><div class="tiny">Few prompt</div><pre id="pF" class="mono"></pre></div>
-            </div>
-          </details>
-        </div>
-
+      <div style="margin-top:12px;">
+        <details open>
+          <summary>Prompt preview (Few-shot)</summary>
+          <pre id="prompt" class="mono"></pre>
+        </details>
       </div>
     </div>
   </div>
+</div>
 
-  <script type="module">
-    import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/dist/transformers.min.js";
+<script type="module">
+  import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
-    // Slightly more reliable in some hosting setups.
-    env.allowLocalModels = false;
+  const $ = (id) => document.getElementById(id);
+  const modelSel = $("model");
+  const taskSel = $("task");
+  const queryEl = $("query");
+  const exEl = $("examples");
+  const fewNEl = $("fewN");
+  const maxTokEl = $("maxTok");
+  const tempEl = $("temp");
+  const toppEl = $("topp");
+  const statusEl = $("status");
+  const btnInit = $("btnInit");
+  const btnRun = $("btnRun");
+  const btnReset = $("btnReset");
+  const out0 = $("out0"), out1 = $("out1"), outF = $("outF");
+  const promptEl = $("prompt");
+  const p0El = $("p0"), p1El = $("p1"), pFEl = $("pF");
 
-    const $ = (id) => document.getElementById(id);
+  let engine = null;
 
-    const statusEl = $("status");
-    const btnLoad = $("btnLoad");
-    const btnRun  = $("btnRun");
-    const btnFill = $("btnFill");
-    const backendPill = $("backendPill");
+  function setStatus(s) { statusEl.textContent = "Status: " + s; }
+  function clearOut() { out0.textContent = ""; out1.textContent = ""; outF.textContent = ""; }
 
-    const modelSel = $("model");
-    const taskSel = $("task");
-    const queryEl = $("query");
-    const exEl = $("examples");
-    const fewNEl = $("fewN");
-    const maxNewEl = $("maxNew");
-    const tempEl = $("temp");
-    const toppEl = $("topp");
-
-    const promptPreview = $("promptPreview");
-    const out0 = $("out0"), out1 = $("out1"), outF = $("outF");
-    const p0 = $("p0"), p1 = $("p1"), pF = $("pF");
-
-    let generator = null;
-
-    function setStatus(msg) { statusEl.textContent = "Status: " + msg; }
-    function clearOutputs() { out0.textContent = ""; out1.textContent = ""; outF.textContent = ""; }
-
-    function presets(kind) {
-      if (kind === "cls") {
-        return {
-          query: "Text: I waited 40 minutes and the food was cold.\nLabel:",
-          examples:
-`Task: Classify sentiment as one of [positive, negative].
-Return ONLY the label.
+  function presets(kind) {
+    if (kind === "cls") return {
+      query: "Text: I waited 40 minutes and the food was cold.\nLabel:",
+      examples:
+`Instruction: Classify sentiment as one of [positive, negative]. Return ONLY the label.
 
 Text: The staff was kind and the food was amazing.
 Label: positive
 
 Text: This was a complete waste of money.
-Label: negative
-`
-        };
-      }
-      if (kind === "extract") {
-        return {
-          query: "Sentence: Alex emailed ryo.suzuki@colorado.edu on Jan 6, 2026 about a demo.\nJSON:",
-          examples:
-`Task: Extract fields as JSON with keys: person, email, date, topic.
-Return ONLY JSON.
+Label: negative`
+    };
+
+    if (kind === "extract") return {
+      query: "Sentence: Alex emailed ryo.suzuki@colorado.edu on Jan 6, 2026 about a demo.\nJSON:",
+      examples:
+`Instruction: Extract as JSON keys: person, email, date, topic. Return ONLY JSON.
 
 Sentence: Maria called kenji@example.com on Feb 1, 2025 about visa documents.
 JSON: {"person":"Maria","email":"kenji@example.com","date":"Feb 1, 2025","topic":"visa documents"}
 
 Sentence: Tomomi messaged aki@example.org on Aug 19, 2025 about a fever.
-JSON: {"person":"Tomomi","email":"aki@example.org","date":"Aug 19, 2025","topic":"a fever"}
-`
-        };
-      }
-      if (kind === "translate") {
-        return {
-          query: "EN: The meeting starts at 2pm.\nJA:",
-          examples:
-`Task: Translate EN to JA.
-Return ONLY the Japanese translation.
+JSON: {"person":"Tomomi","email":"aki@example.org","date":"Aug 19, 2025","topic":"a fever"}`
+    };
+
+    if (kind === "translate") return {
+      query: "EN: Please submit the PDF by Wednesday morning.\nES:",
+      examples:
+`Instruction: Translate EN to ES (Spanish). Return ONLY Spanish.
+
+EN: The meeting starts at 2pm.
+ES: La reunión empieza a las 2 p. m.
 
 EN: I like biking when the weather is nice.
-JA: 天気がいいときは自転車に乗るのが好きです。
+ES: Me gusta andar en bicicleta cuando hace buen tiempo.`
+    };
 
-EN: Please submit the PDF by Wednesday morning.
-JA: 水曜日の朝までにPDFを提出してください。
-`
-        };
-      }
-      if (kind === "qa") {
-        return {
-          query: "Q: What is the main idea of in-context learning?\nA:",
-          examples:
-`Task: Answer questions in 1–2 sentences.
-Be direct.
+    if (kind === "qa") return {
+      query: "Q: What is in-context learning?\nA:",
+      examples:
+`Instruction: Answer in 1–2 sentences. Be direct.
 
-Q: What is a token in NLP?
-A: A token is a unit of text (often a subword) that a model processes.
+Q: What does zero-shot mean?
+A: Solving a task from instructions only, with no examples.
 
-Q: What does 'zero-shot' mean?
-A: It means solving a task using only instructions, with no examples provided.
-`
-        };
-      }
-      return {
-        query: "Write your own prompt/query here.",
-        examples:
-`(Put your instruction + example pairs here.)
-(Keep the output format consistent.)
-`
-      };
+Q: What does few-shot mean?
+A: Solving a task using a small number of input-output examples in the prompt.`
+    };
+
+    return {
+      query: "Write your own query here.",
+      examples: "Instruction: (write the task)\n\n(put example blocks here)"
+    };
+  }
+
+  function splitBlocks(raw) {
+    return raw.split(/\n\s*\n/g).map(s => s.trim()).filter(Boolean);
+  }
+
+  function buildPrompt(numShots) {
+    const raw = exEl.value.trim();
+    const blocks = splitBlocks(raw);
+    let instruction = "";
+    let exBlocks = blocks.slice();
+
+    if (blocks.length && /^instruction\s*:/i.test(blocks[0])) {
+      instruction = blocks[0];
+      exBlocks = blocks.slice(1);
     }
 
-    function parseExamples(raw) {
-      // We treat each blank-line-separated block as an example "pair block".
-      // The whole examples field already includes instruction; we just take the last N example blocks.
-      const blocks = raw
-        .split(/\n\s*\n/g)
-        .map(s => s.trim())
-        .filter(Boolean);
-      return blocks;
-    }
+    const shots = exBlocks.slice(0, numShots);
+    const parts = [];
+    if (instruction) parts.push(instruction);
+    if (shots.length) parts.push(shots.join("\n\n"));
+    parts.push(queryEl.value.trim());
+    return parts.join("\n\n");
+  }
 
-    function buildPrompts() {
-      const task = taskSel.value;
-      const fewN = Math.max(2, Math.min(8, Number(fewNEl.value || 3)));
-      const examplesRaw = exEl.value.trim();
-      const query = queryEl.value.trim();
+  function updatePromptViews() {
+    const fewN = Math.max(2, Math.min(8, Number(fewNEl.value || 3)));
+    const zeroPrompt = buildPrompt(0);
+    const onePrompt  = buildPrompt(1);
+    const fewPrompt  = buildPrompt(fewN);
 
-      const blocks = parseExamples(examplesRaw);
+    p0El.textContent = zeroPrompt;
+    p1El.textContent = onePrompt;
+    pFEl.textContent = fewPrompt;
 
-      // Heuristic: If user included a leading "Task:" or instruction lines, keep everything,
-      // but for shot control we only vary how many example blocks we keep at the end.
-      // We assume the first block might be instructions; keep it always if it starts with "Task:".
-      let instruction = "";
-      let exampleBlocks = blocks.slice();
+    // Keep a "main preview" as few-shot prompt
+    promptEl.textContent = fewPrompt;
 
-      if (blocks.length && /^task\s*:/i.test(blocks[0])) {
-        instruction = blocks[0];
-        exampleBlocks = blocks.slice(1);
-      }
+    return { zeroPrompt, onePrompt, fewPrompt };
+  }
 
-      const one = exampleBlocks.slice(0, 1);
-      const few = exampleBlocks.slice(0, fewN);
+  async function init() {
+    btnInit.disabled = true;
+    btnRun.disabled = true;
+    clearOut();
+    setStatus("Initializing engine…");
 
-      const join = (inst, exs, q) => {
-        const parts = [];
-        if (inst) parts.push(inst);
-        if (exs.length) parts.push(exs.join("\n\n"));
-        parts.push(q);
-        return parts.join("\n\n") + "\n";
-      };
-
-      const promptZero = join(instruction, [], query);
-      const promptOne  = join(instruction, one, query);
-      const promptFew  = join(instruction, few, query);
-
-      // Preview (few-shot prompt as default preview)
-      promptPreview.textContent = promptFew;
-
-      p0.textContent = promptZero;
-      p1.textContent = promptOne;
-      pF.textContent = promptFew;
-
-      return { promptZero, promptOne, promptFew };
-    }
-
-    async function generateText(prompt) {
-      const maxNew = Math.max(8, Math.min(200, Number(maxNewEl.value || 48)));
-      const temperature = Number(tempEl.value || 0.7);
-      const top_p = Number(toppEl.value || 0.9);
-
-      const res = await generator(prompt, {
-        max_new_tokens: maxNew,
-        do_sample: true,
-        temperature,
-        top_p,
-        // Keep it “completion-like”: return full text; we’ll extract only the newly generated tail below.
-        return_full_text: true,
+    try {
+      const modelId = modelSel.value;
+      engine = new webllm.MLCEngine();
+      await engine.reload(modelId, {
+        initProgressCallback: (report) => {
+          const pct = report.progress != null ? Math.round(report.progress * 100) : null;
+          setStatus(report.text + (pct != null ? ` (${pct}%)` : ""));
+        },
       });
-
-      const full = res?.[0]?.generated_text ?? "";
-      // Show only the continuation past the prompt, if possible.
-      if (full.startsWith(prompt)) return full.slice(prompt.length).trim();
-      return full.trim();
+      setStatus("Ready ✅");
+      btnRun.disabled = false;
+    } catch (e) {
+      console.error(e);
+      setStatus("Init failed: " + (e?.message || e));
+      engine = null;
+    } finally {
+      btnInit.disabled = false;
     }
+  }
 
-    function lockUI(locked) {
-      btnLoad.disabled = locked;
-      btnRun.disabled = locked || !generator;
-      modelSel.disabled = locked;
-      taskSel.disabled = locked;
-      queryEl.disabled = locked;
-      exEl.disabled = locked;
-      fewNEl.disabled = locked;
-      maxNewEl.disabled = locked;
-      tempEl.disabled = locked;
-      toppEl.disabled = locked;
-      btnFill.disabled = locked;
-    }
+  async function complete(prompt) {
+    const max_tokens = Math.max(32, Math.min(512, Number(maxTokEl.value || 128)));
+    const temperature = Number(tempEl.value || 0.3);
+    const top_p = Number(toppEl.value || 0.9);
 
-    async function loadModel() {
-      lockUI(true);
-      clearOutputs();
-      setStatus("loading model… (first time can take a while)");
-
-      try {
-        // Use text-generation pipeline
-        const modelId = modelSel.value;
-
-        // device: "webgpu" often fastest if available; otherwise it falls back.
-        generator = await pipeline("text-generation", modelId, { device: "webgpu" });
-
-        backendPill.textContent = "backend: transformers.js + on-device";
-        setStatus("loaded ✅  (try Run compare)");
-        btnRun.disabled = false;
-      } catch (e) {
-        console.error(e);
-        setStatus("failed to load. Try Chrome/Edge (WebGPU), or refresh. Error: " + (e?.message || e));
-        generator = null;
-      } finally {
-        lockUI(false);
-        btnRun.disabled = !generator;
-      }
-    }
-
-    async function runCompare() {
-      if (!generator) return;
-      lockUI(true);
-      clearOutputs();
-
-      const { promptZero, promptOne, promptFew } = buildPrompts();
-
-      try {
-        setStatus("running zero-shot…");
-        out0.textContent = await generateText(promptZero);
-
-        setStatus("running one-shot…");
-        out1.textContent = await generateText(promptOne);
-
-        setStatus("running few-shot…");
-        outF.textContent = await generateText(promptFew);
-
-        setStatus("done ✅  (edit examples and re-run)");
-      } catch (e) {
-        console.error(e);
-        setStatus("generation error: " + (e?.message || e));
-      } finally {
-        lockUI(false);
-        btnRun.disabled = !generator;
-      }
-    }
-
-    function resetPreset() {
-      const p = presets(taskSel.value);
-      queryEl.value = p.query;
-      exEl.value = p.examples;
-      buildPrompts();
-      clearOutputs();
-      setStatus(generator ? "loaded ✅  (ready)" : "not loaded");
-    }
-
-    // Live update prompt preview
-    ["input", "change"].forEach(evt => {
-      [taskSel, queryEl, exEl, fewNEl].forEach(el => el.addEventListener(evt, buildPrompts));
+    const res = await engine.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      max_tokens,
+      temperature,
+      top_p,
     });
 
-    btnLoad.addEventListener("click", loadModel);
-    btnRun.addEventListener("click", runCompare);
-    btnFill.addEventListener("click", resetPreset);
-    taskSel.addEventListener("change", resetPreset);
+    return res.choices?.[0]?.message?.content?.trim?.() ?? "";
+  }
 
-    // Init
-    resetPreset();
-    backendPill.textContent = "backend: (not loaded)";
-  </script>
+  async function runCompare() {
+    if (!engine) return;
+    btnRun.disabled = true;
+    btnInit.disabled = true;
+    clearOut();
+
+    const { zeroPrompt, onePrompt, fewPrompt } = updatePromptViews();
+
+    try {
+      setStatus("Running zero-shot…");
+      out0.textContent = await complete(zeroPrompt);
+
+      setStatus("Running one-shot…");
+      out1.textContent = await complete(onePrompt);
+
+      setStatus("Running few-shot…");
+      outF.textContent = await complete(fewPrompt);
+
+      setStatus("Done ✅ (edit examples and rerun)");
+    } catch (e) {
+      console.error(e);
+      setStatus("Run failed: " + (e?.message || e));
+    } finally {
+      btnRun.disabled = !engine;
+      btnInit.disabled = false;
+    }
+  }
+
+  function resetPreset() {
+    const p = presets(taskSel.value);
+    queryEl.value = p.query;
+    exEl.value = p.examples;
+    updatePromptViews();
+    clearOut();
+    setStatus(engine ? "Ready ✅" : "Not initialized");
+  }
+
+  taskSel.addEventListener("change", resetPreset);
+  modelSel.addEventListener("change", () => {
+    engine = null;
+    btnRun.disabled = true;
+    setStatus("Model changed (click Init / Load model)");
+  });
+
+  ["input", "change"].forEach(evt => {
+    [queryEl, exEl, fewNEl].forEach(el => el.addEventListener(evt, updatePromptViews));
+  });
+
+  btnInit.addEventListener("click", init);
+  btnRun.addEventListener("click", runCompare);
+  btnReset.addEventListener("click", resetPreset);
+
+  resetPreset();
+</script>
 </body>
 </html>
