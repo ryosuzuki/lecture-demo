@@ -2,602 +2,879 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tokenizer Demo: Step-by-step BPE Learning (Single-file)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tiny Tokenizer Trainer (Toy BPE) — single-file demo</title>
   <style>
-    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", sans-serif; }
-    body { margin: 18px; line-height: 1.35; }
-    h1 { font-size: 18px; margin: 0 0 12px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
-    .card h2 { font-size: 14px; margin: 0 0 8px; }
-    textarea { width: 100%; height: 170px; resize: vertical; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 12px; }
-    button, select, input[type="file"] {
-      padding: 8px 10px; border: 1px solid #ddd; border-radius: 12px; background: #fff;
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.5;
     }
-    button { cursor: pointer; }
-    button:hover { background: #f7f7f7; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .small { font-size: 12px; color: #444; }
-    .muted { color: #666; }
-    .mono { font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .pill { padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; }
-    .outbox { border: 1px solid #ddd; border-radius: 12px; padding: 10px; white-space: pre-wrap; }
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .list { border: 1px solid #eee; border-radius: 12px; overflow: hidden; }
-    .rowItem {
-      display: grid; grid-template-columns: 1fr 70px;
-      gap: 10px; padding: 10px; border-top: 1px solid #f1f1f1;
-      font-variant-numeric: tabular-nums;
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    h2 { font-size: 16px; margin: 18px 0 8px; }
+    .muted { font-size: 12px; opacity: 0.75; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 16px;
+      align-items: start;
     }
-    .rowItem:first-child { border-top: none; }
-    .barWrap { height: 10px; background: #eee; border-radius: 999px; overflow: hidden; }
-    .bar { height: 100%; background: #bbb; width: 0%; }
-    .tokenSpan {
-      display: inline-block; padding: 2px 6px; margin: 2px 4px 2px 0;
-      border: 1px solid #e6e6e6; border-radius: 10px; background: #fafafa;
-      font: 12px ui-monospace;
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      border: 1px solid rgba(128,128,128,0.35);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(128,128,128,0.06);
     }
-    .tokenSpan.hl { background: #fff2a8; border-color: #f0d36b; }
-    .tokenSpan.merge { background: #c7f5c7; border-color: #7ad37a; }
-    .sectionTitle { font-size: 12px; color: #666; margin: 8px 0 6px; }
-    .footer { margin-top: 10px; font-size: 12px; color: #666; }
-    .kbd { font: 12px ui-monospace; border: 1px solid #ddd; border-bottom-width: 2px; padding: 1px 6px; border-radius: 8px; background: #fafafa; }
+    textarea, input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(128,128,128,0.4);
+      background: transparent;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono", monospace;
+      font-size: 13px;
+    }
+    textarea { min-height: 170px; }
+
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    label { font-size: 13px; opacity: 0.9; }
+    select, input[type="number"], input[type="file"] {
+      padding: 6px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(128,128,128,0.4);
+      background: transparent;
+    }
+    button {
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(128,128,128,0.45);
+      background: rgba(128,128,128,0.12);
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.05); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(128,128,128,0.35);
+      background: rgba(128,128,128,0.10);
+      font-size: 12px;
+    }
+
+    details summary { cursor: pointer; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      border-bottom: 1px solid rgba(128,128,128,0.25);
+      padding: 6px 4px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { opacity: 0.85; font-weight: 600; }
+
+    .chipRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .chip {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(128,128,128,0.35);
+      background: rgba(128,128,128,0.10);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono", monospace;
+      font-size: 12px;
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .chip.strong {
+      border-color: rgba(128,128,128,0.55);
+      background: rgba(128,128,128,0.18);
+    }
+    code.k {
+      padding: 2px 6px;
+      border-radius: 8px;
+      background: rgba(128,128,128,0.12);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono", monospace;
+      font-size: 12px;
+    }
+
+    .bar {
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(128,128,128,0.35);
+      overflow: hidden;
+      background: rgba(128,128,128,0.08);
+      position: relative;
+    }
+    .bar > div {
+      height: 100%;
+      width: 0%;
+      background: rgba(100,160,255,0.45);
+    }
+    .small { font-size: 12px; }
   </style>
 </head>
-<body>
-  <h1>Tokenizer Demo: Step-by-step BPE Learning (single-file index.html)</h1>
 
-  <div class="row">
-    <!-- LEFT: Training + Steps -->
+<body>
+  <h1>Tiny Tokenizer Trainer (Toy BPE) — step-by-step tokenizer learning</h1>
+  <div class="muted">
+    This demo shows how a tokenizer can “learn” larger tokens by repeatedly merging the most frequent adjacent token pair.
+    We use <strong>▁</strong> as a whitespace marker (similar to SentencePiece-style tokenizers).
+  </div>
+
+  <div class="grid" style="margin-top: 12px;">
     <div class="card">
       <h2>1) Training corpus</h2>
-      <textarea id="corpus"></textarea>
 
-      <div class="controls" style="margin-top:10px;">
-        <button id="initBtn">Initialize</button>
-        <button id="stepBtn" disabled>1 step (merge best pair)</button>
-        <button id="autoBtn" disabled>Auto-run</button>
+      <div class="row" style="margin-bottom: 8px;">
+        <label for="fileInput">Load .txt:</label>
+        <input id="fileInput" type="file" accept=".txt,text/plain" />
+
+        <button id="initBtn" title="Reset to character-level tokens">Initialize / Reset</button>
+        <button id="undoBtn" disabled>Undo 1 merge</button>
+
+        <button id="stepBtn" disabled title="Merge the most frequent pair once">Step (best merge)</button>
+
+        <label>Run:</label>
+        <input id="runN" type="number" min="1" max="500" value="10" style="width: 90px;" />
+        <button id="runBtn" disabled>Run N merges</button>
         <button id="stopBtn" disabled>Stop</button>
-        <button id="resetBtn">Reset sample</button>
-        <span class="pill" id="status">Not initialized</span>
       </div>
 
-      <div class="controls" style="margin-top:10px;">
-        <span class="small muted">Max steps:</span>
-        <select id="maxSteps">
-          <option value="10">10</option>
-          <option value="25" selected>25</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-          <option value="1000">1000</option>
-        </select>
+      <textarea id="corpusText"></textarea>
 
-        <span class="small muted">Min pair count:</span>
-        <select id="minCount">
-          <option value="2" selected>2</option>
-          <option value="3">3</option>
-          <option value="5">5</option>
-          <option value="10">10</option>
-        </select>
-
-        <span class="small muted">Tokenize by:</span>
-        <select id="mode">
-          <option value="word" selected>word (typical BPE tutorial)</option>
-          <option value="char">raw characters (educational)</option>
-        </select>
+      <div class="row" style="margin-top: 10px;">
+        <label><input id="lowercase" type="checkbox" checked /> Lowercase</label>
+        <label><input id="collapseWs" type="checkbox" checked /> Collapse whitespace</label>
+        <label><input id="showSpaceAsVisible" type="checkbox" checked /> Display ▁ as ␠</label>
       </div>
 
-      <div class="card" style="border:1px solid #eee; margin-top:10px;">
-        <h2 style="margin-bottom:6px;">Load a .txt file (optional)</h2>
-        <div class="controls">
-          <input id="fileInput" type="file" accept=".txt,text/plain" />
-          <button id="replaceFileBtn" disabled>Replace corpus</button>
+      <div class="stats">
+        <div>State: <span class="pill" id="statePill">Not initialized</span></div>
+        <div>Merges applied: <span class="pill" id="mergesPill">0</span></div>
+        <div>Vocabulary size: <span class="pill" id="vocabPill">-</span></div>
+        <div>Total symbols (corpus): <span class="pill" id="symbolsPill">-</span></div>
+      </div>
+
+      <details style="margin-top: 12px;" open>
+        <summary><strong>What happens at each step?</strong></summary>
+        <div class="muted" style="margin-top: 8px;">
+          <ol style="margin: 6px 0 0 18px;">
+            <li>Start with character-level tokens (plus a whitespace marker).</li>
+            <li>Count all adjacent token pairs in the corpus.</li>
+            <li>Pick the most frequent pair.</li>
+            <li>Merge it into a new token and repeat.</li>
+          </ol>
+          This is a simplified BPE trainer. Real LLM tokenizers may operate at the byte level, include special tokens, and use different pre/post-processing.
         </div>
-        <div class="small muted" style="margin-top:6px;">
-          For huge text, the UI may slow down. Keep it small for step-by-step demos.
-        </div>
-      </div>
+      </details>
 
-      <div class="sectionTitle">What happened in the last step?</div>
-      <div class="outbox mono" id="explainBox">Initialize to start.</div>
+      <details style="margin-top: 12px;">
+        <summary>Merge history</summary>
+        <div id="mergeHistory" class="muted" style="margin-top: 8px;">(none yet)</div>
+      </details>
 
-      <div class="sectionTitle">Top pair counts (current)</div>
-      <div class="list" id="pairsList"></div>
-
-      <div class="footer">
-        This demo implements a simple BPE-style merge loop:
-        start from characters (plus end-of-word marker) → repeatedly merge the most frequent adjacent pair.
-        Real production tokenizers add many details, but this captures the core concept.
-      </div>
+      <details style="margin-top: 12px;">
+        <summary>Vocabulary (first 200 tokens)</summary>
+        <div id="vocabView" class="muted" style="margin-top: 8px;">(initialize first)</div>
+      </details>
     </div>
 
-    <!-- RIGHT: Tokenization visualization -->
     <div class="card">
-      <h2>2) Tokenization (visualize tokens)</h2>
+      <h2>2) Next merge candidates (pair frequencies)</h2>
 
-      <div class="controls">
-        <span class="small muted">Text to tokenize:</span>
+      <div class="muted">
+        The “best merge” is the most frequent adjacent pair in the current tokenization of the corpus.
+        You can also click <em>Merge</em> for any pair to explore alternatives.
       </div>
-      <input id="query" type="text" placeholder="Type text here (e.g., 'teaching tokenization is fun')" />
 
-      <div class="controls" style="margin-top:10px;">
+      <div style="margin-top: 10px;">
+        <div class="row">
+          <div>Next best pair: <span class="pill" id="bestPairPill">-</span></div>
+          <div>Count: <span class="pill" id="bestCountPill">-</span></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <div class="muted">Top pairs (current):</div>
+        <div id="pairsTableWrap" style="margin-top: 6px;"></div>
+      </div>
+
+      <h2 style="margin-top: 18px;">3) Tokenize new text with the learned merges</h2>
+      <div class="muted">
+        Type a sentence and see how the current merge rules segment it into tokens.
+        (Whitespace becomes <code class="k">▁</code> internally.)
+      </div>
+
+      <div style="margin-top: 10px;">
+        <input id="inputText" type="text" value="I like language models." />
+      </div>
+
+      <div class="row" style="margin-top: 10px;">
         <button id="tokenizeBtn" disabled>Tokenize</button>
-        <span class="pill" id="vocabPill">vocab=—</span>
-        <span class="pill" id="mergePill">merges=—</span>
+        <label><input id="autoTokenize" type="checkbox" checked /> Auto-update after each merge</label>
       </div>
 
-      <div class="sectionTitle">Tokens (current tokenizer)</div>
-      <div class="outbox" id="tokensBox">—</div>
-
-      <div class="grid2" style="margin-top:10px;">
-        <div>
-          <div class="sectionTitle">Current merge rules (latest first)</div>
-          <div class="outbox mono" id="mergesBox" style="max-height:220px; overflow:auto;">—</div>
-        </div>
-        <div>
-          <div class="sectionTitle">Vocabulary snapshot (sample)</div>
-          <div class="outbox mono" id="vocabBox" style="max-height:220px; overflow:auto;">—</div>
-        </div>
+      <div style="margin-top: 10px;">
+        <div class="muted">Tokens:</div>
+        <div id="tokenOutput" class="chipRow" style="margin-top: 6px;"></div>
+        <div class="muted" id="tokenStats" style="margin-top: 8px;"></div>
       </div>
 
-      <div class="footer">
-        Tip for teaching:
-        start with a tiny corpus so students can see merges like <span class="kbd">t + h → th</span>,
-        then show how longer tokens emerge (e.g., <span class="kbd">teach + ing → teaching</span>).
-      </div>
+      <details style="margin-top: 12px;">
+        <summary>Show step-by-step encoding for this input</summary>
+        <div id="encodeSteps" class="muted" style="margin-top: 8px;"></div>
+      </details>
     </div>
   </div>
 
-  <script>
-    const $ = (id) => document.getElementById(id);
+  <div class="card" style="margin-top: 16px;">
+    <h2>4) Corpus visualization (current tokenization)</h2>
+    <div class="row">
+      <label>Show first:</label>
+      <input id="showLines" type="number" min="1" max="200" value="10" style="width: 90px;" />
+      <span class="muted">lines</span>
+      <button id="refreshCorpusBtn" disabled>Refresh view</button>
+    </div>
 
-    const corpusEl = $("corpus");
-    const initBtn = $("initBtn");
-    const stepBtn = $("stepBtn");
-    const autoBtn = $("autoBtn");
-    const stopBtn = $("stopBtn");
-    const resetBtn = $("resetBtn");
-    const statusEl = $("status");
+    <div class="muted" style="margin-top: 8px;">
+      Each line is displayed as a sequence of tokens. As you merge pairs, tokens become longer (e.g., <code class="k">▁l</code> + <code class="k">ike</code> → <code class="k">▁like</code>).
+    </div>
 
-    const maxStepsEl = $("maxSteps");
-    const minCountEl = $("minCount");
-    const modeEl = $("mode");
+    <div id="corpusView" style="margin-top: 12px;"></div>
+  </div>
 
-    const explainBox = $("explainBox");
-    const pairsList = $("pairsList");
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
 
-    const queryEl = $("query");
-    const tokenizeBtn = $("tokenizeBtn");
-    const tokensBox = $("tokensBox");
-    const mergesBox = $("mergesBox");
-    const vocabBox = $("vocabBox");
-    const vocabPill = $("vocabPill");
-    const mergePill = $("mergePill");
+  // UI elements
+  const corpusText = $("corpusText");
+  const fileInput = $("fileInput");
+  const initBtn = $("initBtn");
+  const undoBtn = $("undoBtn");
+  const stepBtn = $("stepBtn");
+  const runBtn = $("runBtn");
+  const stopBtn = $("stopBtn");
+  const runN = $("runN");
+  const lowercase = $("lowercase");
+  const collapseWs = $("collapseWs");
+  const showSpaceAsVisible = $("showSpaceAsVisible");
 
-    const fileInput = $("fileInput");
-    const replaceFileBtn = $("replaceFileBtn");
+  const statePill = $("statePill");
+  const mergesPill = $("mergesPill");
+  const vocabPill = $("vocabPill");
+  const symbolsPill = $("symbolsPill");
 
-    let state = null;
-    let timer = null;
+  const bestPairPill = $("bestPairPill");
+  const bestCountPill = $("bestCountPill");
+  const pairsTableWrap = $("pairsTableWrap");
 
-    function defaultCorpus() {
-      return [
-        "teaching tokenization is fun",
-        "tokenization helps language models",
-        "tokens can be words or subwords",
-        "subword tokenizers balance vocabulary and flexibility",
-        "we learn merges from data",
-        "we merge frequent pairs"
-      ].join("\n");
-    }
+  const mergeHistory = $("mergeHistory");
+  const vocabView = $("vocabView");
 
-    function normalizeText(s) {
-      return s.replace(/\r\n/g, "\n").replace(/[“”]/g, '"').replace(/[’]/g, "'").trim();
-    }
+  const inputText = $("inputText");
+  const tokenizeBtn = $("tokenizeBtn");
+  const autoTokenize = $("autoTokenize");
+  const tokenOutput = $("tokenOutput");
+  const tokenStats = $("tokenStats");
+  const encodeSteps = $("encodeSteps");
 
-    function splitWords(line) {
-      return line.trim().split(/\s+/g).filter(Boolean);
-    }
+  const showLines = $("showLines");
+  const refreshCorpusBtn = $("refreshCorpusBtn");
+  const corpusView = $("corpusView");
 
-    function toInitialWordSymbols(word) {
-      // Classic BPE tutorials often use end-of-word marker to avoid merging across word boundaries
-      // e.g., "low" -> ["l","o","w","</w>"]
-      const chars = Array.from(word);
-      return [...chars, "</w>"];
-    }
+  // Sample corpus (auto-loaded on page open)
+  const DEFAULT_SAMPLE =
+`I like machine learning.
+I like natural language processing.
+I like generative AI.
+We build simple language models.
+Language models predict the next word.
+Students like interactive demos.
+This demo is a tiny n-gram model.
+Generative models can sample tokens.
+Probability distributions can be visualized.
+I like teaching in class.`;
 
-    function buildTrainingWords(corpusText, mode) {
-      const lines = normalizeText(corpusText).split("\n").map(x => x.trim()).filter(Boolean);
-      const wordFreq = new Map();
+  // Internal representation:
+  // - We replace spaces with "▁" and also add a leading "▁" at start of each line.
+  const SPACE_MARK = "▁";
+  const SEP = "\u0001"; // pair key separator (unlikely to appear)
 
-      for (const line of lines) {
-        if (mode === "char") {
-          // treat entire line as one "word" of characters (including spaces removed)
-          const w = line.replace(/\s+/g, " ");
-          wordFreq.set(w, (wordFreq.get(w) || 0) + 1);
-        } else {
-          const words = splitWords(line.toLowerCase());
-          for (const w of words) wordFreq.set(w, (wordFreq.get(w) || 0) + 1);
-        }
-      }
+  let initialized = false;
+  let isRunning = false;
 
-      // words: [{symbols: [...], freq}]
-      const words = [];
-      for (const [w, f] of wordFreq.entries()) {
-        const symbols = (mode === "char")
-          ? [...Array.from(w), "</w>"]
-          : toInitialWordSymbols(w);
-        words.push({ w, symbols, freq: f });
-      }
+  // Data
+  let originalLines = [];     // preprocessed string lines (with SPACE_MARK, but still plain string)
+  let baseSequences = [];     // initial sequences as arrays of symbols (characters)
+  let sequences = [];         // current sequences after merges (arrays of symbols)
+  let merges = [];            // [{a,b,merged,countAtMerge}]
+  let vocabSet = new Set();   // symbols currently in vocab (for display)
+  let lastPairCounts = new Map(); // cache for UI
 
-      return words;
-    }
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 
-    function pairKey(a, b) { return a + "\t" + b; }
+  function displayToken(tok) {
+    // display whitespace marker as visible "␠" if checkbox is on
+    const visibleSpace = "␠";
+    if (!showSpaceAsVisible.checked) return tok;
+    return tok.split(SPACE_MARK).join(visibleSpace);
+  }
 
-    function countPairs(words) {
-      const counts = new Map();
-      for (const item of words) {
-        const syms = item.symbols;
-        for (let i = 0; i < syms.length - 1; i++) {
-          const k = pairKey(syms[i], syms[i + 1]);
-          counts.set(k, (counts.get(k) || 0) + item.freq);
-        }
-      }
-      return counts;
-    }
+  function preprocessCorpus(raw) {
+    let text = raw.replace(/\r\n?/g, "\n");
+    if (lowercase.checked) text = text.toLowerCase();
 
-    function topPairs(counts, limit = 12) {
-      const arr = Array.from(counts.entries()).map(([k, c]) => ({ k, c }));
-      arr.sort((a, b) => b.c - a.c);
-      return arr.slice(0, limit);
-    }
-
-    function mergePairInSymbols(symbols, a, b, merged) {
-      // Replace occurrences of [a,b] with [merged] in a single word symbol array
-      const out = [];
-      for (let i = 0; i < symbols.length; i++) {
-        if (i < symbols.length - 1 && symbols[i] === a && symbols[i + 1] === b) {
-          out.push(merged);
-          i++;
-        } else {
-          out.push(symbols[i]);
-        }
-      }
-      return out;
-    }
-
-    function stepOnce() {
-      if (!state) return;
-
-      const minCount = Number(minCountEl.value);
-      const counts = countPairs(state.words);
-      const top = topPairs(counts, 1)[0];
-
-      if (!top || top.c < minCount) {
-        explainBox.textContent = `Stopped: no adjacent pair has count ≥ ${minCount}.`;
-        stopAuto();
-        render();
-        return;
-      }
-
-      const [a, b] = top.k.split("\t");
-      const merged = a + b; // classic BPE creates a new symbol by concatenation
-
-      // apply merge to all words
-      let changedWords = 0;
-      const newWords = state.words.map(item => {
-        const before = item.symbols;
-        const after = mergePairInSymbols(before, a, b, merged);
-        if (after.length !== before.length) changedWords++;
-        return { ...item, symbols: after };
+    const lines = text.split("\n")
+      .map(l => l.trim())
+      .filter(l => l.length > 0)
+      .map(l => {
+        let x = l;
+        if (collapseWs.checked) x = x.replace(/\s+/g, " ");
+        // Add leading space marker (common in SP-like tokenizers)
+        x = SPACE_MARK + x;
+        // Replace spaces with SPACE_MARK
+        x = x.replaceAll(" ", SPACE_MARK);
+        return x;
       });
 
-      state.words = newWords;
-      state.merges.unshift({ a, b, merged, count: top.c });
-      state.steps++;
+    return lines;
+  }
 
-      explainBox.innerHTML =
-        `Step <b>${state.steps}</b>: merged the most frequent pair <span class="kbd">${escapeHtml(a)} + ${escapeHtml(b)}</span> → <span class="kbd">${escapeHtml(merged)}</span> (count=${top.c}).<br/>` +
-        `This creates a new token candidate and reduces the number of symbols in words where it appears (changed words: ${changedWords}).`;
+  function init() {
+    initialized = false;
+    isRunning = false;
+    stopBtn.disabled = true;
 
-      render();
+    originalLines = preprocessCorpus(corpusText.value);
+    baseSequences = originalLines.map(line => Array.from(line));
+    sequences = baseSequences.map(seq => seq.slice()); // deep-ish copy
+    merges = [];
+    vocabSet = new Set();
+    for (const seq of sequences) for (const s of seq) vocabSet.add(s);
 
-      const maxSteps = Number(maxStepsEl.value);
-      if (state.steps >= maxSteps) {
-        explainBox.innerHTML += `<br/><b>Reached max steps (${maxSteps}).</b>`;
-        stopAuto();
+    initialized = originalLines.length > 0;
+    statePill.textContent = initialized ? "Initialized (char-level)" : "Not enough data";
+    mergesPill.textContent = "0";
+    vocabPill.textContent = initialized ? String(vocabSet.size) : "-";
+    symbolsPill.textContent = initialized ? String(totalSymbolCount(sequences)) : "-";
+
+    undoBtn.disabled = !(initialized && merges.length > 0);
+    stepBtn.disabled = !initialized;
+    runBtn.disabled = !initialized;
+    tokenizeBtn.disabled = !initialized;
+    refreshCorpusBtn.disabled = !initialized;
+
+    updateAllViews();
+
+    if (initialized && autoTokenize.checked) tokenizeInput();
+  }
+
+  function totalSymbolCount(seqList) {
+    let n = 0;
+    for (const seq of seqList) n += seq.length;
+    return n;
+  }
+
+  function pairKey(a, b) { return a + SEP + b; }
+
+  function computePairCounts() {
+    const counts = new Map();
+    for (const seq of sequences) {
+      for (let i = 0; i < seq.length - 1; i++) {
+        const k = pairKey(seq[i], seq[i+1]);
+        counts.set(k, (counts.get(k) || 0) + 1);
       }
     }
+    lastPairCounts = counts;
+    return counts;
+  }
 
-    function escapeHtml(s) {
-      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  function topPairs(counts, k=25) {
+    const arr = [];
+    for (const [key, c] of counts.entries()) {
+      const [a, b] = key.split(SEP);
+      arr.push({ a, b, c });
     }
+    arr.sort((x, y) => y.c - x.c || (x.a + SEP + x.b).localeCompare(y.a + SEP + y.b));
+    return arr.slice(0, k);
+  }
 
-    function renderPairs() {
-      pairsList.innerHTML = "";
-      if (!state) {
-        pairsList.innerHTML = `<div class="rowItem mono">—</div>`;
-        return;
-      }
-
-      const counts = countPairs(state.words);
-      const top = topPairs(counts, 12);
-      if (top.length === 0) {
-        pairsList.innerHTML = `<div class="rowItem mono">No pairs.</div>`;
-        return;
-      }
-
-      const maxC = top[0].c || 1;
-
-      for (const item of top) {
-        const [a, b] = item.k.split("\t");
-        const row = document.createElement("div");
-        row.className = "rowItem mono";
-
-        const left = document.createElement("div");
-        left.innerHTML =
-          `<div><b>${escapeHtml(a)}</b> + <b>${escapeHtml(b)}</b></div>` +
-          `<div class="barWrap" style="margin-top:6px;"><div class="bar" style="width:${Math.max(1, Math.round((item.c / maxC) * 100))}%"></div></div>`;
-
-        const right = document.createElement("div");
-        right.style.textAlign = "right";
-        right.textContent = item.c;
-
-        row.appendChild(left);
-        row.appendChild(right);
-        pairsList.appendChild(row);
+  function bestPair(counts) {
+    let best = null;
+    for (const [key, c] of counts.entries()) {
+      if (!best || c > best.c || (c === best.c && key.localeCompare(best.key) < 0)) {
+        const [a, b] = key.split(SEP);
+        best = { key, a, b, c };
       }
     }
+    return best;
+  }
 
-    function getVocabularySnapshot(limit = 80) {
-      // Build a set of symbols currently present
-      const set = new Set();
-      for (const item of state.words) for (const s of item.symbols) set.add(s);
-      const arr = Array.from(set.values());
-      arr.sort((a, b) => a.length - b.length || a.localeCompare(b));
-      return arr.slice(0, limit);
-    }
-
-    function renderMerges() {
-      if (!state) {
-        mergesBox.textContent = "—";
-        return;
+  function mergeAllInSequence(seq, a, b, merged) {
+    const out = [];
+    for (let i = 0; i < seq.length; i++) {
+      if (i < seq.length - 1 && seq[i] === a && seq[i+1] === b) {
+        out.push(merged);
+        i++; // skip next
+      } else {
+        out.push(seq[i]);
       }
-      const lines = state.merges.slice(0, 40).map((m, i) =>
-        `${String(i + 1).padStart(2, " ")}. ${m.a} + ${m.b} -> ${m.merged}   (count=${m.count})`
-      );
-      mergesBox.textContent = lines.length ? lines.join("\n") : "(no merges yet)";
+    }
+    return out;
+  }
+
+  function applyMerge(a, b, countAtMerge) {
+    const merged = a + b;
+    // Update sequences by merging all occurrences
+    sequences = sequences.map(seq => mergeAllInSequence(seq, a, b, merged));
+    merges.push({ a, b, merged, countAtMerge });
+
+    // update vocab set
+    vocabSet.add(merged);
+
+    mergesPill.textContent = String(merges.length);
+    vocabPill.textContent = String(vocabSet.size);
+    symbolsPill.textContent = String(totalSymbolCount(sequences));
+
+    undoBtn.disabled = !(initialized && merges.length > 0);
+    updateAllViews();
+
+    if (initialized && autoTokenize.checked) tokenizeInput();
+  }
+
+  function doBestStep() {
+    if (!initialized) return false;
+    const counts = computePairCounts();
+    const best = bestPair(counts);
+    if (!best || best.c <= 0) return false;
+    applyMerge(best.a, best.b, best.c);
+    return true;
+  }
+
+  function rebuildFromBase() {
+    // Re-apply merges from scratch (used for undo)
+    sequences = baseSequences.map(seq => seq.slice());
+    vocabSet = new Set();
+    for (const seq of sequences) for (const s of seq) vocabSet.add(s);
+
+    for (const m of merges) {
+      sequences = sequences.map(seq => mergeAllInSequence(seq, m.a, m.b, m.merged));
+      vocabSet.add(m.merged);
     }
 
-    function renderVocab() {
-      if (!state) {
-        vocabBox.textContent = "—";
-        return;
-      }
-      const v = getVocabularySnapshot(120);
-      vocabBox.textContent = v.join("\n");
+    mergesPill.textContent = String(merges.length);
+    vocabPill.textContent = String(vocabSet.size);
+    symbolsPill.textContent = String(totalSymbolCount(sequences));
+  }
+
+  function undoOne() {
+    if (!initialized || merges.length === 0) return;
+    merges.pop();
+    rebuildFromBase();
+    undoBtn.disabled = !(initialized && merges.length > 0);
+    updateAllViews();
+    if (autoTokenize.checked) tokenizeInput();
+  }
+
+  async function runSteps(n) {
+    if (!initialized) return;
+    isRunning = true;
+    stopBtn.disabled = false;
+    runBtn.disabled = true;
+    stepBtn.disabled = true;
+    initBtn.disabled = true;
+    undoBtn.disabled = true;
+
+    const max = Math.max(1, Math.min(500, Number.parseInt(n, 10) || 10));
+    for (let i = 0; i < max; i++) {
+      if (!isRunning) break;
+      const ok = doBestStep();
+      if (!ok) break;
+      // Yield to keep UI responsive
+      await new Promise(r => requestAnimationFrame(r));
     }
 
-    function tokenizeWithCurrentMerges(text) {
-      // Apply merges greedily by repeatedly merging the best-ranked pair according to learned merge order.
-      // For teaching: we use merge order = state.merges (latest first) but for tokenization, typical BPE uses learned order (earlier merges higher priority).
-      // We'll use "earliest merge wins" by reversing to learned order.
-      if (!state) return [];
+    isRunning = false;
+    stopBtn.disabled = true;
+    runBtn.disabled = !initialized;
+    stepBtn.disabled = !initialized;
+    initBtn.disabled = false;
+    undoBtn.disabled = !(initialized && merges.length > 0);
+  }
 
-      const mode = modeEl.value;
-      const words = (mode === "char")
-        ? [text]
-        : text.toLowerCase().split(/\s+/g).filter(Boolean);
+  function stopRunning() {
+    isRunning = false;
+  }
 
-      const mergeOrder = [...state.merges].reverse(); // earliest first
-      const mergeRank = new Map();
-      for (let i = 0; i < mergeOrder.length; i++) mergeRank.set(pairKey(mergeOrder[i].a, mergeOrder[i].b), i);
+  function updateAllViews() {
+    if (!initialized) {
+      bestPairPill.textContent = "-";
+      bestCountPill.textContent = "-";
+      pairsTableWrap.innerHTML = "<div class='muted'>(initialize first)</div>";
+      corpusView.innerHTML = "<div class='muted'>(initialize first)</div>";
+      mergeHistory.innerHTML = "(none yet)";
+      vocabView.innerHTML = "(initialize first)";
+      return;
+    }
 
-      const results = [];
+    // Pair counts + best
+    const counts = computePairCounts();
+    const best = bestPair(counts);
 
-      for (const w of words) {
-        let symbols = (mode === "char")
-          ? [...Array.from(w), "</w>"]
-          : toInitialWordSymbols(w);
+    if (best) {
+      bestPairPill.textContent = `${displayToken(best.a)} + ${displayToken(best.b)} → ${displayToken(best.a + best.b)}`;
+      bestCountPill.textContent = String(best.c);
+    } else {
+      bestPairPill.textContent = "(no pairs)";
+      bestCountPill.textContent = "0";
+    }
 
-        while (true) {
-          // find all adjacent pairs and choose the one with the best (lowest) rank
-          let best = null;
-          let bestRank = Infinity;
+    renderPairsTable(counts, best);
+    renderCorpusView();
+    renderMergeHistory();
+    renderVocab();
+  }
 
-          for (let i = 0; i < symbols.length - 1; i++) {
-            const k = pairKey(symbols[i], symbols[i + 1]);
-            if (!mergeRank.has(k)) continue;
-            const r = mergeRank.get(k);
-            if (r < bestRank) {
-              bestRank = r;
-              best = { a: symbols[i], b: symbols[i + 1], merged: symbols[i] + symbols[i + 1] };
-            }
-          }
+  function renderPairsTable(counts, best) {
+    const top = topPairs(counts, 20);
+    if (top.length === 0) {
+      pairsTableWrap.innerHTML = "<div class='muted'>(no pairs found)</div>";
+      return;
+    }
 
-          if (!best) break;
-          symbols = mergePairInSymbols(symbols, best.a, best.b, best.merged);
+    const maxC = top[0].c || 1;
+
+    const table = document.createElement("table");
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th style="width: 56%;">pair</th>
+          <th style="width: 18%;">count</th>
+          <th style="width: 16%;">share</th>
+          <th style="width: 10%;"></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tbody = table.querySelector("tbody");
+
+    for (const p of top) {
+      const tr = document.createElement("tr");
+      const isBest = best && p.a === best.a && p.b === best.b;
+
+      const pairText = `${displayToken(p.a)} + ${displayToken(p.b)} → ${displayToken(p.a + p.b)}`;
+      const share = Math.max(0, Math.min(100, (p.c / maxC) * 100));
+
+      tr.innerHTML = `
+        <td>${isBest ? "<strong>" + escapeHtml(pairText) + "</strong>" : escapeHtml(pairText)}</td>
+        <td>${p.c}</td>
+        <td>
+          <div class="bar" title="relative to top pair">
+            <div style="width:${share.toFixed(1)}%"></div>
+          </div>
+        </td>
+        <td></td>
+      `;
+
+      const btn = document.createElement("button");
+      btn.textContent = "Merge";
+      btn.title = "Apply this merge (explore alternatives)";
+      btn.disabled = isRunning;
+      btn.addEventListener("click", () => applyMerge(p.a, p.b, p.c));
+
+      tr.children[3].appendChild(btn);
+      tbody.appendChild(tr);
+    }
+
+    pairsTableWrap.innerHTML = "";
+    pairsTableWrap.appendChild(table);
+  }
+
+  function renderMergeHistory() {
+    if (merges.length === 0) {
+      mergeHistory.innerHTML = "(none yet)";
+      return;
+    }
+    const lines = merges.slice(-60).map((m, i) => {
+      const step = merges.length - (merges.slice(-60).length) + i + 1;
+      return `<div class="small">#${step}: <code class="k">${escapeHtml(displayToken(m.a))}</code> + <code class="k">${escapeHtml(displayToken(m.b))}</code> → <code class="k">${escapeHtml(displayToken(m.merged))}</code> (count=${m.countAtMerge})</div>`;
+    }).join("");
+    mergeHistory.innerHTML = lines;
+  }
+
+  function renderVocab() {
+    const tokens = Array.from(vocabSet);
+    // Sort: shorter first then lexicographic (helps show characters early)
+    tokens.sort((a, b) => a.length - b.length || a.localeCompare(b));
+
+    const shown = tokens.slice(0, 200);
+    const chips = shown.map(t => `<span class="chip" title="${escapeHtml(t)}">${escapeHtml(displayToken(t))}</span>`).join(" ");
+    vocabView.innerHTML = `
+      <div class="muted">Showing ${shown.length} / ${tokens.length} tokens</div>
+      <div class="chipRow" style="margin-top:8px;">${chips}</div>
+    `;
+  }
+
+  function renderCorpusView() {
+    const k = Math.max(1, Math.min(200, Number.parseInt(showLines.value, 10) || 10));
+    const lines = sequences.slice(0, k);
+
+    if (lines.length === 0) {
+      corpusView.innerHTML = "<div class='muted'>(no lines)</div>";
+      return;
+    }
+
+    const html = lines.map((seq, idx) => {
+      const chips = seq.slice(0, 260).map(tok => {
+        const shown = displayToken(tok);
+        const title = tok === SPACE_MARK ? "whitespace marker" : tok;
+        // emphasize tokens that include the whitespace marker (common in real tokenizers)
+        const strong = tok.includes(SPACE_MARK) ? " strong" : "";
+        return `<span class="chip${strong}" title="${escapeHtml(title)}">${escapeHtml(shown)}</span>`;
+      }).join(" ");
+
+      const trimmed = seq.length > 260 ? `<span class="muted">… (+${seq.length - 260} more tokens)</span>` : "";
+      return `
+        <div style="margin-bottom: 10px;">
+          <div class="muted">Line ${idx + 1} (${seq.length} tokens):</div>
+          <div class="chipRow" style="margin-top: 6px;">${chips} ${trimmed}</div>
+        </div>
+      `;
+    }).join("");
+
+    corpusView.innerHTML = html;
+  }
+
+  // ===== Encoding new text with learned merges =====
+  function buildMergeRank() {
+    // pair -> rank (lower is earlier/higher priority)
+    const rank = new Map();
+    for (let i = 0; i < merges.length; i++) {
+      const m = merges[i];
+      rank.set(pairKey(m.a, m.b), i);
+    }
+    return rank;
+  }
+
+  function normalizeInput(s) {
+    let t = s;
+    if (lowercase.checked) t = t.toLowerCase();
+    if (collapseWs.checked) t = t.replace(/\s+/g, " ").trim();
+    else t = t.trim();
+    if (!t) return "";
+    t = SPACE_MARK + t;
+    t = t.replaceAll(" ", SPACE_MARK);
+    return t;
+  }
+
+  function encodeWithSteps(raw) {
+    const norm = normalizeInput(raw);
+    if (!norm) return { tokens: [], steps: [] };
+
+    let symbols = Array.from(norm);
+    const rank = buildMergeRank();
+    const steps = [];
+
+    // Repeatedly find the best-ranked mergeable adjacent pair in the current symbol list
+    while (true) {
+      let bestIdx = -1;
+      let bestR = Infinity;
+      let bestA = null;
+      let bestB = null;
+
+      for (let i = 0; i < symbols.length - 1; i++) {
+        const k = pairKey(symbols[i], symbols[i+1]);
+        const r = rank.get(k);
+        if (r !== undefined && r < bestR) {
+          bestR = r;
+          bestIdx = i;
+          bestA = symbols[i];
+          bestB = symbols[i+1];
         }
-
-        // Remove end-of-word marker in display
-        const cleaned = symbols.filter(s => s !== "</w>");
-        results.push(...cleaned);
-
-        // Add a visual separator between words (optional)
-        if (mode !== "char") results.push("▁"); // like SentencePiece-ish separator (teaching)
       }
 
-      if (mode !== "char" && results.length && results[results.length - 1] === "▁") results.pop();
-      return results;
+      if (bestIdx < 0) break;
+
+      const merged = bestA + bestB;
+
+      // Merge ALL occurrences of that best-ranked pair (common BPE encoding approach)
+      const before = symbols;
+      symbols = mergeAllInSequence(symbols, bestA, bestB, merged);
+
+      steps.push({
+        pair: [bestA, bestB],
+        merged,
+        rank: bestR,
+        before,
+        after: symbols
+      });
+
+      // Safety: prevent infinite loops (should not happen)
+      if (steps.length > 2000) break;
     }
 
-    function renderTokens(tokens) {
-      if (!tokens.length) {
-        tokensBox.textContent = "—";
-        return;
-      }
-      tokensBox.innerHTML = "";
-      for (const t of tokens) {
-        const span = document.createElement("span");
-        span.className = "tokenSpan";
-        span.textContent = t;
-        tokensBox.appendChild(span);
-      }
+    return { tokens: symbols, steps };
+  }
+
+  function renderTokens(tokens) {
+    tokenOutput.innerHTML = "";
+    if (tokens.length === 0) {
+      tokenOutput.innerHTML = "<span class='muted'>(empty)</span>";
+      tokenStats.textContent = "";
+      return;
     }
 
-    function render() {
-      if (!state) {
-        statusEl.textContent = "Not initialized";
-        vocabPill.textContent = "vocab=—";
-        mergePill.textContent = "merges=—";
-        renderPairs();
-        renderMerges();
-        renderVocab();
-        tokenizeBtn.disabled = true;
-        return;
-      }
-
-      const vocab = getVocabularySnapshot(1000000); // set size
-      statusEl.textContent = `Initialized • steps=${state.steps} • words=${state.words.length}`;
-      vocabPill.textContent = `vocab≈${vocab.length}`;
-      mergePill.textContent = `merges=${state.merges.length}`;
-
-      renderPairs();
-      renderMerges();
-      renderVocab();
-
-      tokenizeBtn.disabled = false;
-      const q = queryEl.value.trim();
-      if (q) renderTokens(tokenizeWithCurrentMerges(q));
-      else tokensBox.textContent = "—";
+    for (const tok of tokens) {
+      const span = document.createElement("span");
+      span.className = "chip" + (tok.includes(SPACE_MARK) ? " strong" : "");
+      span.textContent = displayToken(tok);
+      span.title = tok;
+      tokenOutput.appendChild(span);
     }
 
-    function initialize() {
-      stopAuto();
-      const text = normalizeText(corpusEl.value);
-      const mode = modeEl.value;
+    tokenStats.textContent = `Token count: ${tokens.length}`;
+  }
 
-      const words = buildTrainingWords(text, mode);
-      state = {
-        words,
-        merges: [],
-        steps: 0
-      };
-
-      explainBox.textContent =
-        "Initialized: each word is split into characters + </w> (end-of-word marker). Now you can merge frequent adjacent pairs.";
-
-      stepBtn.disabled = false;
-      autoBtn.disabled = false;
-      stopBtn.disabled = true;
-      tokenizeBtn.disabled = false;
-
-      render();
+  function renderEncodeSteps(steps) {
+    if (steps.length === 0) {
+      encodeSteps.innerHTML = "<div class='muted'>(no merges applied during encoding)</div>";
+      return;
     }
 
-    function startAuto() {
-      if (!state) return;
-      stopAuto();
-      stepBtn.disabled = true;
-      autoBtn.disabled = true;
-      stopBtn.disabled = false;
+    const maxShow = 60;
+    const shown = steps.slice(0, maxShow);
 
-      timer = setInterval(() => {
-        stepOnce();
-        if (!state) stopAuto();
-      }, 350);
-    }
+    const html = shown.map((s, i) => {
+      const pairText = `${displayToken(s.pair[0])} + ${displayToken(s.pair[1])} → ${displayToken(s.merged)} (rank=${s.rank})`;
 
-    function stopAuto() {
-      if (timer) clearInterval(timer);
-      timer = null;
-      stepBtn.disabled = !state;
-      autoBtn.disabled = !state;
-      stopBtn.disabled = true;
-    }
+      const before = s.before.map(t => `<span class="chip">${escapeHtml(displayToken(t))}</span>`).join(" ");
+      const after  = s.after.map(t  => `<span class="chip strong">${escapeHtml(displayToken(t))}</span>`).join(" ");
 
-    // File load
-    let loadedFileText = "";
+      return `
+        <div style="margin-bottom: 12px;">
+          <div class="muted">Step ${i + 1}: <code class="k">${escapeHtml(pairText)}</code></div>
+          <div class="muted" style="margin-top: 6px;">Before:</div>
+          <div class="chipRow" style="margin-top: 6px;">${before}</div>
+          <div class="muted" style="margin-top: 6px;">After:</div>
+          <div class="chipRow" style="margin-top: 6px;">${after}</div>
+        </div>
+      `;
+    }).join("");
 
-    function enableFile(ok) {
-      replaceFileBtn.disabled = !ok;
-    }
+    const more = steps.length > maxShow
+      ? `<div class="muted">… (${steps.length - maxShow} more encoding steps not shown)</div>`
+      : "";
 
-    fileInput.onchange = async () => {
-      const f = fileInput.files?.[0];
-      if (!f) { loadedFileText = ""; enableFile(false); return; }
-      try {
-        loadedFileText = await f.text();
-        enableFile(true);
-      } catch {
-        loadedFileText = "";
-        enableFile(false);
-      }
-    };
+    encodeSteps.innerHTML = html + more;
+  }
 
-    replaceFileBtn.onclick = () => {
-      if (!loadedFileText) return;
-      corpusEl.value = loadedFileText;
-      loadedFileText = "";
+  function tokenizeInput() {
+    if (!initialized) return;
+    const { tokens, steps } = encodeWithSteps(inputText.value);
+    renderTokens(tokens);
+    renderEncodeSteps(steps);
+  }
+
+  // ===== Event wiring =====
+  initBtn.addEventListener("click", init);
+
+  undoBtn.addEventListener("click", () => {
+    undoOne();
+  });
+
+  stepBtn.addEventListener("click", () => {
+    doBestStep();
+  });
+
+  runBtn.addEventListener("click", async () => {
+    await runSteps(runN.value);
+  });
+
+  stopBtn.addEventListener("click", stopRunning);
+
+  refreshCorpusBtn.addEventListener("click", renderCorpusView);
+
+  tokenizeBtn.addEventListener("click", tokenizeInput);
+
+  // When display options change, re-render views (no re-training needed)
+  showSpaceAsVisible.addEventListener("change", () => {
+    updateAllViews();
+    if (autoTokenize.checked) tokenizeInput();
+  });
+
+  // If preprocessing options change, re-initialize (since token base changes)
+  lowercase.addEventListener("change", () => init());
+  collapseWs.addEventListener("change", () => init());
+
+  showLines.addEventListener("change", renderCorpusView);
+
+  inputText.addEventListener("input", () => {
+    if (initialized && autoTokenize.checked) tokenizeInput();
+  });
+
+  fileInput.addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      corpusText.value = text;
+      init(); // auto initialize after loading
+    } catch {
+      alert("Failed to read the file. Please try another .txt file.");
+    } finally {
       fileInput.value = "";
-      enableFile(false);
-      // keep state as-is until Initialize is pressed again
-    };
+    }
+  });
 
-    // Wiring
-    initBtn.onclick = initialize;
-    stepBtn.onclick = stepOnce;
-    autoBtn.onclick = startAuto;
-    stopBtn.onclick = stopAuto;
+  // Enable/disable controls based on state
+  function syncControls() {
+    undoBtn.disabled = !(initialized && merges.length > 0) || isRunning;
+    stepBtn.disabled = !initialized || isRunning;
+    runBtn.disabled = !initialized || isRunning;
+    stopBtn.disabled = !isRunning;
+    tokenizeBtn.disabled = !initialized;
+    refreshCorpusBtn.disabled = !initialized;
+  }
 
-    resetBtn.onclick = () => {
-      stopAuto();
-      state = null;
-      corpusEl.value = defaultCorpus();
-      queryEl.value = "teaching tokenization is fun";
-      explainBox.textContent = "Initialize to start.";
-      tokensBox.textContent = "—";
-      statusEl.textContent = "Not initialized";
-      stepBtn.disabled = true;
-      autoBtn.disabled = true;
-      stopBtn.disabled = true;
-      tokenizeBtn.disabled = true;
-      render();
-    };
+  // Patch into update cycle
+  const _updateAllViews = updateAllViews;
+  updateAllViews = function() {
+    _updateAllViews();
+    syncControls();
+  };
 
-    tokenizeBtn.onclick = () => {
-      if (!state) return;
-      render();
-    };
-
-    queryEl.oninput = () => {
-      if (!state) return;
-      render();
-    };
-
-    modeEl.onchange = () => {
-      // changing mode requires re-initialize for consistent training representation
-      state = null;
-      stopAuto();
-      stepBtn.disabled = true;
-      autoBtn.disabled = true;
-      stopBtn.disabled = true;
-      tokenizeBtn.disabled = true;
-      explainBox.textContent = "Mode changed. Click Initialize again to rebuild training state.";
-      render();
-    };
-
-    maxStepsEl.onchange = () => {};
-    minCountEl.onchange = () => {};
-
-    // Init
-    corpusEl.value = defaultCorpus();
-    queryEl.value = "teaching tokenization is fun";
-    render();
-  </script>
+  // ===== Boot: auto-load sample and initialize =====
+  corpusText.value = DEFAULT_SAMPLE;
+  init();
+})();
+</script>
 </body>
 </html>
