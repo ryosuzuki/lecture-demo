@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reasoning Prompt Demo (Normal vs CoT vs Step-by-step) — WebLLM</title>
+  <style>
+    :root { --bg:#0b0f14; --card:#121826; --muted:#93a4b8; --text:#e8eef6; --line:#233043; --accent:#6ee7ff; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: var(--bg); color: var(--text); }
+    header { padding: 18px 16px; border-bottom: 1px solid var(--line); position: sticky; top:0;
+      background: rgba(11,15,20,.92); backdrop-filter: blur(8px); z-index: 10; }
+    header h1 { margin:0; font-size: 16px; }
+    header p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .grid { display: grid; grid-template-columns: 380px 1fr; gap: 12px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+    label { font-size: 12px; color: var(--muted); display:block; margin: 10px 0 6px; }
+    select, textarea, input, button {
+      font: inherit; border-radius: 10px; border: 1px solid var(--line);
+      background: #0f1623; color: var(--text); padding: 10px; outline: none;
+    }
+    textarea { width: 100%; min-height: 120px; resize: vertical; line-height: 1.35; }
+    input[type="number"] { width: 140px; }
+    button { cursor: pointer; }
+    button.primary { background: linear-gradient(180deg, rgba(110,231,255,.18), rgba(110,231,255,.06)); border-color: rgba(110,231,255,.35); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .tiny { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .status { padding: 10px; border-radius: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; }
+    .outGrid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+    pre { margin:0; white-space: pre-wrap; word-break: break-word; background:#0c1320; border:1px solid var(--line);
+      padding: 10px; border-radius: 12px; min-height: 150px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .pill { font-size: 11px; color: var(--muted); border: 1px solid var(--line); padding: 4px 8px; border-radius: 999px; }
+    .accent { color: var(--accent); }
+    details summary { cursor:pointer; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Reasoning Prompt Demo — <span class="accent">Normal</span> vs <span class="accent">CoT (hidden)</span> vs <span class="accent">Step-by-step (brief)</span></h1>
+  <p>
+    Browser-only LLM (WebGPU). Shows how different prompting styles change accuracy/formatting.
+    Note: This demo does NOT display full internal chain-of-thought; it shows final answers (and optionally brief justification).
+  </p>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <div class="card">
+      <div class="tiny">
+        <span class="pill">browser-only</span>
+        <span class="pill">3 prompting modes</span>
+        <span class="pill">10 samples</span>
+      </div>
+
+      <label>Model</label>
+      <select id="model">
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5-0.5B-Instruct (q4) — recommended</option>
+        <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2-360M-Instruct (q4) — weaker</option>
+        <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2-1.7B-Instruct (q4) — stronger</option>
+        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-1.5B-Instruct (q4) — stronger</option>
+      </select>
+
+      <label>Sample set (10)</label>
+      <select id="sample"></select>
+
+      <label>Problem</label>
+      <textarea id="problem" class="mono"></textarea>
+
+      <label>Max output tokens</label>
+      <input id="maxTok" type="number" min="32" max="512" value="128" />
+
+      <label>Sampling</label>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <div>
+          <div class="tiny">Temperature</div>
+          <input id="temp" type="number" min="0" max="2" step="0.1" value="0.2" />
+        </div>
+        <div>
+          <div class="tiny">Top-p</div>
+          <input id="topp" type="number" min="0" max="1" step="0.05" value="0.9" />
+        </div>
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="btnInit" class="primary">Init / Load model</button>
+        <button id="btnRun" class="primary" disabled>Run (Normal / CoT / Step)</button>
+        <button id="btnReset">Reset sample</button>
+      </div>
+
+      <div id="status" class="status" style="margin-top:12px;">Status: not initialized</div>
+
+      <details style="margin-top:12px;">
+        <summary>What each mode does</summary>
+        <div class="tiny" style="margin-top:8px;">
+          <ul>
+            <li><b>Normal</b>: Answer directly.</li>
+            <li><b>CoT (hidden)</b>: Think step-by-step internally, but output only the final answer.</li>
+            <li><b>Step-by-step (brief)</b>: Provide final answer + 2–3 short bullets of justification (not a full reasoning trace).</li>
+          </ul>
+        </div>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="tiny">Outputs</div>
+
+      <div class="outGrid">
+        <div>
+          <div class="tiny">Normal output</div>
+          <pre id="outN" class="mono"></pre>
+        </div>
+        <div>
+          <div class="tiny">CoT (hidden) output</div>
+          <pre id="outC" class="mono"></pre>
+        </div>
+        <div>
+          <div class="tiny">Step-by-step (brief) output</div>
+          <pre id="outS" class="mono"></pre>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <details>
+          <summary>Show prompts (Normal / CoT / Step)</summary>
+          <div class="outGrid" style="margin-top:10px;">
+            <div>
+              <div class="tiny">Normal prompt</div>
+              <pre id="pN" class="mono" style="min-height:140px;"></pre>
+            </div>
+            <div>
+              <div class="tiny">CoT (hidden) prompt</div>
+              <pre id="pC" class="mono" style="min-height:140px;"></pre>
+            </div>
+            <div>
+              <div class="tiny">Step-by-step (brief) prompt</div>
+              <pre id="pS" class="mono" style="min-height:140px;"></pre>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div style="margin-top:12px;">
+        <details open>
+          <summary>Prompt preview (Step-by-step)</summary>
+          <pre id="preview" class="mono"></pre>
+        </details>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+  const $ = (id) => document.getElementById(id);
+
+  const modelSel = $("model");
+  const sampleSel = $("sample");
+  const problemEl = $("problem");
+  const maxTokEl = $("maxTok");
+  const tempEl = $("temp");
+  const toppEl = $("topp");
+
+  const btnInit = $("btnInit");
+  const btnRun = $("btnRun");
+  const btnReset = $("btnReset");
+  const statusEl = $("status");
+
+  const outN = $("outN");
+  const outC = $("outC");
+  const outS = $("outS");
+
+  const pN = $("pN");
+  const pC = $("pC");
+  const pS = $("pS");
+  const preview = $("preview");
+
+  let engine = null;
+
+  const SAMPLES = [
+    {
+      title: "1) Arithmetic (multi-step)",
+      problem: "A book costs $12. You buy 3 books and pay with a $50 bill. How much change do you get? Answer with a number."
+    },
+    {
+      title: "2) Unit conversion",
+      problem: "Convert 3.5 kilometers to meters. Answer with a number."
+    },
+    {
+      title: "3) Logic (constraint)",
+      problem: "If all zorps are flargs, and no flargs are blins, can a zorp be a blin? Answer Yes or No."
+    },
+    {
+      title: "4) Simple probability",
+      problem: "A fair coin is flipped 3 times. What is the probability of getting exactly 2 heads? Give a simplified fraction."
+    },
+    {
+      title: "5) Scheduling / counting",
+      problem: "A meeting starts at 9:20 AM and lasts 1 hour 35 minutes. What time does it end? Answer in HH:MM AM/PM."
+    },
+    {
+      title: "6) Table reasoning (tiny)",
+      problem:
+`You have this table:
+- Alice: 2 apples
+- Bob: 5 apples
+- Cara: 3 apples
+Who has the most apples? Answer with one name.`
+    },
+    {
+      title: "7) Common-sense physics",
+      problem: "You put an ice cube in a warm room. After some time, what happens to it? Answer in one short sentence."
+    },
+    {
+      title: "8) Short QA (definition)",
+      problem: "What is 'in-context learning' in language models? Answer in one sentence."
+    },
+    {
+      title: "9) Pattern completion",
+      problem: "Complete the pattern: 2, 4, 8, 16, __. Answer with a number."
+    },
+    {
+      title: "10) Translation (EN → ES)",
+      problem: "Translate to Spanish: 'Please submit the PDF by Wednesday morning.' Return ONLY the Spanish translation."
+    },
+  ];
+
+  function setStatus(s) { statusEl.textContent = "Status: " + s; }
+  function clearOut() { outN.textContent = ""; outC.textContent = ""; outS.textContent = ""; }
+
+  function buildPrompts(problem) {
+    const sys = "You are a helpful assistant. Follow the instructions strictly.";
+
+    const normal =
+`System: ${sys}
+User: Solve the task. Give the final answer only (no extra commentary).
+
+Task:
+${problem}`;
+
+    const cotHidden =
+`System: ${sys}
+User: Solve the task. Think step-by-step internally, but do NOT reveal your reasoning.
+Output ONLY the final answer.
+
+Task:
+${problem}`;
+
+    const stepBrief =
+`System: ${sys}
+User: Solve the task. Think step-by-step internally.
+Output:
+1) Final answer: <your final answer>
+2) Brief justification: 2–3 short bullet points (no long reasoning, no scratchpad)
+
+Task:
+${problem}`;
+
+    return { normal, cotHidden, stepBrief };
+  }
+
+  function refreshPromptViews() {
+    const problem = problemEl.value.trim();
+    const { normal, cotHidden, stepBrief } = buildPrompts(problem);
+    pN.textContent = normal;
+    pC.textContent = cotHidden;
+    pS.textContent = stepBrief;
+    preview.textContent = stepBrief;
+    return { normal, cotHidden, stepBrief };
+  }
+
+  async function init() {
+    btnInit.disabled = true;
+    btnRun.disabled = true;
+    clearOut();
+    setStatus("Initializing engine…");
+
+    try {
+      const modelId = modelSel.value;
+      engine = new webllm.MLCEngine();
+      await engine.reload(modelId, {
+        initProgressCallback: (report) => {
+          const pct = report.progress != null ? Math.round(report.progress * 100) : null;
+          setStatus(report.text + (pct != null ? ` (${pct}%)` : ""));
+        },
+      });
+      setStatus("Ready ✅");
+      btnRun.disabled = false;
+    } catch (e) {
+      console.error(e);
+      setStatus("Init failed: " + (e?.message || e));
+      engine = null;
+    } finally {
+      btnInit.disabled = false;
+    }
+  }
+
+  async function complete(prompt) {
+    const max_tokens = Math.max(32, Math.min(512, Number(maxTokEl.value || 128)));
+    const temperature = Number(tempEl.value || 0.2);
+    const top_p = Number(toppEl.value || 0.9);
+
+    const res = await engine.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      max_tokens,
+      temperature,
+      top_p,
+    });
+
+    return res.choices?.[0]?.message?.content?.trim?.() ?? "";
+  }
+
+  async function runAll() {
+    if (!engine) return;
+
+    btnRun.disabled = true;
+    btnInit.disabled = true;
+    clearOut();
+
+    const { normal, cotHidden, stepBrief } = refreshPromptViews();
+
+    try {
+      setStatus("Running Normal…");
+      outN.textContent = await complete(normal);
+
+      setStatus("Running CoT (hidden)…");
+      outC.textContent = await complete(cotHidden);
+
+      setStatus("Running Step-by-step (brief)…");
+      outS.textContent = await complete(stepBrief);
+
+      setStatus("Done ✅");
+    } catch (e) {
+      console.error(e);
+      setStatus("Run failed: " + (e?.message || e));
+    } finally {
+      btnRun.disabled = !engine;
+      btnInit.disabled = false;
+    }
+  }
+
+  function loadSample(i) {
+    const s = SAMPLES[i];
+    problemEl.value = s.problem;
+    refreshPromptViews();
+    clearOut();
+    setStatus(engine ? "Ready ✅" : "Not initialized");
+  }
+
+  function setupSamples() {
+    sampleSel.innerHTML = "";
+    SAMPLES.forEach((s, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = s.title;
+      sampleSel.appendChild(opt);
+    });
+    sampleSel.value = "0";
+    loadSample(0);
+  }
+
+  btnInit.addEventListener("click", init);
+  btnRun.addEventListener("click", runAll);
+  btnReset.addEventListener("click", () => loadSample(Number(sampleSel.value)));
+  modelSel.addEventListener("change", () => {
+    engine = null;
+    btnRun.disabled = true;
+    setStatus("Model changed (click Init / Load model)");
+  });
+
+  sampleSel.addEventListener("change", () => loadSample(Number(sampleSel.value)));
+  ["input", "change"].forEach(evt => {
+    problemEl.addEventListener(evt, refreshPromptViews);
+  });
+
+  setupSamples();
+</script>
+</body>
+</html>
