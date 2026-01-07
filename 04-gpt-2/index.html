@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Next-Token Prediction Demo (GPT-2 in Browser)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 0; padding: 20px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .card { border: 1px solid rgba(127,127,127,.35); border-radius: 12px; padding: 14px; }
+    textarea { width: 100%; min-height: 110px; resize: vertical; font: inherit; padding: 10px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35); }
+    select, button, input { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35); }
+    button { cursor: pointer; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 12px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .muted { opacity: .75; }
+    .status { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12px; }
+    .bars { display: grid; gap: 8px; }
+    .barrow { display: grid; grid-template-columns: 1fr 90px; gap: 10px; align-items: center; }
+    .bar { height: 10px; border-radius: 999px; border: 1px solid rgba(127,127,127,.35); overflow: hidden; }
+    .fill { height: 100%; width: 0%; background: currentColor; opacity: .6; }
+    .tok { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 13px; }
+    .right { text-align: right; font-variant-numeric: tabular-nums; }
+    .small { font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1 style="margin:0 0 10px 0;">Next-Token Prediction Demo (Browser-only)</h1>
+  <div class="muted" style="margin-bottom:14px;">
+    First run will download the model. This demo shows next <b>token</b> probabilities (tokens are subword pieces).
+  </div>
+
+  <div class="card" style="margin-bottom:12px;">
+    <div class="row">
+      <label>Model:</label>
+      <select id="modelSel">
+        <option value="Xenova/distilgpt2">Xenova/distilgpt2 (smaller, faster)</option>
+        <option value="Xenova/gpt2">Xenova/gpt2 (larger)</option>
+      </select>
+
+      <label>Top-k:</label>
+      <input id="topK" type="number" min="3" max="50" step="1" value="10" style="width:90px;" />
+
+      <label>Temperature:</label>
+      <input id="temp" type="number" min="0.1" max="2.0" step="0.1" value="1.0" style="width:90px;" />
+
+      <button id="loadBtn">Load model</button>
+      <button id="runBtn" disabled>Compute next-token</button>
+    </div>
+    <div id="status" class="status muted" style="margin-top:10px;">Status: idle</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="row" style="justify-content: space-between;">
+        <div><b>Prompt</b></div>
+        <button id="appendBtn" disabled>Append top-1 token + recompute</button>
+      </div>
+      <div style="margin-top:10px;">
+        <textarea id="prompt">The best thing about neural networks is</textarea>
+      </div>
+      <div class="muted small" style="margin-top:10px;">
+        Tip: try the same prompt across models and watch how the distribution sharpens/changes.
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content: space-between; align-items: baseline;">
+        <b>Top predictions</b>
+        <div class="muted small" id="meta"></div>
+      </div>
+      <div id="bars" class="bars" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { AutoTokenizer, AutoModelForCausalLM, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+    env.allowLocalModels = false;
+
+    const el = (id) => document.getElementById(id);
+    const statusEl = el('status');
+    const loadBtn = el('loadBtn');
+    const runBtn = el('runBtn');
+    const appendBtn = el('appendBtn');
+    const modelSel = el('modelSel');
+    const promptEl = el('prompt');
+    const topKEl = el('topK');
+    const tempEl = el('temp');
+    const barsEl = el('bars');
+    const metaEl = el('meta');
+
+    let tokenizer = null;
+    let model = null;
+    let lastTop = null;
+
+    const setStatus = (s) => { statusEl.textContent = `Status: ${s}`; };
+
+    const softmax = (logits, temperature = 1.0) => {
+      const t = Math.max(0.0001, temperature);
+      let max = -Infinity;
+      for (let i = 0; i < logits.length; i++) max = Math.max(max, logits[i] / t);
+      const exps = new Float64Array(logits.length);
+      let sum = 0;
+      for (let i = 0; i < logits.length; i++) {
+        const v = Math.exp((logits[i] / t) - max);
+        exps[i] = v;
+        sum += v;
+      }
+      const probs = new Float64Array(logits.length);
+      for (let i = 0; i < logits.length; i++) probs[i] = exps[i] / sum;
+      return probs;
+    };
+
+    const topKIndices = (arr, k) => {
+      const idx = Array.from({ length: arr.length }, (_, i) => i);
+      idx.sort((a, b) => arr[b] - arr[a]);
+      return idx.slice(0, k);
+    };
+
+    const entropy = (probs) => {
+      let h = 0;
+      for (let i = 0; i < probs.length; i++) {
+        const p = probs[i];
+        if (p > 0) h -= p * Math.log2(p);
+      }
+      return h;
+    };
+
+    const safeTok = (s) => {
+      let t = s.replaceAll('\n', '\\n').replaceAll('\t', '\\t');
+      if (t.trim() === '') t = JSON.stringify(s);
+      return t;
+    };
+
+    const renderBars = (items) => {
+      barsEl.innerHTML = '';
+      if (!items?.length) return;
+      const maxP = items[0].p;
+      for (const it of items) {
+        const row = document.createElement('div');
+        row.className = 'barrow';
+
+        const left = document.createElement('div');
+        left.innerHTML = `<div class="tok">${safeTok(it.text)}</div><div class="bar"><div class="fill"></div></div>`;
+        const fill = left.querySelector('.fill');
+        fill.style.width = `${Math.max(0, Math.min(100, (it.p / maxP) * 100))}%`;
+
+        const right = document.createElement('div');
+        right.className = 'right tok';
+        right.textContent = `${(it.p * 100).toFixed(2)}%`;
+
+        row.appendChild(left);
+        row.appendChild(right);
+        barsEl.appendChild(row);
+      }
+    };
+
+    const ensureLoaded = async () => {
+      const name = modelSel.value;
+      loadBtn.disabled = true;
+      runBtn.disabled = true;
+      appendBtn.disabled = true;
+      setStatus(`loading ${name} ... (first time downloads files)`);
+      const t0 = performance.now();
+      tokenizer = await AutoTokenizer.from_pretrained(name);
+      model = await AutoModelForCausalLM.from_pretrained(name);
+      const t1 = performance.now();
+      setStatus(`loaded ${name} in ${((t1 - t0) / 1000).toFixed(2)}s`);
+      runBtn.disabled = false;
+      appendBtn.disabled = false;
+    };
+
+    loadBtn.addEventListener('click', async () => {
+      try { await ensureLoaded(); }
+      catch (e) { setStatus(`error loading: ${e?.message ?? e}`); }
+      finally { loadBtn.disabled = false; }
+    });
+
+    modelSel.addEventListener('change', () => {
+      tokenizer = null;
+      model = null;
+      lastTop = null;
+      runBtn.disabled = true;
+      appendBtn.disabled = true;
+      metaEl.textContent = '';
+      barsEl.innerHTML = '';
+      setStatus('model changed (click "Load model")');
+    });
+
+    const computeNext = async () => {
+      if (!tokenizer || !model) await ensureLoaded();
+
+      const prompt = promptEl.value ?? '';
+      const k = Math.max(3, Math.min(50, parseInt(topKEl.value || '10', 10)));
+      const temperature = Math.max(0.1, Math.min(2.0, parseFloat(tempEl.value || '1.0')));
+
+      setStatus('tokenizing...');
+      const enc = await tokenizer(prompt, { return_tensors: 'pt' });
+
+      setStatus('running model...');
+      const t0 = performance.now();
+      const out = await model(enc);
+      const t1 = performance.now();
+
+      const logitsTensor = out.logits;
+      const dims = logitsTensor.dims;
+      const data = logitsTensor.data;
+
+      const seqLen = dims[1];
+      const vocab = dims[2];
+      const offset = (seqLen - 1) * vocab;
+      const lastLogits = data.slice(offset, offset + vocab);
+
+      setStatus('computing probabilities...');
+      const probs = softmax(lastLogits, temperature);
+      const idx = topKIndices(probs, k);
+
+      const items = [];
+      for (const id of idx) {
+        const text = tokenizer.decode([id], { skip_special_tokens: true });
+        items.push({ id, text, p: probs[id] });
+      }
+
+      const H = entropy(probs);
+      const top1 = items[0]?.p ?? 0;
+      const top5 = items.slice(0, 5).reduce((s, x) => s + x.p, 0);
+      const top10 = items.slice(0, 10).reduce((s, x) => s + x.p, 0);
+
+      lastTop = items[0] || null;
+      metaEl.textContent =
+        `latency ${(t1 - t0).toFixed(0)}ms · H ${H.toFixed(2)} bits · top1 ${(top1*100).toFixed(1)}% · top5 ${(top5*100).toFixed(1)}% · top10 ${(top10*100).toFixed(1)}%`;
+
+      renderBars(items);
+      setStatus('done');
+      return items;
+    };
+
+    runBtn.addEventListener('click', async () => {
+      try { await computeNext(); }
+      catch (e) { setStatus(`error: ${e?.message ?? e}`); }
+    });
+
+    appendBtn.addEventListener('click', async () => {
+      try {
+        appendBtn.disabled = true;
+        runBtn.disabled = true;
+
+        const items = await computeNext();
+        const top1 = items?.[0];
+        if (!top1) return;
+
+        promptEl.value += top1.text;
+
+        await computeNext();
+      } catch (e) {
+        setStatus(`error: ${e?.message ?? e}`);
+      } finally {
+        appendBtn.disabled = false;
+        runBtn.disabled = false;
+      }
+    });
+
+    setStatus('ready (click "Load model")');
+  </script>
+</body>
+</html>

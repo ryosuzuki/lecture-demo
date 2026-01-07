@@ -2,689 +2,645 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Mini N-gram Language Model Demo (Single-file)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini Language Model Demo (Single-file 1/2-gram)</title>
   <style>
-    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", sans-serif; }
-    body { margin: 18px; line-height: 1.35; }
-    h1 { font-size: 18px; margin: 0 0 12px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
-    .card h2 { font-size: 14px; margin: 0 0 8px; }
-    textarea { width: 100%; height: 190px; resize: vertical; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 10px; }
-    button, select, input[type="file"] {
-      padding: 8px 10px; border: 1px solid #ddd; border-radius: 12px; background: #fff;
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.5;
     }
-    button { cursor: pointer; }
-    button:hover { background: #f7f7f7; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    select { cursor: pointer; }
-    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .small { font-size: 12px; color: #444; }
-    .muted { color: #666; }
-    .mono { font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .outbox { border: 1px solid #ddd; border-radius: 12px; padding: 10px; min-height: 90px; white-space: pre-wrap; }
-    .pill { padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; }
-    .split { display: grid; grid-template-columns: 1fr; gap: 10px; }
-    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-    /* Vertical candidate list */
-    .candList { margin-top: 8px; border: 1px solid #eee; border-radius: 12px; overflow: hidden; }
-    .candRow {
-      display: grid; grid-template-columns: 1fr 70px;
-      gap: 10px; padding: 10px; border-top: 1px solid #f0f0f0;
-      cursor: pointer; user-select: none;
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    h2 { font-size: 16px; margin: 18px 0 8px; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+      align-items: start;
     }
-    .candRow:first-child { border-top: none; }
-    .candRow:hover { background: #fafafa; }
-    .candLeft { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
-    .tok { font-weight: 700; }
-    .barWrap { height: 10px; background: #eee; border-radius: 999px; overflow: hidden; }
-    .bar { height: 100%; background: #bbb; width: 0%; }
-    .pct { text-align: right; font-variant-numeric: tabular-nums; color: #333; }
-
-    /* Evidence */
-    .evidenceBox { border: 1px solid #eee; border-radius: 12px; padding: 10px; }
-    .evLine { padding: 6px 0; border-top: 1px dashed #eee; }
-    .evLine:first-child { border-top: none; }
-    .hlCtx { background: #fff2a8; border-radius: 6px; padding: 0 4px; }
-    .hlNext { background: #c7f5c7; border-radius: 6px; padding: 0 4px; }
-    .evMeta { font-size: 12px; color: #666; margin-bottom: 6px; }
-    .kbd { font: 12px ui-monospace; border: 1px solid #ddd; border-bottom-width: 2px; padding: 1px 6px; border-radius: 8px; background: #fafafa; }
-    .footer { margin-top: 10px; font-size: 12px; color: #666; }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(128,128,128,0.4);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono", monospace;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .card {
+      border: 1px solid rgba(128,128,128,0.35);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(128,128,128,0.06);
+    }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    label { font-size: 13px; opacity: 0.9; }
+    select, input[type="number"], input[type="file"] {
+      padding: 6px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(128,128,128,0.4);
+      background: transparent;
+    }
+    button {
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(128,128,128,0.45);
+      background: rgba(128,128,128,0.12);
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.05); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .muted { font-size: 12px; opacity: 0.75; }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(128,128,128,0.35);
+      background: rgba(128,128,128,0.10);
+      font-size: 12px;
+    }
+    .sentenceBox {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono", monospace;
+      font-size: 14px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(128,128,128,0.35);
+      background: rgba(128,128,128,0.06);
+      min-height: 44px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .options {
+      margin-top: 10px;
+      display: grid;
+      gap: 8px;
+    }
+    .opt {
+      display: grid;
+      grid-template-columns: 1fr 110px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(128,128,128,0.35);
+      background: rgba(128,128,128,0.08);
+    }
+    .opt button {
+      width: 100%;
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+    .bar {
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(128,128,128,0.35);
+      overflow: hidden;
+      background: rgba(128,128,128,0.08);
+      position: relative;
+    }
+    .bar > div {
+      height: 100%;
+      width: 0%;
+      background: rgba(100,160,255,0.45);
+    }
+    .prob {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      opacity: 0.85;
+      margin-top: 6px;
+      gap: 10px;
+    }
+    details summary { cursor: pointer; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid rgba(128,128,128,0.25);
+      padding: 6px 4px;
+      text-align: left;
+      vertical-align: top;
+    }
+    code.k { padding: 2px 6px; border-radius: 8px; background: rgba(128,128,128,0.12); }
   </style>
 </head>
-<body>
-  <h1>Mini N-gram Language Model Demo (single-file index.html)</h1>
 
-  <div class="row">
-    <!-- LEFT: Training -->
+<body>
+  <h1>Mini Language Model Demo (single-file / unigram & bigram)</h1>
+
+  <div class="grid">
     <div class="card">
-      <h2>1) Training Data</h2>
+      <h2>1) Training data (each line = one sentence)</h2>
+
+      <div class="row" style="margin-bottom: 8px;">
+        <label for="fileInput">Load .txt:</label>
+        <input id="fileInput" type="file" accept=".txt,text/plain" />
+        <button id="trainBtn">Train</button>
+      </div>
+
       <textarea id="trainText"></textarea>
 
-      <div class="controls" style="margin-top:10px;">
-        <button id="trainBtn">Train</button>
-        <button id="resetBtn">Reset sample</button>
-        <span class="pill" id="statusPill">Not trained</span>
+      <div class="row" style="margin-top: 10px;">
+        <label>Tokenization:</label>
+        <select id="tokenizeMode">
+          <option value="regex">Simple (split punctuation too)</option>
+          <option value="space">Space-separated</option>
+          <option value="char">Character-level</option>
+        </select>
+
+        <label>Model:</label>
+        <select id="modelType">
+          <option value="bigram">Bigram (previous token → next token)</option>
+          <option value="unigram">Unigram (no context)</option>
+        </select>
       </div>
 
-      <div class="split" style="margin-top:10px;">
-        <div class="card" style="border:1px solid #eee;">
-          <h2 style="margin-bottom:6px;">Load a .txt file (for larger corpora)</h2>
-          <div class="controls">
-            <input id="fileInput" type="file" accept=".txt,text/plain" />
-            <button id="appendFileBtn" disabled>Append to training text</button>
-            <button id="replaceFileBtn" disabled>Replace training text</button>
-          </div>
-          <div class="small muted" style="margin-top:6px;">
-            For very large files: consider using a Web Worker (notes at the bottom).
-          </div>
-        </div>
-
-        <div class="footer">
-          How it works: tokenize sentences → add &lt;s&gt; and &lt;/s&gt; → count n-grams → show P(next | context).<br/>
-          This is intentionally simple for lecture demos (no fancy smoothing unless you add it).
-        </div>
+      <div class="row" style="margin-top: 10px;">
+        <label>Top-K candidates:</label>
+        <input id="topK" type="number" min="1" max="200" value="30" style="width: 90px;" />
+        <label><input id="lowercase" type="checkbox" checked /> Lowercase</label>
+        <span class="muted">(Adds <code class="k">&lt;s&gt;</code> and <code class="k">&lt;/s&gt;</code>)</span>
       </div>
+
+      <div style="margin-top: 12px;" class="stats">
+        <div>Status: <span class="pill" id="statusPill">Not trained</span></div>
+        <div>Vocabulary: <span class="pill" id="vocabPill">-</span></div>
+        <div>Total tokens: <span class="pill" id="tokenPill">-</span></div>
+        <div>Bigram types: <span class="pill" id="bigramPill">-</span></div>
+      </div>
+
+      <details style="margin-top: 12px;">
+        <summary>Peek into the model (top transitions)</summary>
+        <div class="muted" style="margin: 8px 0 6px;">
+          For bigrams, this shows next-token distributions given the previous token (top only).
+        </div>
+        <div id="modelPeek"></div>
+      </details>
     </div>
 
-    <!-- RIGHT: Generation + Evidence -->
     <div class="card">
-      <h2>2) Generate (next-word prediction)</h2>
+      <h2>2) Build a sentence by choosing the next token</h2>
 
-      <div class="controls">
-        <span class="small muted">n-gram:</span>
-        <select id="ngramSelect">
-          <option value="1">Unigram (n=1)</option>
-          <option value="2">Bigram (n=2)</option>
-          <option value="3" selected>Trigram (n=3)</option>
-        </select>
-
-        <span class="small muted">Temperature:</span>
-        <select id="tempSelect">
-          <option value="0">0 (argmax)</option>
-          <option value="0.7">0.7</option>
-          <option value="1" selected>1.0</option>
-          <option value="1.3">1.3</option>
-          <option value="1.7">1.7</option>
-        </select>
-
-        <span class="small muted">Top-k:</span>
-        <select id="topkSelect">
-          <option value="8" selected>8</option>
-          <option value="12">12</option>
-          <option value="20">20</option>
-          <option value="50">50</option>
-        </select>
+      <div class="row">
+        <button id="resetBtn" disabled>Reset</button>
+        <button id="undoBtn" disabled>Undo</button>
+        <button id="randomBtn" disabled>Pick random</button>
+        <label>Max length:</label>
+        <input id="maxLen" type="number" min="1" max="500" value="30" style="width: 90px;" />
       </div>
 
-      <div class="two" style="margin-top:10px;">
-        <div>
-          <div class="small muted">Current context</div>
-          <div class="mono" id="contextView">—</div>
-        </div>
-        <div>
-          <div class="small muted">Backoff info</div>
-          <div class="mono" id="fallbackNote">—</div>
+      <div style="margin-top: 10px;" class="muted">
+        Current context (previous token): <span class="pill" id="contextPill">-</span>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <div class="muted">Generated sentence:</div>
+        <div class="sentenceBox" id="sentenceBox">(not started)</div>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <div class="muted">Next-token candidates (click to append):</div>
+        <div class="options" id="options"></div>
+        <div class="muted" id="noOptions" style="margin-top: 10px; display:none;">
+          No candidates available. Add more training data or change context (Undo/Reset).
         </div>
       </div>
 
-      <div style="margin-top:10px;">
-        <div class="small muted">Generated text</div>
-        <div class="outbox mono" id="outputBox">—</div>
-      </div>
-
-      <div class="controls" style="margin-top:10px;">
-        <button id="startBtn" disabled>Start (<span class="kbd">&lt;s&gt;</span>)</button>
-        <button id="sampleBtn" disabled>Sample next</button>
-        <button id="endBtn" disabled>End (<span class="kbd">&lt;/s&gt;</span>)</button>
-        <button id="backBtn" disabled>Undo</button>
-        <button id="clearOutBtn" disabled>Clear output</button>
-      </div>
-
-      <div style="margin-top:10px;">
-        <div class="small muted">Next-word candidates (sorted by probability)</div>
-        <div class="candList" id="candList"></div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <h2 style="font-size:14px; margin:0 0 8px;">3) Training evidence (where do probabilities come from?)</h2>
-        <div class="evidenceBox">
-          <div class="evMeta" id="evidenceMeta">Train the model and start generation to see evidence.</div>
-          <div id="evidenceLines"></div>
-        </div>
-        <div class="small muted" style="margin-top:6px;">
-          Tip: click a candidate above, then look here to show exact matching n-gram occurrences in the training data.
-        </div>
+      <div class="muted" style="margin-top: 12px;">
+        Notes:
+        <ul style="margin: 6px 0 0 18px;">
+          <li><strong>Bigram:</strong> next-token distribution depends on the previous token.</li>
+          <li><strong>Unigram:</strong> next token depends only on overall frequency.</li>
+          <li>Select <code class="k">&lt;/s&gt;</code> to end a sentence; context resets to <code class="k">&lt;s&gt;</code>.</li>
+        </ul>
       </div>
     </div>
   </div>
 
-  <div class="card" style="margin-top:14px;">
-    <h2>Scaling up to large text (e.g., a full novel)</h2>
-    <div class="small muted">
-      If you paste a huge corpus, training may lag or freeze the UI because everything runs on the main thread.
-      For lecture-friendly performance:
-      <ul>
-        <li><b>Use a Web Worker</b> to count n-grams off the main thread (keep the UI responsive).</li>
-        <li><b>Stream the file</b> line-by-line (File API + chunking) instead of loading everything at once.</li>
-        <li><b>Limit vocabulary</b> (e.g., keep top 50k tokens; map the rest to &lt;unk&gt;).</li>
-        <li><b>Use TypedArrays / compact maps</b> or store counts in <b>IndexedDB</b> if needed.</li>
-      </ul>
-      Also: be mindful of copyright when using commercial books in class.
-    </div>
-  </div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
 
-  <script>
-    const $ = (id) => document.getElementById(id);
+  const trainText = $("trainText");
+  const tokenizeMode = $("tokenizeMode");
+  const modelTypeSel = $("modelType");
+  const trainBtn = $("trainBtn");
+  const topKInput = $("topK");
+  const lowercaseChk = $("lowercase");
+  const fileInput = $("fileInput");
 
-    const trainText = $("trainText");
-    const trainBtn = $("trainBtn");
-    const resetBtn = $("resetBtn");
-    const statusPill = $("statusPill");
+  const statusPill = $("statusPill");
+  const vocabPill = $("vocabPill");
+  const tokenPill = $("tokenPill");
+  const bigramPill = $("bigramPill");
+  const modelPeek = $("modelPeek");
 
-    const fileInput = $("fileInput");
-    const appendFileBtn = $("appendFileBtn");
-    const replaceFileBtn = $("replaceFileBtn");
+  const resetBtn = $("resetBtn");
+  const undoBtn = $("undoBtn");
+  const randomBtn = $("randomBtn");
+  const maxLenInput = $("maxLen");
+  const contextPill = $("contextPill");
+  const sentenceBox = $("sentenceBox");
+  const optionsDiv = $("options");
+  const noOptions = $("noOptions");
 
-    const ngramSelect = $("ngramSelect");
-    const tempSelect = $("tempSelect");
-    const topkSelect = $("topkSelect");
+  const START = "<s>";
+  const END = "</s>";
 
-    const startBtn = $("startBtn");
-    const sampleBtn = $("sampleBtn");
-    const endBtn = $("endBtn");
-    const backBtn = $("backBtn");
-    const clearOutBtn = $("clearOutBtn");
+  const DEFAULT_SAMPLE =
+`I like machine learning.
+I like natural language processing.
+I like generative AI.
+We build simple language models.
+Language models predict the next word.
+Students like interactive demos.
+This demo is a tiny n-gram model.
+Generative models can sample tokens.
+Probability distributions can be visualized.
+I like teaching in class.`;
 
-    const contextView = $("contextView");
-    const fallbackNote = $("fallbackNote");
-    const outputBox = $("outputBox");
-    const candList = $("candList");
+  let trained = false;
 
-    const evidenceMeta = $("evidenceMeta");
-    const evidenceLines = $("evidenceLines");
+  let unigramCounts = Object.create(null);
+  let bigramCounts = Object.create(null);
 
-    const BOS = "<s>";
-    const EOS = "</s>";
+  let generated = [];
+  let context = START;
 
-    let model = null;
-    let generated = [];
-    let history = [];
-    let lastPickedCandidate = null;
+  function clampInt(v, min, max, fallback) {
+    const n = Number.parseInt(v, 10);
+    if (Number.isFinite(n)) return Math.max(min, Math.min(max, n));
+    return fallback;
+  }
 
-    function defaultTrainingData() {
-      return [
-        "I like machine learning.",
-        "I like natural language processing.",
-        "I like generative AI.",
-        "We build simple language models.",
-        "Language models predict the next word.",
-        "Students like interactive demos.",
-        "This demo is a tiny n-gram model.",
-        "Generative models can sample tokens.",
-        "Probability distributions can be visualized.",
-        "I like teaching in class."
-      ].join("\n");
-    }
+  function normalizeText(s) {
+    let t = s.replace(/\r\n?/g, "\n");
+    if (lowercaseChk.checked) t = t.toLowerCase();
+    return t;
+  }
 
-    function normalizeText(s) {
-      return s.replace(/\r\n/g, "\n").replace(/[“”]/g, '"').replace(/[’]/g, "'").trim();
-    }
+  function tokenizeLine(line, mode) {
+    const s = line.trim();
+    if (!s) return [];
 
-    function tokenizeLine(line) {
-      const spaced = line
-        .replace(/([.,!?;:()])/g, " $1 ")
-        .replace(/\s+/g, " ")
-        .trim();
-      if (!spaced) return [];
-      return spaced.split(" ");
-    }
+    if (mode === "space") return s.split(/\s+/).filter(Boolean);
+    if (mode === "char") return Array.from(s.replace(/\s+/g, ""));
 
-    function incNested(map, key, subkey) {
-      if (!map.has(key)) map.set(key, new Map());
-      const m = map.get(key);
-      m.set(subkey, (m.get(subkey) || 0) + 1);
-    }
+    const re = /[\p{L}\p{N}]+|[^\s\p{L}\p{N}]/gu;
+    const m = s.match(re);
+    return (m || []).filter(tok => tok.trim() !== "");
+  }
 
-    function buildModelFromLines(lines) {
-      const uni = new Map();
-      const bi = new Map();   // key: w1 -> Map(w2 -> count)
-      const tri = new Map();  // key: w1\tw2 -> Map(w3 -> count)
+  function trainFromText(text) {
+    unigramCounts = Object.create(null);
+    bigramCounts = Object.create(null);
 
-      const corpus = []; // [{raw, toks, seq}]
-      let totalTokens = 0;
+    const mode = tokenizeMode.value;
+    const lines = normalizeText(text).split("\n");
 
-      for (let li = 0; li < lines.length; li++) {
-        const raw = lines[li].trim();
-        if (!raw) continue;
-        const toks = tokenizeLine(raw);
-        if (toks.length === 0) continue;
+    let totalTokens = 0;
+    let totalBigramTypes = 0;
 
-        const seq = [BOS, ...toks, EOS];
-        corpus.push({ raw, toks, seq });
+    for (const lineRaw of lines) {
+      const toks = tokenizeLine(lineRaw, mode);
+      if (toks.length === 0) continue;
 
-        for (const t of seq) {
-          uni.set(t, (uni.get(t) || 0) + 1);
-          totalTokens++;
-        }
-        for (let i = 0; i < seq.length - 1; i++) incNested(bi, seq[i], seq[i + 1]);
-        for (let i = 0; i < seq.length - 2; i++) incNested(tri, seq[i] + "\t" + seq[i + 1], seq[i + 2]);
+      const seq = [START, ...toks, END];
+
+      for (const tok of seq) {
+        unigramCounts[tok] = (unigramCounts[tok] || 0) + 1;
+        totalTokens++;
       }
 
-      const vocab = Array.from(uni.keys());
-      return { uni, bi, tri, vocab, totalTokens, corpus };
-    }
-
-    function distFromMap(m) {
-      const arr = Array.from(m.entries()).map(([tok, c]) => ({ tok, c }));
-      const total = arr.reduce((s, x) => s + x.c, 0);
-      const probs = arr.map(x => ({ tok: x.tok, p: x.c / total, c: x.c }));
-      probs.sort((a, b) => b.p - a.p);
-      return probs;
-    }
-
-    function getContextTokens(tokens, n) {
-      if (n === 1) return [];
-      if (n === 2) return [tokens[tokens.length - 1] || BOS];
-      return [tokens[tokens.length - 2] || BOS, tokens[tokens.length - 1] || BOS];
-    }
-
-    function getDistributionForContext(tokens, n) {
-      fallbackNote.textContent = "—";
-      if (!model) return { dist: [], usedN: n };
-
-      if (n === 1) {
-        // Unigram: P(next) = overall frequency
-        return { dist: distFromMap(model.uni), usedN: 1 };
-      }
-
-      if (n === 2) {
-        const w = tokens.length >= 1 ? tokens[tokens.length - 1] : BOS;
-        const m = model.bi.get(w);
-        if (m) return { dist: distFromMap(m), usedN: 2 };
-
-        fallbackNote.textContent = `No bigram match for (“${w}”). Backing off to unigram P(w).`;
-        return { dist: distFromMap(model.uni), usedN: 1 };
-      }
-
-      // n === 3
-      const w1 = tokens.length >= 2 ? tokens[tokens.length - 2] : BOS;
-      const w2 = tokens.length >= 1 ? tokens[tokens.length - 1] : BOS;
-      const key = w1 + "\t" + w2;
-      const m = model.tri.get(key);
-      if (m) return { dist: distFromMap(m), usedN: 3 };
-
-      const mb = model.bi.get(w2);
-      if (mb) {
-        fallbackNote.textContent = `No trigram match for (“${w1}”, “${w2}”). Backing off to bigram P(w | ${w2}).`;
-        return { dist: distFromMap(mb), usedN: 2 };
-      }
-
-      fallbackNote.textContent = `No trigram/bigram match. Backing off to unigram P(w).`;
-      return { dist: distFromMap(model.uni), usedN: 1 };
-    }
-
-    function applyTemperatureTopK(dist, temperature, topk) {
-      const trimmed = dist.slice(0, topk);
-
-      if (trimmed.length === 0) return [];
-      if (temperature === 0) {
-        const best = trimmed[0];
-        return trimmed.map(x => ({ ...x, p2: x.tok === best.tok ? 1 : 0 }));
-      }
-
-      const invT = 1 / temperature;
-      const weights = trimmed.map(x => Math.pow(Math.max(x.p, 1e-12), invT));
-      const Z = weights.reduce((s, w) => s + w, 0);
-      return trimmed.map((x, i) => ({ ...x, p2: weights[i] / Z }));
-    }
-
-    function sampleFrom(dist2) {
-      let r = Math.random();
-      for (const x of dist2) {
-        r -= x.p2;
-        if (r <= 0) return x.tok;
-      }
-      return dist2[dist2.length - 1]?.tok || EOS;
-    }
-
-    function formatOutput(tokens) {
-      const t = tokens.filter(x => x !== BOS && x !== EOS);
-      let s = t.join(" ");
-      s = s.replace(/\s+([.,!?;:()])/g, "$1");
-      return s || "—";
-    }
-
-    function chooseToken(tok) {
-      if (!model) return;
-      history.push([...generated]);
-      generated.push(tok);
-
-      if (tok === EOS) {
-        sampleBtn.disabled = true;
-        endBtn.disabled = true;
-      }
-
-      backBtn.disabled = history.length === 0;
-      clearOutBtn.disabled = generated.length === 0;
-      render();
-    }
-
-    function startGeneration() {
-      history = [];
-      generated = [BOS];
-      lastPickedCandidate = null;
-
-      startBtn.disabled = true;
-      sampleBtn.disabled = false;
-      endBtn.disabled = false;
-      backBtn.disabled = true;
-      clearOutBtn.disabled = false;
-
-      render();
-    }
-
-    function resetAll() {
-      model = null;
-      history = [];
-      generated = [];
-      lastPickedCandidate = null;
-
-      statusPill.textContent = "Not trained";
-      startBtn.disabled = true;
-      sampleBtn.disabled = true;
-      endBtn.disabled = true;
-      backBtn.disabled = true;
-      clearOutBtn.disabled = true;
-
-      candList.innerHTML = "";
-      contextView.textContent = "—";
-      fallbackNote.textContent = "—";
-      outputBox.textContent = "—";
-
-      evidenceMeta.textContent = "Train the model and start generation to see evidence.";
-      evidenceLines.innerHTML = "";
-    }
-
-    function train() {
-      const raw = normalizeText(trainText.value);
-      const lines = raw.split("\n").map(x => x.trim()).filter(Boolean);
-      model = buildModelFromLines(lines);
-
-      const vocabSize = model.vocab.length;
-      statusPill.textContent = `Trained: ${model.corpus.length} lines, vocab=${vocabSize}`;
-      startBtn.disabled = false;
-
-      sampleBtn.disabled = true;
-      endBtn.disabled = true;
-      backBtn.disabled = true;
-      clearOutBtn.disabled = false;
-
-      history = [];
-      generated = [];
-      lastPickedCandidate = null;
-
-      render();
-    }
-
-    function renderCandidates(dist2) {
-      candList.innerHTML = "";
-      if (dist2.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "candRow";
-        empty.style.cursor = "default";
-        empty.textContent = "No candidates available.";
-        candList.appendChild(empty);
-        return;
-      }
-
-      const maxP = dist2[0].p2 || 1;
-
-      for (const x of dist2) {
-        const row = document.createElement("div");
-        row.className = "candRow";
-        row.onclick = () => { lastPickedCandidate = x.tok; chooseToken(x.tok); };
-
-        const left = document.createElement("div");
-        left.className = "candLeft";
-
-        const tok = document.createElement("div");
-        tok.className = "tok mono";
-        tok.textContent = x.tok;
-
-        const barWrap = document.createElement("div");
-        barWrap.className = "barWrap";
-        const bar = document.createElement("div");
-        bar.className = "bar";
-        bar.style.width = `${Math.max(1, Math.round((x.p2 / maxP) * 100))}%`;
-        barWrap.appendChild(bar);
-
-        left.appendChild(tok);
-        left.appendChild(barWrap);
-
-        const pct = document.createElement("div");
-        pct.className = "pct mono";
-        pct.textContent = `${(x.p2 * 100).toFixed(1)}%`;
-
-        row.appendChild(left);
-        row.appendChild(pct);
-
-        candList.appendChild(row);
+      for (let i = 0; i < seq.length - 1; i++) {
+        const prev = seq[i];
+        const next = seq[i + 1];
+        if (!bigramCounts[prev]) bigramCounts[prev] = Object.create(null);
+        bigramCounts[prev][next] = (bigramCounts[prev][next] || 0) + 1;
       }
     }
 
-    function escapeHtml(s) {
-      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    for (const prev of Object.keys(bigramCounts)) {
+      totalBigramTypes += Object.keys(bigramCounts[prev]).length;
     }
 
-    function renderEvidence(contextTokens, nextTok, usedN) {
-      evidenceLines.innerHTML = "";
+    const vocabSize = Object.keys(unigramCounts).length;
 
-      if (!model || generated.length === 0) {
-        evidenceMeta.textContent = "Train the model and start generation to see evidence.";
-        return;
+    trained = vocabSize > 0;
+    statusPill.textContent = trained ? "Trained" : "Not enough data";
+    vocabPill.textContent = trained ? String(vocabSize) : "-";
+    tokenPill.textContent = trained ? String(totalTokens) : "-";
+    bigramPill.textContent = trained ? String(totalBigramTypes) : "-";
+
+    resetGeneration();
+    renderModelPeek();
+    updateUIEnabled();
+    renderOptions();
+  }
+
+  function resetGeneration() {
+    generated = [];
+    context = START;
+    sentenceBox.textContent = "(not started)";
+    contextPill.textContent = context;
+  }
+
+  function currentSentenceString() {
+    if (generated.length === 0) return "";
+    return generated.join(tokenizeMode.value === "char" ? "" : " ");
+  }
+
+  function getDistribution() {
+    if (!trained) return [];
+
+    const modelType = modelTypeSel.value;
+
+    if (modelType === "unigram") {
+      let total = 0;
+      for (const [tok, c] of Object.entries(unigramCounts)) {
+        if (tok === START) continue;
+        total += c;
       }
-
-      // If unigram is used, show where the nextTok appears, plus its count.
-      if (usedN === 1) {
-        const count = model.uni.get(nextTok) || 0;
-        evidenceMeta.textContent = `Unigram evidence: count("${nextTok}") = ${count} over all tokens (including <s> and </s>).`;
-        // show a few occurrences in corpus (token-level)
-        let shown = 0;
-        for (let si = 0; si < model.corpus.length && shown < 8; si++) {
-          const seq = model.corpus[si].seq;
-          for (let i = 0; i < seq.length && shown < 8; i++) {
-            if (seq[i] !== nextTok) continue;
-            const html = seq.map((t, j) => {
-              if (j === i) return `<span class="hlNext">${escapeHtml(t)}</span>`;
-              return escapeHtml(t);
-            }).join(" ");
-            const div = document.createElement("div");
-            div.className = "evLine mono";
-            div.innerHTML = html.replace(/\s+([.,!?;:()])/g, "$1");
-            evidenceLines.appendChild(div);
-            shown++;
-          }
-        }
-        if (shown === 0) {
-          const div = document.createElement("div");
-          div.className = "evLine mono";
-          div.textContent = "No occurrences found (unexpected).";
-          evidenceLines.appendChild(div);
-        }
-        return;
+      const arr = [];
+      for (const [tok, c] of Object.entries(unigramCounts)) {
+        if (tok === START) continue;
+        arr.push([tok, c, total > 0 ? c / total : 0]);
       }
-
-      // For bigram/trigram evidence: show exact matching n-gram occurrences.
-      const ctx = contextTokens;
-      const n = ctx.length + 1;
-
-      evidenceMeta.textContent =
-        `Showing occurrences of ${n}-gram: [${ctx.join(" ")}] → [${nextTok}] in the training data.`;
-
-      let shown = 0;
-      for (let si = 0; si < model.corpus.length && shown < 12; si++) {
-        const seq = model.corpus[si].seq;
-        for (let i = 0; i <= seq.length - n && shown < 12; i++) {
-          let match = true;
-          for (let k = 0; k < ctx.length; k++) {
-            if (seq[i + k] !== ctx[k]) { match = false; break; }
-          }
-          if (!match) continue;
-          if (seq[i + ctx.length] !== nextTok) continue;
-
-          const html = seq.map((t, j) => {
-            const inCtx = j >= i && j < i + ctx.length;
-            const isNext = j === i + ctx.length;
-            if (inCtx) return `<span class="hlCtx">${escapeHtml(t)}</span>`;
-            if (isNext) return `<span class="hlNext">${escapeHtml(t)}</span>`;
-            return escapeHtml(t);
-          }).join(" ");
-
-          const div = document.createElement("div");
-          div.className = "evLine mono";
-          div.innerHTML = html.replace(/\s+([.,!?;:()])/g, "$1");
-          evidenceLines.appendChild(div);
-          shown++;
-        }
-      }
-
-      if (shown === 0) {
-        const div = document.createElement("div");
-        div.className = "evLine mono";
-        div.textContent = "No matching occurrences found (likely due to backoff or unseen context).";
-        evidenceLines.appendChild(div);
-      }
+      arr.sort((a, b) => b[2] - a[2] || b[1] - a[1] || a[0].localeCompare(b[0]));
+      return arr;
     }
 
-    function render() {
-      const n = Number(ngramSelect.value);
-      const temperature = Number(tempSelect.value);
-      const topk = Number(topkSelect.value);
-
-      const ctxTokens = generated.length ? generated : [BOS];
-      const ctxForDisplay = getContextTokens(ctxTokens, n);
-      contextView.textContent = (n === 1) ? "(none — unigram ignores context)" : ctxForDisplay.join("  ");
-
-      const { dist, usedN } = getDistributionForContext(ctxTokens.length ? ctxTokens : [BOS], n);
-      const dist2 = applyTemperatureTopK(dist, temperature, topk);
-
-      outputBox.textContent = formatOutput(generated);
-      renderCandidates(dist2);
-
-      // Evidence:
-      // If user clicked a candidate earlier, show evidence for that candidate.
-      // Otherwise show evidence for the top candidate (most probable) as a default.
-      const candidateToExplain = lastPickedCandidate || dist2[0]?.tok || null;
-      const ctxUsed = getContextTokens(ctxTokens, usedN);
-      if (candidateToExplain) renderEvidence(ctxUsed, candidateToExplain, usedN);
-      else {
-        evidenceMeta.textContent = "No candidates to explain.";
-        evidenceLines.innerHTML = "";
-      }
+    if (bigramCounts[context]) {
+      const distMap = bigramCounts[context];
+      const total = Object.values(distMap).reduce((s, n) => s + n, 0);
+      const arr = Object.entries(distMap).map(([tok, c]) => [tok, c, total > 0 ? c / total : 0]);
+      arr.sort((a, b) => b[2] - a[2] || b[1] - a[1] || a[0].localeCompare(b[0]));
+      return arr;
     }
 
-    trainBtn.onclick = train;
+    let total = 0;
+    for (const [tok, c] of Object.entries(unigramCounts)) {
+      if (tok === START) continue;
+      total += c;
+    }
+    const arr = [];
+    for (const [tok, c] of Object.entries(unigramCounts)) {
+      if (tok === START) continue;
+      arr.push([tok, c, total > 0 ? c / total : 0]);
+    }
+    arr.sort((a, b) => b[2] - a[2] || b[1] - a[1] || a[0].localeCompare(b[0]));
+    return arr;
+  }
 
-    resetBtn.onclick = () => {
-      trainText.value = defaultTrainingData();
-      resetAll();
-    };
+  function pickRandomFromDist(dist) {
+    const r = Math.random();
+    let acc = 0;
+    for (const [tok, , p] of dist) {
+      acc += p;
+      if (r <= acc) return tok;
+    }
+    return dist.length ? dist[dist.length - 1][0] : null;
+  }
 
-    startBtn.onclick = startGeneration;
+  function stepChoose(tok) {
+    if (!trained) return;
 
-    sampleBtn.onclick = () => {
-      const n = Number(ngramSelect.value);
-      const temperature = Number(tempSelect.value);
-      const topk = Number(topkSelect.value);
+    const maxLen = clampInt(maxLenInput.value, 1, 500, 30);
 
-      const { dist } = getDistributionForContext(generated.length ? generated : [BOS], n);
-      const dist2 = applyTemperatureTopK(dist, temperature, topk);
-      const tok = sampleFrom(dist2);
-      lastPickedCandidate = tok;
-      chooseToken(tok);
-    };
+    if (tok === END) {
+      context = START;
+      contextPill.textContent = context;
 
-    endBtn.onclick = () => { lastPickedCandidate = EOS; chooseToken(EOS); };
-
-    backBtn.onclick = () => {
-      if (history.length === 0) return;
-      generated = history.pop();
-      lastPickedCandidate = null;
-
-      const hasEOS = generated.includes(EOS);
-      sampleBtn.disabled = hasEOS;
-      endBtn.disabled = hasEOS;
-
-      backBtn.disabled = history.length === 0;
-      clearOutBtn.disabled = generated.length === 0;
-
-      render();
-    };
-
-    clearOutBtn.onclick = () => {
-      history = [];
-      generated = [];
-      lastPickedCandidate = null;
-
-      startBtn.disabled = !model;
-      sampleBtn.disabled = true;
-      endBtn.disabled = true;
-      backBtn.disabled = true;
-      clearOutBtn.disabled = !model;
-
-      render();
-    };
-
-    // Reactivity
-    ngramSelect.onchange = () => { lastPickedCandidate = null; render(); };
-    tempSelect.onchange = () => render();
-    topkSelect.onchange = () => render();
-
-    // File loading
-    let loadedFileText = "";
-
-    function enableFileButtons(ok) {
-      appendFileBtn.disabled = !ok;
-      replaceFileBtn.disabled = !ok;
+      const s = currentSentenceString();
+      sentenceBox.textContent = s ? s + "  (← sentence ended)" : "(sentence ended: empty)";
+      renderOptions();
+      updateUIEnabled();
+      return;
     }
 
-    fileInput.onchange = async () => {
-      const f = fileInput.files?.[0];
-      if (!f) { loadedFileText = ""; enableFileButtons(false); return; }
-      try {
-        loadedFileText = await f.text();
-        enableFileButtons(true);
-      } catch {
-        loadedFileText = "";
-        enableFileButtons(false);
-      }
-    };
+    generated.push(tok);
 
-    appendFileBtn.onclick = () => {
-      if (!loadedFileText) return;
-      const cur = trainText.value.trim();
-      const add = loadedFileText.trim();
-      trainText.value = cur ? (cur + "\n" + add) : add;
-      loadedFileText = "";
+    context = tok;
+    contextPill.textContent = context;
+
+    const s = currentSentenceString();
+    sentenceBox.textContent = s || "(not started)";
+
+    if (generated.length >= maxLen) {
+      sentenceBox.textContent = s + "  (max length reached)";
+    }
+
+    renderOptions();
+    updateUIEnabled();
+  }
+
+  function undo() {
+    if (generated.length === 0) return;
+    generated.pop();
+
+    context = generated.length ? generated[generated.length - 1] : START;
+    contextPill.textContent = context;
+
+    const s = currentSentenceString();
+    sentenceBox.textContent = s || "(not started)";
+
+    renderOptions();
+    updateUIEnabled();
+  }
+
+  function updateUIEnabled() {
+    resetBtn.disabled = !trained || (generated.length === 0 && context === START);
+    undoBtn.disabled = !trained || generated.length === 0;
+    randomBtn.disabled = !trained;
+  }
+
+  function renderOptions() {
+    optionsDiv.innerHTML = "";
+    noOptions.style.display = "none";
+
+    if (!trained) {
+      contextPill.textContent = "-";
+      return;
+    }
+
+    const dist = getDistribution();
+    const topK = clampInt(topKInput.value, 1, 200, 30);
+    const shown = dist.slice(0, topK);
+
+    const maxLen = clampInt(maxLenInput.value, 1, 500, 30);
+    const reached = generated.length >= maxLen;
+
+    let ensureEnd = null;
+    const endEntry = dist.find(([t]) => t === END);
+    if (endEntry && !shown.some(([t]) => t === END)) ensureEnd = endEntry;
+
+    const finalList = ensureEnd ? [ensureEnd, ...shown] : shown;
+
+    if (finalList.length === 0) {
+      noOptions.style.display = "block";
+      return;
+    }
+
+    for (const [tok, count, prob] of finalList) {
+      const opt = document.createElement("div");
+      opt.className = "opt";
+
+      const left = document.createElement("div");
+      const btn = document.createElement("button");
+
+      if (reached && tok !== END) btn.disabled = true;
+
+      btn.textContent = tok;
+      btn.title = `count=${count}, prob=${(prob * 100).toFixed(2)}%`;
+      btn.addEventListener("click", () => stepChoose(tok));
+      left.appendChild(btn);
+
+      const right = document.createElement("div");
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      const fill = document.createElement("div");
+      fill.style.width = `${Math.max(0, Math.min(100, prob * 100))}%`;
+      bar.appendChild(fill);
+
+      const meta = document.createElement("div");
+      meta.className = "prob";
+      meta.innerHTML = `<span>${(prob * 100).toFixed(1)}%</span><span>n=${count}</span>`;
+
+      right.appendChild(bar);
+      right.appendChild(meta);
+
+      opt.appendChild(left);
+      opt.appendChild(right);
+      optionsDiv.appendChild(opt);
+    }
+  }
+
+  function renderModelPeek() {
+    if (!trained) {
+      modelPeek.innerHTML = "<div class='muted'>Not trained yet.</div>";
+      return;
+    }
+
+    const peekTop = 6;
+
+    const prevCandidates = Object.entries(unigramCounts)
+      .filter(([tok]) => tok !== END)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([tok]) => tok);
+
+    const rows = [];
+    for (const prev of prevCandidates) {
+      if (!bigramCounts[prev]) continue;
+      const nextMap = bigramCounts[prev];
+      const total = Object.values(nextMap).reduce((s, n) => s + n, 0);
+      const nextSorted = Object.entries(nextMap)
+        .map(([t, c]) => [t, c, total > 0 ? c / total : 0])
+        .sort((a, b) => b[2] - a[2])
+        .slice(0, peekTop);
+
+      const pretty = nextSorted.map(([t, c, p]) => `${t} (${(p*100).toFixed(1)}%, n=${c})`).join(" / ");
+      rows.push({ prev, pretty });
+    }
+
+    if (rows.length === 0) {
+      modelPeek.innerHTML = "<div class='muted'>No bigram transitions found (try more data).</div>";
+      return;
+    }
+
+    const table = document.createElement("table");
+    table.innerHTML = `
+      <thead>
+        <tr><th style="width: 130px;">prev</th><th>next (top)</th></tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tbody = table.querySelector("tbody");
+
+    for (const r of rows) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td><code class="k">${escapeHtml(r.prev)}</code></td><td>${escapeHtml(r.pretty)}</td>`;
+      tbody.appendChild(tr);
+    }
+
+    modelPeek.innerHTML = "";
+    modelPeek.appendChild(table);
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  trainBtn.addEventListener("click", () => trainFromText(trainText.value));
+
+  fileInput.addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      trainText.value = text;
+      trainFromText(trainText.value);
+    } catch {
+      alert("Failed to read the file. Please try another .txt file.");
+    } finally {
       fileInput.value = "";
-      enableFileButtons(false);
-    };
+    }
+  });
 
-    replaceFileBtn.onclick = () => {
-      if (!loadedFileText) return;
-      trainText.value = loadedFileText.trim();
-      loadedFileText = "";
-      fileInput.value = "";
-      enableFileButtons(false);
-    };
+  resetBtn.addEventListener("click", () => {
+    resetGeneration();
+    renderOptions();
+    updateUIEnabled();
+  });
 
-    // Init
-    trainText.value = defaultTrainingData();
-    resetAll();
-  </script>
+  undoBtn.addEventListener("click", () => undo());
+
+  randomBtn.addEventListener("click", () => {
+    const dist = getDistribution();
+    if (dist.length === 0) return;
+    const tok = pickRandomFromDist(dist);
+    if (tok) stepChoose(tok);
+  });
+
+  modelTypeSel.addEventListener("change", renderOptions);
+  topKInput.addEventListener("change", renderOptions);
+  maxLenInput.addEventListener("change", renderOptions);
+
+  tokenizeMode.addEventListener("change", () => {
+    if (trained) trainFromText(trainText.value);
+  });
+
+  lowercaseChk.addEventListener("change", () => {
+    if (trained) trainFromText(trainText.value);
+  });
+
+  // Auto-load + auto-train on page load
+  trainText.value = DEFAULT_SAMPLE;
+  trainFromText(trainText.value);
+
+  updateUIEnabled();
+  renderOptions();
+})();
+</script>
 </body>
 </html>
