@@ -1,0 +1,1791 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Math for Transformers (Interactive)</title>
+  <style>
+    :root{
+      --bg:#f6f7f9;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --shadow: 0 6px 20px rgba(0,0,0,.06);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --blue:#1f77b4;
+      --orange:#ff7f0e;
+      --green:#2ca02c;
+      --red:#d62728;
+      --purple:#9467bd;
+      --gray:#4b5563;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color:var(--text);
+      background:var(--bg);
+      line-height:1.5;
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      background:#0b1220;
+      color:white;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    header .row{
+      max-width:1150px; margin:0 auto;
+      display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+    }
+    header h1{
+      font-size:15px; margin:0; font-weight:700;
+      letter-spacing:.2px;
+    }
+    nav{
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    nav button{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+      color:white;
+      padding:7px 10px;
+      border-radius:999px;
+      cursor:pointer;
+      font-size:13px;
+    }
+    nav button.active{
+      background:rgba(255,255,255,.18);
+      border-color:rgba(255,255,255,.28);
+    }
+    main{
+      max-width:1150px;
+      margin:0 auto;
+      padding:14px;
+    }
+    .section{ display:none; }
+    .section.active{ display:block; }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap:14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .grid2{ grid-template-columns:1fr; }
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      box-shadow: var(--shadow);
+      padding:12px;
+    }
+    .card h2{
+      margin:0 0 8px 0;
+      font-size:18px;
+    }
+    .card h3{
+      margin:10px 0 6px 0;
+      font-size:14px;
+      color:#0f172a;
+    }
+    .muted{ color:var(--muted); }
+    .mono{ font-family: var(--mono); }
+    .kbd{
+      font-family:var(--mono);
+      font-size:12px;
+      padding:2px 6px;
+      border:1px solid var(--border);
+      border-bottom-width:2px;
+      border-radius:8px;
+      background:#fafafa;
+      color:#111;
+      display:inline-block;
+    }
+
+    canvas.canvas{
+      width:100%;
+      height:420px;
+      display:block;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background: linear-gradient(180deg,#ffffff, #fbfbfd);
+      touch-action:none;
+    }
+
+    .controls{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top:10px;
+    }
+    .controls button, .controls select{
+      border:1px solid var(--border);
+      background:#fff;
+      padding:7px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      font-size:13px;
+    }
+    .controls button.primary{
+      border-color:#c7d2fe;
+      background:#eef2ff;
+    }
+
+    .inputs{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap:8px;
+      margin-top:10px;
+    }
+    .inputs .box{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:8px;
+      background:#fff;
+    }
+    .inputs label{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+    input[type="number"], input[type="range"]{
+      width:100%;
+    }
+    input[type="number"]{
+      padding:6px 8px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      font-family:var(--mono);
+      font-size:13px;
+    }
+
+    .readout{
+      margin-top:10px;
+      border:1px solid var(--border);
+      background:#fcfcff;
+      border-radius:12px;
+      padding:10px;
+      font-family:var(--mono);
+      font-size:13px;
+      overflow:auto;
+      white-space:pre-wrap;
+    }
+
+    .stepper{
+      margin-top:10px;
+      border:1px dashed var(--border);
+      border-radius:12px;
+      padding:10px;
+      background:#fff;
+    }
+    .stepper .top{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+      margin-bottom:8px;
+    }
+    .stepper .top .label{
+      font-size:12px; color:var(--muted);
+    }
+    .steps{
+      margin:0;
+      padding-left:20px;
+    }
+    .steps li{
+      margin:6px 0;
+      padding:6px 8px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:#fafafa;
+      font-family:var(--mono);
+      font-size:13px;
+    }
+    .steps li.off{
+      opacity:.28;
+      filter:grayscale(1);
+    }
+
+    .bars{
+      display:grid;
+      gap:10px;
+      margin-top:10px;
+    }
+    .barRow{
+      display:grid;
+      grid-template-columns: 44px 1fr 90px;
+      gap:10px;
+      align-items:center;
+    }
+    .bar{
+      height:16px;
+      border-radius:999px;
+      background:#f1f5f9;
+      border:1px solid var(--border);
+      overflow:hidden;
+    }
+    .fill{
+      height:100%;
+      width:0%;
+      background:#111827;
+      border-radius:999px;
+    }
+    .mini{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .kvGrid{
+      display:grid;
+      grid-template-columns: 52px repeat(2, 1fr) 18px repeat(2, 1fr);
+      gap:8px;
+      align-items:center;
+      margin-top:10px;
+    }
+    .kvGrid .head{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:600;
+    }
+    .kvGrid .sep{
+      text-align:center;
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    details summary{
+      cursor:pointer;
+      color:#0f172a;
+      font-weight:600;
+      margin-top:8px;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:3px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-size:12px;
+      color:#111;
+    }
+
+    .legend{
+      display:flex; gap:10px; flex-wrap:wrap;
+      margin-top:8px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .dot{
+      width:10px; height:10px; border-radius:999px; display:inline-block; margin-right:6px;
+      border:1px solid rgba(0,0,0,.12);
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="row">
+    <h1>Math for Transformers (Drag & Step-by-step)</h1>
+    <nav>
+      <button data-target="intro" class="active">0) Overview</button>
+      <button data-target="dotcos">1) Dot & Cosine</button>
+      <button data-target="proj">2) Projection</button>
+      <button data-target="matrix">3) Matrix × Vector</button>
+      <button data-target="softmax">4) Softmax</button>
+      <button data-target="attention">5) Attention (QKV)</button>
+      <button data-target="posenc">6) Positional Encoding</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- 0) Intro -->
+  <section id="intro" class="section active">
+    <div class="card">
+      <h2>0) What do you need to understand to follow Transformer computations?</h2>
+      <p class="muted">
+        The “core computation” of a Transformer is:
+        (1) vector similarity scoring (dot product) → (2) convert scores to weights with softmax → (3) weighted sum of value vectors.
+        Here we reduce everything to <span class="kbd">2D</span> so you can “track it by hand” (real models use hundreds to thousands of dimensions).
+      </p>
+
+      <div class="grid2" style="margin-top:10px;">
+        <div class="card" style="box-shadow:none;">
+          <h3>What you will interact with (minimum set)</h3>
+          <ul>
+            <li><b>Vectors</b> (drag to move)</li>
+            <li><b>Dot product</b> and <b>cosine similarity</b> (“how similar?”)</li>
+            <li><b>Projection</b> (extract the component along a direction)</li>
+            <li><b>Matrix × vector</b> (linear transform: intuition for embeddings and generating Q/K/V)</li>
+            <li><b>Softmax</b> (scores → weights)</li>
+            <li><b>Attention (Q,K,V)</b> (everything combined)</li>
+          </ul>
+
+          <h3>Tips</h3>
+          <ul class="muted">
+            <li>Drag the arrow tip on the canvas</li>
+            <li>Use numeric inputs for fine adjustment</li>
+            <li>Use the <b>Step</b> button to reveal intermediate calculations</li>
+          </ul>
+        </div>
+
+        <div class="card" style="box-shadow:none;">
+          <h3>The core Transformer formula (goal of this page)</h3>
+          <div class="readout">Attention(Q,K,V) = softmax( (Q Kᵀ) / √d ) V
+
+• Q: Query (what you are looking for)
+• K: Key (index / lookup labels)
+• V: Value (the content to retrieve)
+
+“By-hand” version (single query):
+1) score_i = q · k_i   (or cos(q,k_i))
+2) weight = softmax(score)
+3) out = Σ weight_i * v_i</div>
+
+          <p class="mini">
+            * This page uses 2D examples to prioritize intuition.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1) dot/cos -->
+  <section id="dotcos" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>1) Dot product and cosine similarity</h2>
+        <p class="muted">
+          The dot product gives a larger score when directions align. Cosine similarity ignores length and compares direction only.
+          In Transformer attention, we typically score with <span class="mono">q·k</span> and then feed that into softmax.
+        </p>
+
+        <canvas id="dot_canvas" class="canvas"></canvas>
+
+        <div class="legend">
+          <span><span class="dot" style="background:var(--blue)"></span>a</span>
+          <span><span class="dot" style="background:var(--green)"></span>b</span>
+        </div>
+
+        <div class="inputs">
+          <div class="box">
+            <label>a.x</label>
+            <input id="a_x" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>a.y</label>
+            <input id="a_y" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>b.x</label>
+            <input id="b_x" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>b.y</label>
+            <input id="b_y" type="number" step="0.1" />
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="dot_random" class="primary">Random</button>
+          <button id="dot_ortho">Make (roughly) orthogonal</button>
+          <button id="dot_parallel">Make (roughly) parallel</button>
+          <span class="pill"><span class="muted">Tip:</span> drag the endpoints</span>
+        </div>
+
+        <div id="dot_readout" class="readout"></div>
+
+        <div class="stepper">
+          <div class="top">
+            <button id="dot_step">Step</button>
+            <button id="dot_all">Show all</button>
+            <button id="dot_reset">Reset</button>
+            <span id="dot_stepLabel" class="label"></span>
+          </div>
+          <ol id="dot_steps" class="steps"></ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Intuition</h3>
+        <ul class="muted">
+          <li><b>dot(a,b)</b> increases when the vectors point in a similar direction.</li>
+          <li><b>cos(a,b)</b> removes the effect of length and compares direction only.</li>
+          <li>Attention scoring is usually <span class="mono">q·k</span> (dot), then softmax turns it into weights.</li>
+        </ul>
+
+        <h3>Common pitfalls</h3>
+        <ul class="muted">
+          <li>Dot product grows with both angle alignment <b>and</b> vector length.</li>
+          <li>Cosine similarity depends only on angle (it normalizes lengths).</li>
+        </ul>
+
+        <details>
+          <summary>Formulas (simple)</summary>
+          <div class="readout">dot(a,b) = ax*bx + ay*by
+
+||a|| = sqrt(ax^2 + ay^2)
+cos(a,b) = dot(a,b) / (||a||*||b||)</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2) projection -->
+  <section id="proj" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>2) Projection</h2>
+        <p class="muted">
+          Project vector a onto direction b = keep only the component of a along b.
+          This “keep the aligned component” intuition is related (not identical) to how attention emphasizes similar directions.
+        </p>
+
+        <canvas id="proj_canvas" class="canvas"></canvas>
+
+        <div class="legend">
+          <span><span class="dot" style="background:var(--blue)"></span>a</span>
+          <span><span class="dot" style="background:var(--green)"></span>b</span>
+          <span><span class="dot" style="background:var(--orange)"></span>proj_b(a)</span>
+          <span><span class="dot" style="background:var(--gray)"></span>residual</span>
+        </div>
+
+        <div class="inputs">
+          <div class="box">
+            <label>a.x</label>
+            <input id="pa_x" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>a.y</label>
+            <input id="pa_y" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>b.x</label>
+            <input id="pb_x" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>b.y</label>
+            <input id="pb_y" type="number" step="0.1" />
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="proj_random" class="primary">Random</button>
+          <button id="proj_makeClose">Make a closer to b</button>
+          <button id="proj_makeFar">Make a roughly orthogonal to b</button>
+        </div>
+
+        <div id="proj_readout" class="readout"></div>
+
+        <div class="stepper">
+          <div class="top">
+            <button id="proj_step">Step</button>
+            <button id="proj_all">Show all</button>
+            <button id="proj_reset">Reset</button>
+            <span id="proj_stepLabel" class="label"></span>
+          </div>
+          <ol id="proj_steps" class="steps"></ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Intuition</h3>
+        <ul class="muted">
+          <li><span class="mono">proj_b(a)</span> is “how much of a lies along direction b”.</li>
+          <li>The residual <span class="mono">r = a - proj</span> is orthogonal to b (roughly, dot(r,b)=0).</li>
+          <li>Attention’s weighted sum is not projection, but the intuition matches: <b>more similar directions (larger dot) contribute more</b>.</li>
+        </ul>
+
+        <details>
+          <summary>Formulas (simple)</summary>
+          <div class="readout">t = (a·b) / (b·b)
+proj_b(a) = t b
+r = a - proj_b(a)</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3) matrix -->
+  <section id="matrix" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>3) Matrix × Vector (linear transform)</h2>
+        <p class="muted">
+          Inside Transformers, “mixing with matrices” is everywhere (embeddings → Q/K/V, FFN, etc.).
+          Here we use a 2×2 example to see how a vector is transformed.
+        </p>
+
+        <canvas id="mat_canvas" class="canvas"></canvas>
+
+        <div class="controls">
+          <button class="primary" id="mat_identity">Identity</button>
+          <button id="mat_rot">Rotate (30°)</button>
+          <button id="mat_scale">Scale</button>
+          <button id="mat_shear">Shear</button>
+          <button id="mat_reflect">Reflect</button>
+          <label class="pill"><input id="mat_showGrid" type="checkbox" checked /> <span>Grid</span></label>
+        </div>
+
+        <div class="inputs" style="grid-template-columns: repeat(6, minmax(0,1fr));">
+          <div class="box">
+            <label>a11</label>
+            <input id="m11" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>a12</label>
+            <input id="m12" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>a21</label>
+            <input id="m21" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>a22</label>
+            <input id="m22" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>x1</label>
+            <input id="vx1" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>x2</label>
+            <input id="vx2" type="number" step="0.1" />
+          </div>
+        </div>
+
+        <div id="mat_readout" class="readout"></div>
+
+        <div class="stepper">
+          <div class="top">
+            <button id="mat_step">Step</button>
+            <button id="mat_all">Show all</button>
+            <button id="mat_reset">Reset</button>
+            <span id="mat_stepLabel" class="label"></span>
+          </div>
+          <ol id="mat_steps" class="steps"></ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Intuition</h3>
+        <ul class="muted">
+          <li>A matrix is a “switch” that maps an input vector into another space.</li>
+          <li>You can view <span class="mono">y = A x</span> as <b>a weighted sum of A’s column vectors</b>, weighted by the components of x.</li>
+        </ul>
+
+        <details>
+          <summary>Two ways to compute it</summary>
+          <div class="readout">Standard:
+y1 = a11*x1 + a12*x2
+y2 = a21*x1 + a22*x2
+
+Using columns:
+A = [c1 c2]  (c1=(a11,a21), c2=(a12,a22))
+y = x1*c1 + x2*c2</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4) softmax -->
+  <section id="softmax" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>4) Softmax (scores → weights)</h2>
+        <p class="muted">
+          In attention, we softmax the similarity scores into weights (all positive, sum to 1).
+          Changing the temperature adjusts how “peaky” the distribution is.
+        </p>
+
+        <div class="inputs" style="grid-template-columns: repeat(4, minmax(0,1fr));">
+          <div class="box">
+            <label>z1 (logit)</label>
+            <input id="z1" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>z2 (logit)</label>
+            <input id="z2" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>z3 (logit)</label>
+            <input id="z3" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>Temperature T</label>
+            <input id="temp" type="number" step="0.1" min="0.1" />
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="soft_random" class="primary">Random</button>
+          <button id="soft_peaky">Make it peaky</button>
+          <button id="soft_flat">Make it flatter</button>
+          <span class="pill"><span class="muted">Small T:</span> peaky / <span class="muted">Large T:</span> flat</span>
+        </div>
+
+        <div class="bars">
+          <div class="barRow">
+            <div class="mono">p1</div>
+            <div class="bar"><div id="bar1" class="fill"></div></div>
+            <div class="mono" id="p1txt"></div>
+          </div>
+          <div class="barRow">
+            <div class="mono">p2</div>
+            <div class="bar"><div id="bar2" class="fill"></div></div>
+            <div class="mono" id="p2txt"></div>
+          </div>
+          <div class="barRow">
+            <div class="mono">p3</div>
+            <div class="bar"><div id="bar3" class="fill"></div></div>
+            <div class="mono" id="p3txt"></div>
+          </div>
+        </div>
+
+        <div id="soft_readout" class="readout"></div>
+
+        <div class="stepper">
+          <div class="top">
+            <button id="soft_step">Step</button>
+            <button id="soft_all">Show all</button>
+            <button id="soft_reset">Reset</button>
+            <span id="soft_stepLabel" class="label"></span>
+          </div>
+          <ol id="soft_steps" class="steps"></ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Intuition</h3>
+        <ul class="muted">
+          <li>Larger scores get larger weights (as a ratio).</li>
+          <li>All positive and sum to 1 ⇒ great for weighted averages.</li>
+          <li>In practice we subtract max(z) for numerical stability (we do that here too).</li>
+        </ul>
+
+        <details>
+          <summary>Formulas (simple)</summary>
+          <div class="readout">p_i = exp(z_i/T) / Σ_j exp(z_j/T)
+
+Stable (safe) softmax:
+m = max(z)
+p_i = exp((z_i - m)/T) / Σ_j exp((z_j - m)/T)</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5) attention -->
+  <section id="attention" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>5) Attention (compute Q, K, V by hand)</h2>
+        <p class="muted">
+          Similarity between q and each k → softmax → weighted sum of v.
+          Left is the “key space” (q and k), right is the “value space” (v and output).
+        </p>
+
+        <div class="controls">
+          <label class="pill"><input id="att_useCos" type="checkbox" /> <span>Use cosine similarity</span></label>
+          <label class="pill"><input id="att_scale" type="checkbox" checked /> <span>Scale by √d</span></label>
+          <label class="pill"><span class="muted">T</span> <input id="att_T" type="number" step="0.1" min="0.1" style="width:70px;" /></label>
+          <button id="att_random" class="primary">Random</button>
+          <button id="att_focusK1">Focus on k1</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px;">
+          <div>
+            <h3 style="margin:0 0 6px 0;">Key space (q and k)</h3>
+            <canvas id="att_key_canvas" class="canvas" style="height:330px;"></canvas>
+            <div class="legend">
+              <span><span class="dot" style="background:var(--purple)"></span>q</span>
+              <span><span class="dot" style="background:var(--green)"></span>k1</span>
+              <span><span class="dot" style="background:var(--orange)"></span>k2</span>
+              <span><span class="dot" style="background:var(--red)"></span>k3</span>
+            </div>
+          </div>
+          <div>
+            <h3 style="margin:0 0 6px 0;">Value space (v and out)</h3>
+            <canvas id="att_val_canvas" class="canvas" style="height:330px;"></canvas>
+            <div class="legend">
+              <span><span class="dot" style="background:var(--green)"></span>v1</span>
+              <span><span class="dot" style="background:var(--orange)"></span>v2</span>
+              <span><span class="dot" style="background:var(--red)"></span>v3</span>
+              <span><span class="dot" style="background:#111827"></span>out</span>
+            </div>
+          </div>
+        </div>
+
+        <details>
+          <summary>Numeric inputs (dragging also works)</summary>
+          <div class="kvGrid">
+            <div class="head"> </div><div class="head">x</div><div class="head">y</div><div class="sep"> </div><div class="head">x</div><div class="head">y</div>
+
+            <div class="mono">q</div>
+            <input id="q_x" type="number" step="0.1" />
+            <input id="q_y" type="number" step="0.1" />
+            <div class="sep">|</div>
+            <div class="mini muted"> </div>
+            <div class="mini muted"> </div>
+
+            <div class="mono">k1</div>
+            <input id="k1_x" type="number" step="0.1" />
+            <input id="k1_y" type="number" step="0.1" />
+            <div class="sep">|</div>
+            <div class="mono">v1</div>
+            <input id="v1_x" type="number" step="0.1" />
+            <input id="v1_y" type="number" step="0.1" />
+
+            <div class="mono">k2</div>
+            <input id="k2_x" type="number" step="0.1" />
+            <input id="k2_y" type="number" step="0.1" />
+            <div class="sep">|</div>
+            <div class="mono">v2</div>
+            <input id="v2_x" type="number" step="0.1" />
+            <input id="v2_y" type="number" step="0.1" />
+
+            <div class="mono">k3</div>
+            <input id="k3_x" type="number" step="0.1" />
+            <input id="k3_y" type="number" step="0.1" />
+            <div class="sep">|</div>
+            <div class="mono">v3</div>
+            <input id="v3_x" type="number" step="0.1" />
+            <input id="v3_y" type="number" step="0.1" />
+          </div>
+        </details>
+
+        <div id="att_readout" class="readout"></div>
+
+        <div class="stepper">
+          <div class="top">
+            <button id="att_step">Step</button>
+            <button id="att_all">Show all</button>
+            <button id="att_reset">Reset</button>
+            <span id="att_stepLabel" class="label"></span>
+          </div>
+          <ol id="att_steps" class="steps"></ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>This is the “core computation” of a Transformer</h3>
+        <div class="readout">score_i = q · k_i        (or cosine)
+score_i = score_i / √d   (scaled dot-product)
+w = softmax(score)
+out = Σ w_i v_i</div>
+
+        <ul class="muted">
+          <li><b>Scores</b> decide “what to attend to”</li>
+          <li><b>Softmax</b> turns scores into attention proportions (weights)</li>
+          <li><b>Values v</b> are combined via a weighted sum to produce the output</li>
+        </ul>
+
+        <details>
+          <summary>Why divide by √d? (intuition)</summary>
+          <p class="muted">
+            As dimensionality grows, dot products tend to grow in magnitude and can make softmax extremely peaky,
+            which can destabilize training. Scaling the scores helps keep things in a healthier range
+            (scaled dot-product attention).
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6) positional encoding -->
+  <section id="posenc" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>6) Positional Encoding (sin/cos)</h2>
+        <p class="muted">
+          A vanilla Transformer has no built-in notion of order, so we add a “position” vector to token embeddings.
+          Here you can play with the classic sin/cos positional encoding in 8 dimensions.
+        </p>
+
+        <div class="inputs" style="grid-template-columns: repeat(4, minmax(0,1fr));">
+          <div class="box">
+            <label>pos P</label>
+            <input id="posP" type="number" step="1" min="0" max="200" />
+          </div>
+          <div class="box">
+            <label>pos Q</label>
+            <input id="posQ" type="number" step="1" min="0" max="200" />
+          </div>
+          <div class="box">
+            <label>dim pair i (0..3)</label>
+            <input id="posI" type="number" step="1" min="0" max="3" />
+          </div>
+          <div class="box">
+            <label>Plot range (0..N)</label>
+            <input id="posN" type="number" step="10" min="40" max="400" />
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="pos_random" class="primary">Random</button>
+          <button id="pos_close">Bring P and Q closer</button>
+          <button id="pos_far">Move P and Q farther apart</button>
+        </div>
+
+        <canvas id="pos_canvas" class="canvas" style="height:320px;"></canvas>
+        <div class="mini muted">
+          * The plot shows sin and cos for the selected dim pair over pos=0..N (2 dims out of 8).
+        </div>
+
+        <div id="pos_readout" class="readout"></div>
+
+      </div>
+
+      <div class="card">
+        <h3>What to look for</h3>
+        <ul class="muted">
+          <li>When P and Q are close, cos(PE(P), PE(Q)) tends to be higher</li>
+          <li>Mixing sin/cos at different frequencies helps represent distance at multiple scales</li>
+        </ul>
+
+        <details>
+          <summary>Formula (8D example)</summary>
+          <div class="readout">d_model = 8
+for i = 0..3:
+  PE(pos, 2i)   = sin( pos / 10000^(2i/d_model) )
+  PE(pos, 2i+1) = cos( pos / 10000^(2i/d_model) )</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ========= utilities ========= */
+const $ = (id) => document.getElementById(id);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
+const fmt = (x, d=4) => {
+  if (!Number.isFinite(x)) return "NaN";
+  const s = x.toFixed(d);
+  return s.replace(/^-0\./, "0.").replace(/^-0$/, "0");
+};
+const rad2deg = (r)=> r*180/Math.PI;
+
+function dot(a,b){ return a.x*b.x + a.y*b.y; }
+function norm(a){ return Math.sqrt(dot(a,a)); }
+function add(a,b){ return {x:a.x+b.x, y:a.y+b.y}; }
+function sub(a,b){ return {x:a.x-b.x, y:a.y-b.y}; }
+function mul(a,t){ return {x:a.x*t, y:a.y*t}; }
+function cosine(a,b){
+  const na = norm(a), nb = norm(b);
+  if (na===0 || nb===0) return NaN;
+  return dot(a,b)/(na*nb);
+}
+function softmax(arr, T=1){
+  const t = Math.max(0.1, T);
+  const m = Math.max(...arr);
+  const exps = arr.map(v => Math.exp((v-m)/t));
+  const s = exps.reduce((p,c)=>p+c,0);
+  return {m, exps, sum:s, p: exps.map(e=>e/s)};
+}
+function proj(a,b){
+  const bb = dot(b,b);
+  if (bb===0) return {t:NaN, p:{x:NaN,y:NaN}, r:{x:NaN,y:NaN}};
+  const t = dot(a,b)/bb;
+  const p = mul(b,t);
+  const r = sub(a,p);
+  return {t,p,r};
+}
+
+function setNumber(id, v){ $(id).value = String(v); }
+function readNumber(id, fallback=0){
+  const v = Number($(id).value);
+  return Number.isFinite(v) ? v : fallback;
+}
+
+/* ========= simple stepper ========= */
+function createStepper(prefix, stepsFn){
+  let idx = 0;
+  const stepsEl = $(prefix+"_steps");
+  const labelEl = $(prefix+"_stepLabel");
+  function render(){
+    const steps = stepsFn();
+    idx = clamp(idx, 0, Math.max(0, steps.length-1));
+    stepsEl.innerHTML = "";
+    steps.forEach((html,i)=>{
+      const li = document.createElement("li");
+      li.innerHTML = html;
+      if (i>idx) li.classList.add("off");
+      stepsEl.appendChild(li);
+    });
+    labelEl.textContent = `Step: ${Math.min(idx+1, steps.length)}/${steps.length}`;
+  }
+  $(prefix+"_step").onclick = ()=>{ idx = Math.min(idx+1, stepsFn().length-1); render(); };
+  $(prefix+"_all").onclick  = ()=>{ idx = stepsFn().length-1; render(); };
+  $(prefix+"_reset").onclick= ()=>{ idx = 0; render(); };
+  return { render, reset(){idx=0; render();} };
+}
+
+/* ========= canvas helper (vector dragging) ========= */
+class VecCanvas{
+  constructor(canvas, vectors, opts={}){
+    this.canvas = canvas;
+    this.vectors = vectors; // array of objects: {id,label,x,y,color,draggable}
+    this.range = opts.range ?? 5;
+    this.onChange = opts.onChange ?? (()=>{});
+    this.dragging = null;
+
+    canvas.addEventListener("pointerdown", (e)=>this.onDown(e));
+    window.addEventListener("pointermove", (e)=>this.onMove(e));
+    window.addEventListener("pointerup",   (e)=>this.onUp(e));
+
+    this.draw();
+  }
+  getRect(){ return this.canvas.getBoundingClientRect(); }
+  getCtx(){
+    const rect = this.getRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.round(rect.width));
+    const h = Math.max(1, Math.round(rect.height));
+    if (this.canvas.width !== w*dpr || this.canvas.height !== h*dpr){
+      this.canvas.width = w*dpr;
+      this.canvas.height = h*dpr;
+    }
+    const ctx = this.canvas.getContext("2d");
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {ctx, w, h};
+  }
+  worldToCanvas(x,y,w,h){
+    const s = Math.min(w,h)/(2*this.range);
+    const ox = w/2, oy = h/2;
+    return {cx: ox + x*s, cy: oy - y*s, s, ox, oy};
+  }
+  canvasToWorld(cx,cy,w,h){
+    const s = Math.min(w,h)/(2*this.range);
+    const ox = w/2, oy = h/2;
+    return {x:(cx-ox)/s, y:-(cy-oy)/s};
+  }
+  drawGrid(ctx,w,h){
+    const {s, ox, oy} = this.worldToCanvas(0,0,w,h);
+    ctx.clearRect(0,0,w,h);
+
+    // grid
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(17,24,39,0.06)";
+    for(let i=-this.range; i<=this.range; i++){
+      const x = ox + i*s;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+      const y = oy - i*s;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+    }
+
+    // axes
+    ctx.strokeStyle = "rgba(17,24,39,0.25)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0,oy); ctx.lineTo(w,oy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox,0); ctx.lineTo(ox,h); ctx.stroke();
+
+    // origin
+    ctx.fillStyle = "rgba(17,24,39,0.5)";
+    ctx.beginPath(); ctx.arc(ox,oy,3,0,Math.PI*2); ctx.fill();
+  }
+  drawArrow(ctx, x1,y1, x2,y2, color){
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x2,y2);
+    ctx.stroke();
+
+    // arrow head
+    const dx = x2-x1, dy = y2-y1;
+    const len = Math.max(1e-6, Math.sqrt(dx*dx+dy*dy));
+    const ux = dx/len, uy = dy/len;
+    const head = 10;
+    const leftx = x2 - ux*head - uy*head*0.55;
+    const lefty = y2 - uy*head + ux*head*0.55;
+    const rightx= x2 - ux*head + uy*head*0.55;
+    const righty= y2 - uy*head - ux*head*0.55;
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(leftx,lefty);
+    ctx.lineTo(rightx,righty);
+    ctx.closePath();
+    ctx.fill();
+
+    // endpoint handle
+    ctx.globalAlpha = 0.22;
+    ctx.beginPath(); ctx.arc(x2,y2,12,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  drawLabels(ctx,w,h){
+    ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    ctx.fillStyle = "rgba(17,24,39,0.65)";
+    ctx.fillText("drag endpoints", 10, 18);
+  }
+  draw(){
+    const {ctx, w, h} = this.getCtx();
+    this.drawGrid(ctx,w,h);
+    this.drawLabels(ctx,w,h);
+
+    // vectors from origin
+    const base = this.worldToCanvas(0,0,w,h);
+    for(const v of this.vectors){
+      const p = this.worldToCanvas(v.x, v.y, w, h);
+      this.drawArrow(ctx, base.ox, base.oy, p.cx, p.cy, v.color || "#111827");
+
+      // label
+      ctx.fillStyle = v.color || "#111827";
+      ctx.globalAlpha = 0.9;
+      ctx.fillText(v.label, p.cx+8, p.cy-8);
+      ctx.globalAlpha = 1;
+    }
+  }
+  pickVector(worldX, worldY){
+    // pick nearest endpoint
+    const threshold = 0.35;
+    let best = null;
+    let bestD = Infinity;
+    for(const v of this.vectors){
+      if (v.draggable === false) continue;
+      const dx = v.x - worldX, dy = v.y - worldY;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < threshold && d < bestD){
+        best = v; bestD = d;
+      }
+    }
+    return best;
+  }
+  onDown(e){
+    const rect = this.getRect();
+    const {ctx,w,h} = this.getCtx();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const wpos = this.canvasToWorld(cx,cy,w,h);
+    const hit = this.pickVector(wpos.x, wpos.y);
+    if (hit){
+      this.dragging = hit;
+      this.canvas.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    }
+  }
+  onMove(e){
+    if (!this.dragging) return;
+    const rect = this.getRect();
+    const {ctx,w,h} = this.getCtx();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const wpos = this.canvasToWorld(cx,cy,w,h);
+    this.dragging.x = clamp(wpos.x, -this.range, this.range);
+    this.dragging.y = clamp(wpos.y, -this.range, this.range);
+    this.onChange(this.dragging);
+    this.draw();
+  }
+  onUp(e){
+    if (!this.dragging) return;
+    this.dragging = null;
+  }
+}
+
+/* ========= navigation ========= */
+$$("nav button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    $$("nav button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    const target = btn.dataset.target;
+    $$(".section").forEach(s=>s.classList.remove("active"));
+    $(target).classList.add("active");
+    // redraw canvases when switching (layout changes)
+    requestAnimationFrame(()=>{ redrawAll(); });
+  });
+});
+
+/* ========= 1) dot/cos ========= */
+const A = {id:"a", label:"a", x:3.0, y:1.0, color:getComputedStyle(document.documentElement).getPropertyValue("--blue").trim()};
+const B = {id:"b", label:"b", x:1.0, y:3.0, color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()};
+setNumber("a_x", A.x); setNumber("a_y", A.y);
+setNumber("b_x", B.x); setNumber("b_y", B.y);
+
+const dotCanvas = new VecCanvas($("dot_canvas"), [A,B], {range:5, onChange: ()=>{
+  syncDotInputsFromState();
+  updateDot();
+}});
+
+function syncDotInputsFromState(){
+  setNumber("a_x", fmt(A.x,2));
+  setNumber("a_y", fmt(A.y,2));
+  setNumber("b_x", fmt(B.x,2));
+  setNumber("b_y", fmt(B.y,2));
+}
+function syncDotStateFromInputs(){
+  A.x = readNumber("a_x", A.x); A.y = readNumber("a_y", A.y);
+  B.x = readNumber("b_x", B.x); B.y = readNumber("b_y", B.y);
+  dotCanvas.draw();
+}
+["a_x","a_y","b_x","b_y"].forEach(id=>{
+  $(id).addEventListener("input", ()=>{ syncDotStateFromInputs(); updateDot(); });
+});
+
+function updateDot(){
+  const d = dot(A,B);
+  const na = norm(A), nb = norm(B);
+  const c = cosine(A,B);
+  const cc = Number.isFinite(c) ? clamp(c,-1,1) : NaN;
+  const ang = Number.isFinite(cc) ? Math.acos(cc) : NaN;
+
+  $("dot_readout").textContent =
+`a = (${fmt(A.x,3)}, ${fmt(A.y,3)})
+b = (${fmt(B.x,3)}, ${fmt(B.y,3)})
+
+dot(a,b) = ${fmt(d,5)}
+||a|| = ${fmt(na,5)}
+||b|| = ${fmt(nb,5)}
+cos(a,b) = ${fmt(c,5)}
+angle(a,b) = ${Number.isFinite(ang) ? fmt(rad2deg(ang),3)+"°" : "NaN"}`;
+
+  dotStepper.render();
+}
+const dotStepper = createStepper("dot", ()=>{
+  const d = dot(A,B);
+  const na = norm(A), nb = norm(B);
+  const c = cosine(A,B);
+  const cc = Number.isFinite(c) ? clamp(c,-1,1) : NaN;
+  const ang = Number.isFinite(cc) ? Math.acos(cc) : NaN;
+  return [
+    `① Dot product: dot(a,b) = ax*bx + ay*by<br> = ${fmt(A.x,3)}*${fmt(B.x,3)} + ${fmt(A.y,3)}*${fmt(B.y,3)} = <b>${fmt(d,5)}</b>`,
+    `② Norms: ||a|| = √(ax²+ay²) = <b>${fmt(na,5)}</b>,  ||b|| = <b>${fmt(nb,5)}</b>`,
+    `③ Cosine similarity: cos = dot / (||a|| ||b||) = <b>${fmt(c,5)}</b>`,
+    `④ Angle: θ = arccos(cos) = <b>${Number.isFinite(ang) ? fmt(rad2deg(ang),3)+"°" : "NaN"}</b>`
+  ];
+});
+
+$("dot_random").onclick = ()=>{
+  A.x = (Math.random()*8-4); A.y = (Math.random()*8-4);
+  B.x = (Math.random()*8-4); B.y = (Math.random()*8-4);
+  syncDotInputsFromState(); dotCanvas.draw(); updateDot();
+};
+$("dot_ortho").onclick = ()=>{
+  // make B roughly orthogonal to A
+  B.x = -A.y;
+  B.y =  A.x;
+  syncDotInputsFromState(); dotCanvas.draw(); updateDot();
+};
+$("dot_parallel").onclick = ()=>{
+  // make B roughly parallel to A
+  B.x = 1.2*A.x;
+  B.y = 1.2*A.y;
+  syncDotInputsFromState(); dotCanvas.draw(); updateDot();
+};
+
+/* ========= 2) projection ========= */
+const PA = {id:"a", label:"a", x:3.2, y:1.4, color:getComputedStyle(document.documentElement).getPropertyValue("--blue").trim()};
+const PB = {id:"b", label:"b", x:2.0, y:3.0, color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()};
+const PPROJ = {id:"p", label:"proj", x:0, y:0, color:getComputedStyle(document.documentElement).getPropertyValue("--orange").trim(), draggable:false};
+const PRES = {id:"r", label:"res", x:0, y:0, color:getComputedStyle(document.documentElement).getPropertyValue("--gray").trim(), draggable:false};
+
+setNumber("pa_x", PA.x); setNumber("pa_y", PA.y);
+setNumber("pb_x", PB.x); setNumber("pb_y", PB.y);
+
+const projCanvas = new VecCanvas($("proj_canvas"), [PA,PB,PPROJ,PRES], {range:5, onChange: ()=>{
+  syncProjInputsFromState();
+  updateProj();
+}});
+
+function syncProjInputsFromState(){
+  setNumber("pa_x", fmt(PA.x,2));
+  setNumber("pa_y", fmt(PA.y,2));
+  setNumber("pb_x", fmt(PB.x,2));
+  setNumber("pb_y", fmt(PB.y,2));
+}
+function syncProjStateFromInputs(){
+  PA.x = readNumber("pa_x", PA.x); PA.y = readNumber("pa_y", PA.y);
+  PB.x = readNumber("pb_x", PB.x); PB.y = readNumber("pb_y", PB.y);
+  updateProj();
+  projCanvas.draw();
+}
+["pa_x","pa_y","pb_x","pb_y"].forEach(id=>{
+  $(id).addEventListener("input", ()=>{ syncProjStateFromInputs(); });
+});
+
+function updateProj(){
+  const pr = proj(PA,PB);
+  PPROJ.x = pr.p.x; PPROJ.y = pr.p.y;
+  PRES.x = pr.r.x;  PRES.y  = pr.r.y;
+
+  const check = dot(pr.r, PB); // should be ~0
+
+  $("proj_readout").textContent =
+`a = (${fmt(PA.x,3)}, ${fmt(PA.y,3)})
+b = (${fmt(PB.x,3)}, ${fmt(PB.y,3)})
+
+t = (a·b)/(b·b) = ${fmt(pr.t,6)}
+proj_b(a) = t b = (${fmt(pr.p.x,4)}, ${fmt(pr.p.y,4)})
+residual r = a - proj = (${fmt(pr.r.x,4)}, ${fmt(pr.r.y,4)})
+
+Check: dot(r,b) ≈ 0 → ${fmt(check,6)} (closer to 0 is better)`;
+
+  projStepper.render();
+  projCanvas.draw();
+}
+const projStepper = createStepper("proj", ()=>{
+  const pr = proj(PA,PB);
+  const ab = dot(PA,PB);
+  const bb = dot(PB,PB);
+  const check = dot(pr.r, PB);
+  return [
+    `① Coefficient t: t = (a·b)/(b·b) = (${fmt(ab,5)}) / (${fmt(bb,5)}) = <b>${fmt(pr.t,6)}</b>`,
+    `② Projection p: p = t b = <b>(${fmt(pr.p.x,4)}, ${fmt(pr.p.y,4)})</b>`,
+    `③ Residual r: r = a - p = <b>(${fmt(pr.r.x,4)}, ${fmt(pr.r.y,4)})</b>`,
+    `④ Orthogonality check: dot(r,b) = <b>${fmt(check,6)}</b> (closer to 0 means more orthogonal)`
+  ];
+});
+
+$("proj_random").onclick = ()=>{
+  PA.x = (Math.random()*8-4); PA.y = (Math.random()*8-4);
+  PB.x = (Math.random()*8-4); PB.y = (Math.random()*8-4);
+  syncProjInputsFromState(); updateProj();
+};
+$("proj_makeClose").onclick = ()=>{
+  // make a closer to b direction
+  const t = 1.3;
+  PA.x = t*PB.x + (Math.random()*0.4-0.2);
+  PA.y = t*PB.y + (Math.random()*0.4-0.2);
+  syncProjInputsFromState(); updateProj();
+};
+$("proj_makeFar").onclick = ()=>{
+  // make a roughly orthogonal to b
+  PA.x = -PB.y;
+  PA.y =  PB.x;
+  syncProjInputsFromState(); updateProj();
+};
+
+/* ========= 3) matrix ========= */
+const M = {a11:1, a12:0, a21:0, a22:1};
+const X = {id:"x", label:"x", x:2.8, y:1.2, color:getComputedStyle(document.documentElement).getPropertyValue("--blue").trim()};
+const Y = {id:"y", label:"Ax", x:0, y:0, color:getComputedStyle(document.documentElement).getPropertyValue("--red").trim(), draggable:false};
+const E1 = {id:"e1", label:"e1", x:1, y:0, color:"rgba(17,24,39,0.35)", draggable:false};
+const E2 = {id:"e2", label:"e2", x:0, y:1, color:"rgba(17,24,39,0.35)", draggable:false};
+const AE1 = {id:"ae1", label:"Ae1", x:1, y:0, color:getComputedStyle(document.documentElement).getPropertyValue("--purple").trim(), draggable:false};
+const AE2 = {id:"ae2", label:"Ae2", x:0, y:1, color:getComputedStyle(document.documentElement).getPropertyValue("--orange").trim(), draggable:false};
+
+setNumber("m11", M.a11); setNumber("m12", M.a12);
+setNumber("m21", M.a21); setNumber("m22", M.a22);
+setNumber("vx1", X.x); setNumber("vx2", X.y);
+
+const matCanvas = new VecCanvas($("mat_canvas"), [E1,E2, AE1,AE2, X, Y], {range:5, onChange: ()=>{
+  setNumber("vx1", fmt(X.x,2));
+  setNumber("vx2", fmt(X.y,2));
+  updateMat();
+}});
+
+function matMulVec(m, v){
+  return {
+    x: m.a11*v.x + m.a12*v.y,
+    y: m.a21*v.x + m.a22*v.y
+  };
+}
+function updateMat(){
+  // sync AE1/AE2 and Y
+  const ae1 = matMulVec(M, {x:1,y:0});
+  const ae2 = matMulVec(M, {x:0,y:1});
+  AE1.x = ae1.x; AE1.y = ae1.y;
+  AE2.x = ae2.x; AE2.y = ae2.y;
+  const y = matMulVec(M, X);
+  Y.x = y.x; Y.y = y.y;
+
+  const showGrid = $("mat_showGrid").checked;
+
+  $("mat_readout").textContent =
+`A = [${fmt(M.a11,3)} ${fmt(M.a12,3)}; ${fmt(M.a21,3)} ${fmt(M.a22,3)}]
+x = (${fmt(X.x,3)}, ${fmt(X.y,3)})
+
+y = A x = (${fmt(Y.x,4)}, ${fmt(Y.y,4)})
+
+Column-vector view:
+c1 = (a11,a21) = (${fmt(M.a11,3)}, ${fmt(M.a21,3)})
+c2 = (a12,a22) = (${fmt(M.a12,3)}, ${fmt(M.a22,3)})
+y = x1*c1 + x2*c2`;
+
+  matStepper.render();
+  drawMatWithGrid(showGrid);
+}
+function drawMatWithGrid(show){
+  const {ctx,w,h} = matCanvas.getCtx();
+  matCanvas.drawGrid(ctx,w,h);
+  matCanvas.drawLabels(ctx,w,h);
+
+  // optional transformed grid
+  if (show){
+    const range = matCanvas.range;
+    const base = matCanvas.worldToCanvas(0,0,w,h);
+
+    const toC = (p)=> matCanvas.worldToCanvas(p.x,p.y,w,h);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(99,102,241,0.14)"; // subtle
+
+    for(let i=-range; i<=range; i++){
+      // vertical line x=i, y from -range..range
+      const p1 = matMulVec(M, {x:i,y:-range});
+      const p2 = matMulVec(M, {x:i,y: range});
+      const c1 = toC(p1), c2 = toC(p2);
+      ctx.beginPath(); ctx.moveTo(c1.cx,c1.cy); ctx.lineTo(c2.cx,c2.cy); ctx.stroke();
+
+      // horizontal line y=i
+      const q1 = matMulVec(M, {x:-range,y:i});
+      const q2 = matMulVec(M, {x: range,y:i});
+      const d1 = toC(q1), d2 = toC(q2);
+      ctx.beginPath(); ctx.moveTo(d1.cx,d1.cy); ctx.lineTo(d2.cx,d2.cy); ctx.stroke();
+    }
+  }
+
+  // draw vectors
+  const base = matCanvas.worldToCanvas(0,0,w,h);
+
+  const drawVec = (v)=>{
+    const p = matCanvas.worldToCanvas(v.x,v.y,w,h);
+    matCanvas.drawArrow(ctx, base.ox, base.oy, p.cx, p.cy, v.color || "#111827");
+    ctx.fillStyle = v.color || "#111827";
+    ctx.globalAlpha = 0.9;
+    ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    ctx.fillText(v.label, p.cx+8, p.cy-8);
+    ctx.globalAlpha = 1;
+  };
+
+  drawVec(E1); drawVec(E2);
+  drawVec(AE1); drawVec(AE2);
+  drawVec(X); drawVec(Y);
+}
+function syncMatFromInputs(){
+  M.a11 = readNumber("m11", M.a11);
+  M.a12 = readNumber("m12", M.a12);
+  M.a21 = readNumber("m21", M.a21);
+  M.a22 = readNumber("m22", M.a22);
+  X.x = readNumber("vx1", X.x);
+  X.y = readNumber("vx2", X.y);
+  updateMat();
+}
+["m11","m12","m21","m22","vx1","vx2"].forEach(id=>{
+  $(id).addEventListener("input", ()=>{ syncMatFromInputs(); });
+});
+$("mat_showGrid").addEventListener("change", ()=> updateMat());
+
+const matStepper = createStepper("mat", ()=>{
+  const y1 = M.a11*X.x + M.a12*X.y;
+  const y2 = M.a21*X.x + M.a22*X.y;
+  const c1 = {x:M.a11,y:M.a21};
+  const c2 = {x:M.a12,y:M.a22};
+  const yc = add(mul(c1,X.x), mul(c2,X.y));
+  return [
+    `① y1 = a11*x1 + a12*x2 = ${fmt(M.a11,3)}*${fmt(X.x,3)} + ${fmt(M.a12,3)}*${fmt(X.y,3)} = <b>${fmt(y1,5)}</b>`,
+    `② y2 = a21*x1 + a22*x2 = ${fmt(M.a21,3)}*${fmt(X.x,3)} + ${fmt(M.a22,3)}*${fmt(X.y,3)} = <b>${fmt(y2,5)}</b>`,
+    `③ Using columns: y = x1*c1 + x2*c2`,
+    `④ c1=(${fmt(c1.x,3)},${fmt(c1.y,3)}), c2=(${fmt(c2.x,3)},${fmt(c2.y,3)}) ⇒ y=(${fmt(yc.x,5)},${fmt(yc.y,5)})`
+  ];
+});
+
+$("mat_identity").onclick = ()=>{
+  M.a11=1; M.a12=0; M.a21=0; M.a22=1;
+  setNumber("m11",1); setNumber("m12",0); setNumber("m21",0); setNumber("m22",1);
+  updateMat();
+};
+$("mat_rot").onclick = ()=>{
+  const th = Math.PI/6; // 30deg
+  M.a11=Math.cos(th); M.a12=-Math.sin(th);
+  M.a21=Math.sin(th); M.a22=Math.cos(th);
+  setNumber("m11",fmt(M.a11,3)); setNumber("m12",fmt(M.a12,3));
+  setNumber("m21",fmt(M.a21,3)); setNumber("m22",fmt(M.a22,3));
+  updateMat();
+};
+$("mat_scale").onclick = ()=>{
+  M.a11=2.0; M.a12=0; M.a21=0; M.a22=0.6;
+  setNumber("m11",2.0); setNumber("m12",0); setNumber("m21",0); setNumber("m22",0.6);
+  updateMat();
+};
+$("mat_shear").onclick = ()=>{
+  M.a11=1; M.a12=1.1; M.a21=0; M.a22=1;
+  setNumber("m11",1); setNumber("m12",1.1); setNumber("m21",0); setNumber("m22",1);
+  updateMat();
+};
+$("mat_reflect").onclick = ()=>{
+  M.a11=1; M.a12=0; M.a21=0; M.a22=-1;
+  setNumber("m11",1); setNumber("m12",0); setNumber("m21",0); setNumber("m22",-1);
+  updateMat();
+};
+
+/* ========= 4) softmax ========= */
+setNumber("z1", 1.0);
+setNumber("z2", 2.2);
+setNumber("z3", 0.2);
+setNumber("temp", 1.0);
+
+function updateSoft(){
+  const z = [readNumber("z1",0), readNumber("z2",0), readNumber("z3",0)];
+  const T = readNumber("temp",1);
+  const sm = softmax(z, T);
+
+  const p = sm.p;
+  $("bar1").style.width = (p[0]*100).toFixed(1)+"%";
+  $("bar2").style.width = (p[1]*100).toFixed(1)+"%";
+  $("bar3").style.width = (p[2]*100).toFixed(1)+"%";
+  $("p1txt").textContent = fmt(p[0],5);
+  $("p2txt").textContent = fmt(p[1],5);
+  $("p3txt").textContent = fmt(p[2],5);
+
+  $("soft_readout").textContent =
+`z = [${fmt(z[0],3)}, ${fmt(z[1],3)}, ${fmt(z[2],3)}],  T=${fmt(T,3)}
+
+Stabilization: m = max(z) = ${fmt(sm.m,3)}
+exp((z-m)/T) = [${sm.exps.map(v=>fmt(v,6)).join(", ")}]
+sum = ${fmt(sm.sum,6)}
+p = exp/sum = [${p.map(v=>fmt(v,6)).join(", ")}]`;
+
+  softStepper.render();
+}
+["z1","z2","z3","temp"].forEach(id=>{
+  $(id).addEventListener("input", updateSoft);
+});
+$("soft_random").onclick = ()=>{
+  setNumber("z1", fmt(Math.random()*6-3,2));
+  setNumber("z2", fmt(Math.random()*6-3,2));
+  setNumber("z3", fmt(Math.random()*6-3,2));
+  updateSoft();
+};
+$("soft_peaky").onclick = ()=>{
+  setNumber("temp", 0.35);
+  updateSoft();
+};
+$("soft_flat").onclick = ()=>{
+  setNumber("temp", 2.5);
+  updateSoft();
+};
+const softStepper = createStepper("soft", ()=>{
+  const z = [readNumber("z1",0), readNumber("z2",0), readNumber("z3",0)];
+  const T = readNumber("temp",1);
+  const sm = softmax(z, T);
+  return [
+    `① Subtract max: m=max(z)=<b>${fmt(sm.m,3)}</b> (stability)`,
+    `② Exponentiate: e_i = exp((z_i-m)/T) = [${sm.exps.map(v=>fmt(v,6)).join(", ")}]`,
+    `③ Sum: sum = Σ e_i = <b>${fmt(sm.sum,6)}</b>`,
+    `④ Normalize: p_i = e_i/sum = <b>[${sm.p.map(v=>fmt(v,6)).join(", ")}]</b>`
+  ];
+});
+
+/* ========= 5) attention ========= */
+const Q = {id:"q", label:"q", x:2.4, y:1.0, color:getComputedStyle(document.documentElement).getPropertyValue("--purple").trim()};
+const K1 = {id:"k1", label:"k1", x:3.0, y:1.1, color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()};
+const K2 = {id:"k2", label:"k2", x:-0.6, y:2.4, color:getComputedStyle(document.documentElement).getPropertyValue("--orange").trim()};
+const K3 = {id:"k3", label:"k3", x:-2.4, y:-1.1, color:getComputedStyle(document.documentElement).getPropertyValue("--red").trim()};
+const V1 = {id:"v1", label:"v1", x:2.6, y:0.2, color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()};
+const V2 = {id:"v2", label:"v2", x:-0.2, y:2.4, color:getComputedStyle(document.documentElement).getPropertyValue("--orange").trim()};
+const V3 = {id:"v3", label:"v3", x:-2.2, y:-0.5, color:getComputedStyle(document.documentElement).getPropertyValue("--red").trim()};
+const OUT= {id:"out",label:"out",x:0,y:0,color:"#111827", draggable:false};
+
+setNumber("att_T", 1.0);
+
+function syncAttInputsFromState(){
+  setNumber("q_x", fmt(Q.x,2)); setNumber("q_y", fmt(Q.y,2));
+  setNumber("k1_x", fmt(K1.x,2)); setNumber("k1_y", fmt(K1.y,2));
+  setNumber("k2_x", fmt(K2.x,2)); setNumber("k2_y", fmt(K2.y,2));
+  setNumber("k3_x", fmt(K3.x,2)); setNumber("k3_y", fmt(K3.y,2));
+  setNumber("v1_x", fmt(V1.x,2)); setNumber("v1_y", fmt(V1.y,2));
+  setNumber("v2_x", fmt(V2.x,2)); setNumber("v2_y", fmt(V2.y,2));
+  setNumber("v3_x", fmt(V3.x,2)); setNumber("v3_y", fmt(V3.y,2));
+}
+function syncAttStateFromInputs(){
+  Q.x=readNumber("q_x",Q.x); Q.y=readNumber("q_y",Q.y);
+  K1.x=readNumber("k1_x",K1.x); K1.y=readNumber("k1_y",K1.y);
+  K2.x=readNumber("k2_x",K2.x); K2.y=readNumber("k2_y",K2.y);
+  K3.x=readNumber("k3_x",K3.x); K3.y=readNumber("k3_y",K3.y);
+  V1.x=readNumber("v1_x",V1.x); V1.y=readNumber("v1_y",V1.y);
+  V2.x=readNumber("v2_x",V2.x); V2.y=readNumber("v2_y",V2.y);
+  V3.x=readNumber("v3_x",V3.x); V3.y=readNumber("v3_y",V3.y);
+  attKeyCanvas.draw();
+  attValCanvas.draw();
+  updateAtt();
+}
+["q_x","q_y","k1_x","k1_y","k2_x","k2_y","k3_x","k3_y","v1_x","v1_y","v2_x","v2_y","v3_x","v3_y"].forEach(id=>{
+  $(id).addEventListener("input", ()=>{ syncAttStateFromInputs(); });
+});
+
+const attKeyCanvas = new VecCanvas($("att_key_canvas"), [Q,K1,K2,K3], {range:5, onChange: ()=>{
+  syncAttInputsFromState();
+  updateAtt();
+}});
+const attValCanvas = new VecCanvas($("att_val_canvas"), [V1,V2,V3,OUT], {range:5, onChange: ()=>{
+  syncAttInputsFromState();
+  updateAtt();
+}});
+
+function attScore(q,k,useCos){
+  return useCos ? cosine(q,k) : dot(q,k);
+}
+
+function updateAtt(){
+  const useCos = $("att_useCos").checked;
+  const doScale = $("att_scale").checked;
+  const T = readNumber("att_T", 1);
+
+  const d = 2;
+  let scores = [attScore(Q,K1,useCos), attScore(Q,K2,useCos), attScore(Q,K3,useCos)];
+
+  // handle NaN when cosine with zero vectors
+  scores = scores.map(s => Number.isFinite(s) ? s : -1e9);
+
+  const scaled = scores.map(s=>{
+    if (!doScale) return s;
+    return s / Math.sqrt(d);
+  });
+
+  const sm = softmax(scaled, T);
+  const w = sm.p;
+
+  const out = add(add(mul(V1,w[0]), mul(V2,w[1])), mul(V3,w[2]));
+  OUT.x = out.x; OUT.y = out.y;
+
+  const scoreLabel = useCos ? "cos(q,ki)" : "dot(q,ki)";
+
+  $("att_readout").textContent =
+`Settings: score=${useCos ? "cosine" : "dot"} , scale=${doScale ? "ON" : "OFF"} , T=${fmt(T,3)}
+
+q = (${fmt(Q.x,3)}, ${fmt(Q.y,3)})
+
+scores:
+  s1=${scoreLabel} = ${fmt(scores[0],6)}
+  s2=${scoreLabel} = ${fmt(scores[1],6)}
+  s3=${scoreLabel} = ${fmt(scores[2],6)}
+
+scaled (/√d):
+  ŝ = [${scaled.map(v=>fmt(v,6)).join(", ")}]
+
+softmax(ŝ/T):
+  w = [${w.map(v=>fmt(v,6)).join(", ")}]   (sum=${fmt(w.reduce((p,c)=>p+c,0),6)})
+
+out = Σ w_i v_i
+  = ${fmt(w[0],6)}*v1 + ${fmt(w[1],6)}*v2 + ${fmt(w[2],6)}*v3
+  = (${fmt(OUT.x,6)}, ${fmt(OUT.y,6)})`;
+
+  attStepper.render();
+  attValCanvas.draw();
+}
+
+const attStepper = createStepper("att", ()=>{
+  const useCos = $("att_useCos").checked;
+  const doScale = $("att_scale").checked;
+  const T = readNumber("att_T", 1);
+  const d = 2;
+
+  let scores = [attScore(Q,K1,useCos), attScore(Q,K2,useCos), attScore(Q,K3,useCos)];
+  scores = scores.map(s => Number.isFinite(s) ? s : -1e9);
+  const scaled = scores.map(s => doScale ? s/Math.sqrt(d) : s);
+  const sm = softmax(scaled, T);
+  const w = sm.p;
+  const out = add(add(mul(V1,w[0]), mul(V2,w[1])), mul(V3,w[2]));
+  return [
+    `① Scores: s_i = ${useCos ? "cos(q,k_i)" : "dot(q,k_i)"} = [${scores.map(v=>fmt(v,6)).join(", ")}]`,
+    `② Scaling: ŝ_i = s_i ${doScale ? "/√2" : ""} = [${scaled.map(v=>fmt(v,6)).join(", ")}]`,
+    `③ Softmax: w = softmax(ŝ/T) = <b>[${w.map(v=>fmt(v,6)).join(", ")}]</b>`,
+    `④ Weighted sum: out = Σ w_i v_i = <b>(${fmt(out.x,6)}, ${fmt(out.y,6)})</b>`
+  ];
+});
+
+$("att_useCos").addEventListener("change", updateAtt);
+$("att_scale").addEventListener("change", updateAtt);
+$("att_T").addEventListener("input", updateAtt);
+
+$("att_random").onclick = ()=>{
+  const rnd = ()=> (Math.random()*8-4);
+  Q.x=rnd(); Q.y=rnd();
+  K1.x=rnd(); K1.y=rnd();
+  K2.x=rnd(); K2.y=rnd();
+  K3.x=rnd(); K3.y=rnd();
+  V1.x=rnd(); V1.y=rnd();
+  V2.x=rnd(); V2.y=rnd();
+  V3.x=rnd(); V3.y=rnd();
+  syncAttInputsFromState();
+  attKeyCanvas.draw(); attValCanvas.draw();
+  updateAtt();
+};
+$("att_focusK1").onclick = ()=>{
+  // Make q close to k1 direction
+  Q.x = K1.x + (Math.random()*0.4-0.2);
+  Q.y = K1.y + (Math.random()*0.4-0.2);
+  syncAttInputsFromState();
+  attKeyCanvas.draw();
+  updateAtt();
+};
+
+/* ========= 6) positional encoding ========= */
+function pe(pos, dModel=8){
+  const out = new Array(dModel).fill(0);
+  for(let i=0; i<dModel/2; i++){
+    const denom = Math.pow(10000, (2*i)/dModel);
+    const x = pos/denom;
+    out[2*i]   = Math.sin(x);
+    out[2*i+1] = Math.cos(x);
+  }
+  return out;
+}
+function cosineArr(a,b){
+  let da=0, db=0, dp=0;
+  for(let i=0; i<a.length; i++){
+    dp += a[i]*b[i];
+    da += a[i]*a[i];
+    db += b[i]*b[i];
+  }
+  if (da===0 || db===0) return NaN;
+  return dp / (Math.sqrt(da)*Math.sqrt(db));
+}
+function drawPosPlot(){
+  const canvas = $("pos_canvas");
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.max(1, Math.round(rect.width));
+  const h = Math.max(1, Math.round(rect.height));
+  if (canvas.width !== w*dpr || canvas.height !== h*dpr){
+    canvas.width = w*dpr; canvas.height = h*dpr;
+  }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  const N = readNumber("posN", 120);
+  const i = clamp(Math.floor(readNumber("posI",0)), 0, 3);
+  const dModel = 8;
+
+  // axes
+  ctx.strokeStyle = "rgba(17,24,39,0.18)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0,h/2); ctx.lineTo(w,h/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(40,0); ctx.lineTo(40,h); ctx.stroke();
+
+  function yMap(v){ return h/2 - v*(h*0.40); }
+  function xMap(pos){ return 40 + (pos/N)*(w-55); }
+
+  // sin line
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--blue").trim();
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  for(let pos=0; pos<=N; pos++){
+    const v = pe(pos,dModel)[2*i];
+    const x = xMap(pos), y = yMap(v);
+    if (pos===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // cos line
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--orange").trim();
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  for(let pos=0; pos<=N; pos++){
+    const v = pe(pos,dModel)[2*i+1];
+    const x = xMap(pos), y = yMap(v);
+    if (pos===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // markers for P and Q
+  const P = clamp(Math.floor(readNumber("posP", 10)), 0, 200);
+  const Qp = clamp(Math.floor(readNumber("posQ", 26)), 0, 200);
+
+  ctx.fillStyle = "rgba(17,24,39,0.85)";
+  ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+  ctx.fillText(`i=${i}  (dims ${2*i},${2*i+1})`, 8, 16);
+
+  function drawMarker(pos, label){
+    const x = xMap(pos);
+    ctx.strokeStyle = "rgba(17,24,39,0.35)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x,8); ctx.lineTo(x,h-8); ctx.stroke();
+    ctx.fillStyle = "rgba(17,24,39,0.85)";
+    ctx.fillText(label, x+4, 28);
+  }
+  drawMarker(P, `P=${P}`);
+  drawMarker(Qp, `Q=${Qp}`);
+}
+function updatePos(){
+  const P = clamp(Math.floor(readNumber("posP", 10)), 0, 200);
+  const Qp = clamp(Math.floor(readNumber("posQ", 26)), 0, 200);
+  const i = clamp(Math.floor(readNumber("posI",0)), 0, 3);
+  const dModel = 8;
+
+  const peP = pe(P, dModel);
+  const peQ = pe(Qp, dModel);
+  const c = cosineArr(peP, peQ);
+
+  const show = (arr)=> arr.map(v=>fmt(v,6)).join(", ");
+
+  $("pos_readout").textContent =
+`d_model = 8
+P=${P}, Q=${Qp}
+
+PE(P) = [${show(peP)}]
+PE(Q) = [${show(peQ)}]
+
+cos(PE(P), PE(Q)) = ${fmt(c,6)}
+
+Selected dim pair i=${i}:
+  PE(P)[${2*i}]   = sin(...) = ${fmt(peP[2*i],6)}
+  PE(P)[${2*i+1}] = cos(...) = ${fmt(peP[2*i+1],6)}
+  PE(Q)[${2*i}]   = sin(...) = ${fmt(peQ[2*i],6)}
+  PE(Q)[${2*i+1}] = cos(...) = ${fmt(peQ[2*i+1],6)}`;
+
+  drawPosPlot();
+}
+setNumber("posP", 10);
+setNumber("posQ", 26);
+setNumber("posI", 1);
+setNumber("posN", 120);
+
+["posP","posQ","posI","posN"].forEach(id=>{
+  $(id).addEventListener("input", updatePos);
+});
+$("pos_random").onclick = ()=>{
+  setNumber("posP", Math.floor(Math.random()*120));
+  setNumber("posQ", Math.floor(Math.random()*120));
+  setNumber("posI", Math.floor(Math.random()*4));
+  updatePos();
+};
+$("pos_close").onclick = ()=>{
+  const p = Math.floor(Math.random()*90);
+  setNumber("posP", p);
+  setNumber("posQ", p + Math.floor(Math.random()*6));
+  updatePos();
+};
+$("pos_far").onclick = ()=>{
+  const p = Math.floor(Math.random()*30);
+  setNumber("posP", p);
+  setNumber("posQ", p + 80 + Math.floor(Math.random()*40));
+  updatePos();
+};
+
+/* ========= initial update ========= */
+function redrawAll(){
+  dotCanvas.draw();
+  projCanvas.draw();
+  updateMat(); // draws itself
+  attKeyCanvas.draw();
+  attValCanvas.draw();
+  drawPosPlot();
+}
+function init(){
+  updateDot();
+  updateProj();
+  updateMat();
+  updateSoft();
+  syncAttInputsFromState();
+  updateAtt();
+  updatePos();
+}
+init();
+</script>
+
+</body>
+</html>

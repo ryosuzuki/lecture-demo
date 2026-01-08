@@ -1,0 +1,1519 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Math for Transformers — Interactive (Single File)</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#111a33;
+      --panel2:#0f1730;
+      --text:#e8eeff;
+      --muted:#a8b4da;
+      --line:#23325f;
+      --accent:#7aa2ff;
+      --accent2:#71f0c4;
+      --warn:#ffcf5a;
+      --danger:#ff6b8a;
+      --ok:#7dff9b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background: radial-gradient(1200px 700px at 20% 10%, #152351 0%, var(--bg) 60%);
+      color:var(--text);
+      overflow:hidden;
+    }
+    .app{
+      height:100%;
+      display:grid;
+      grid-template-columns: 280px 1fr;
+      gap:14px;
+      padding:14px;
+    }
+    .sidebar{
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:16px;
+      padding:14px;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+    }
+    .brand{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding:10px 10px 14px 10px;
+      border-bottom:1px solid rgba(255,255,255,0.08);
+      margin-bottom:12px;
+    }
+    .logo{
+      width:34px;height:34px;border-radius:10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow:0 12px 30px rgba(122,162,255,0.25);
+    }
+    .brand h1{
+      font-size:14px;margin:0;letter-spacing:0.2px;line-height:1.2;
+    }
+    .brand .sub{font-size:12px;color:var(--muted)}
+    .nav{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:auto;
+      padding-right:4px;
+    }
+    .nav button{
+      appearance:none;border:1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      color:var(--text);
+      border-radius:12px;
+      padding:10px 10px;
+      text-align:left;
+      cursor:pointer;
+      transition:transform 0.06s ease, background 0.2s ease, border-color 0.2s ease;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      font-size:13px;
+    }
+    .nav button:hover{transform:translateY(-1px); background: rgba(255,255,255,0.045)}
+    .nav button.active{
+      border-color: rgba(122,162,255,0.55);
+      background: rgba(122,162,255,0.12);
+      box-shadow: 0 10px 24px rgba(122,162,255,0.12);
+    }
+    .pill{
+      font-size:11px;
+      color:rgba(232,238,255,0.9);
+      background: rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.10);
+      padding:3px 8px;border-radius:999px;
+      font-family:var(--mono);
+    }
+    .footer{
+      margin-top:auto;
+      padding-top:12px;
+      border-top:1px solid rgba(255,255,255,0.08);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.4;
+    }
+    .main{
+      display:grid;
+      grid-template-rows: auto 1fr;
+      gap:14px;
+      min-width:0;
+      min-height:0;
+    }
+    .topbar{
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:16px;
+      padding:12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .topbar .title{
+      display:flex;flex-direction:column;gap:4px;min-width:0;
+    }
+    .topbar .title h2{
+      margin:0;font-size:15px;letter-spacing:0.2px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .topbar .title .desc{
+      margin:0;font-size:12px;color:var(--muted);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .topbar .actions{
+      display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;
+    }
+    .btn{
+      appearance:none;border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      color:var(--text);
+      border-radius:12px;
+      padding:9px 10px;
+      cursor:pointer;
+      font-size:12px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition:transform 0.06s ease, background 0.2s ease, border-color 0.2s ease;
+      user-select:none;
+    }
+    .btn:hover{transform:translateY(-1px); background: rgba(255,255,255,0.06)}
+    .btn.primary{
+      border-color: rgba(122,162,255,0.55);
+      background: rgba(122,162,255,0.18);
+    }
+    .btn.danger{
+      border-color: rgba(255,107,138,0.55);
+      background: rgba(255,107,138,0.14);
+    }
+    .content{
+      display:grid;
+      grid-template-columns: 1fr 420px;
+      gap:14px;
+      min-height:0;
+      min-width:0;
+    }
+    .stage, .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:16px;
+      min-height:0;
+      min-width:0;
+      overflow:hidden;
+    }
+    .stage{
+      display:grid;
+      grid-template-rows:auto 1fr;
+    }
+    .stageHeader{
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,0.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .stageHeader .hint{
+      color:var(--muted);
+      font-size:12px;
+    }
+    canvas{
+      width:100%;
+      height:100%;
+      display:block;
+      background: radial-gradient(900px 500px at 35% 30%, rgba(122,162,255,0.08), rgba(0,0,0,0) 60%),
+                  radial-gradient(800px 600px at 70% 70%, rgba(113,240,196,0.06), rgba(0,0,0,0) 55%);
+    }
+    .panel{
+      display:grid;
+      grid-template-rows:auto 1fr;
+    }
+    .panelHeader{
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,0.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .panelHeader .stepInfo{
+      font-family:var(--mono);
+      font-size:11px;
+      color:rgba(232,238,255,0.9);
+      padding:4px 8px;border-radius:999px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.05);
+    }
+    .panelBody{
+      overflow:auto;
+      padding:12px 14px 16px 14px;
+    }
+    .section{
+      border:1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.08);
+      border-radius:14px;
+      padding:12px;
+      margin-bottom:12px;
+    }
+    .section h3{
+      margin:0 0 8px 0;
+      font-size:13px;
+      letter-spacing:0.2px;
+    }
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin:8px 0;
+    }
+    .row3{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:10px;
+      margin:8px 0;
+    }
+    label{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    input[type="number"], input[type="text"]{
+      width:100%;
+      padding:9px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.03);
+      color:var(--text);
+      outline:none;
+      font-family:var(--mono);
+      font-size:12px;
+    }
+    input[type="range"]{
+      width:100%;
+      accent-color: var(--accent);
+    }
+    .kv{
+      display:grid;
+      grid-template-columns: 120px 1fr;
+      gap:10px;
+      padding:8px 0;
+      border-top:1px dashed rgba(255,255,255,0.10);
+    }
+    .kv:first-child{border-top:none}
+    .k{color:var(--muted); font-size:12px}
+    .v{font-family:var(--mono); font-size:12px; color:var(--text); word-break:break-word}
+    .calc{
+      font-family:var(--mono);
+      font-size:12px;
+      line-height:1.45;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.03);
+      white-space:pre-wrap;
+    }
+    .small{
+      font-size:11px;color:var(--muted);line-height:1.4
+    }
+    .badge{
+      display:inline-block;
+      font-family:var(--mono);
+      font-size:11px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.05);
+      margin-right:6px;
+    }
+    @media (max-width: 1100px){
+      body{overflow:auto}
+      .app{grid-template-columns:1fr; overflow:auto}
+      .content{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>Math for Transformers</h1>
+        <div class="sub">Interactive mini-lab (single file)</div>
+      </div>
+    </div>
+
+    <div class="nav" id="nav"></div>
+
+    <div class="footer">
+      <div><span class="badge">Drag</span> vectors on the canvas.</div>
+      <div><span class="badge">Edit</span> numbers on the right.</div>
+      <div><span class="badge">Step</span> to reveal intermediate math.</div>
+      <div style="margin-top:8px;">Tip: Use this as a lecture “math sandbox” before showing real model weights.</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="title">
+        <h2 id="pageTitle">…</h2>
+        <div class="desc" id="pageDesc">…</div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="btnReset">Reset</button>
+        <button class="btn" id="btnRandom">Randomize</button>
+        <button class="btn primary" id="btnStep">Step</button>
+        <button class="btn" id="btnPlay">Play</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <section class="stage">
+        <div class="stageHeader">
+          <div class="hint" id="stageHint">…</div>
+          <div class="pill" id="stageTag">canvas</div>
+        </div>
+        <canvas id="c"></canvas>
+      </section>
+
+      <section class="panel">
+        <div class="panelHeader">
+          <div class="pill" id="panelTag">controls</div>
+          <div class="stepInfo" id="stepInfo">step 0</div>
+        </div>
+        <div class="panelBody" id="panelBody"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+
+  const pageTitle = document.getElementById("pageTitle");
+  const pageDesc  = document.getElementById("pageDesc");
+  const stageHint = document.getElementById("stageHint");
+  const stageTag  = document.getElementById("stageTag");
+  const panelBody = document.getElementById("panelBody");
+  const stepInfo  = document.getElementById("stepInfo");
+
+  const btnReset  = document.getElementById("btnReset");
+  const btnRandom = document.getElementById("btnRandom");
+  const btnStep   = document.getElementById("btnStep");
+  const btnPlay   = document.getElementById("btnPlay");
+
+  const state = {
+    pageId: "vectors",
+    step: 0,
+    playing: false,
+    playTimer: null,
+    drag: { active:false, which:null },
+    pxRatio: 1,
+    w: 0, h: 0,
+    origin: { x: 0, y: 0 },
+    scale: 90,
+
+    vectors: {
+      a: { x: 1.2, y: 0.6 },
+      b: { x: 0.4, y: 1.1 }
+    },
+
+    projection: {
+      v: { x: 1.3, y: 0.8 },
+      u: { x: 1.0, y: 0.2 }
+    },
+
+    matrix: {
+      M: [[1.0, 0.2],[0.1, 1.0]],
+      x: { x: 1.2, y: 0.5 }
+    },
+
+    softmax: {
+      logits: [1.0, 0.2, -0.8, 2.0],
+      temperature: 1.0
+    },
+
+    attention: {
+      d: 2,
+      q: [0.8, 0.2],
+      k: [
+        [0.3, 0.9],
+        [0.7, 0.1],
+        [-0.4, 0.6]
+      ],
+      v: [
+        [1.0, 0.0],
+        [0.2, 0.9],
+        [-0.6, 0.4]
+      ],
+      labels: ["Token 1", "Token 2", "Token 3"]
+    }
+  };
+
+  const pages = [
+    {
+      id:"vectors",
+      name:"Vectors: Dot & Cosine",
+      desc:"Drag two vectors. See dot product, cosine similarity, and the angle.",
+      hint:"Drag the red (a) and teal (b) vectors. Edit numbers on the right.",
+      maxStep: 4
+    },
+    {
+      id:"projection",
+      name:"Projection",
+      desc:"Project v onto direction u (like measuring alignment).",
+      hint:"Drag v (red) and u (teal). Watch the projection of v onto u.",
+      maxStep: 5
+    },
+    {
+      id:"matrix",
+      name:"Matrices as Linear Maps",
+      desc:"A 2×2 matrix transforms space (like a learned linear layer).",
+      hint:"Adjust matrix entries and drag x. See y = Mx step-by-step.",
+      maxStep: 6
+    },
+    {
+      id:"softmax",
+      name:"Softmax",
+      desc:"Turn scores (logits) into a probability distribution.",
+      hint:"Edit logits and temperature. Step through exp, sum, normalize.",
+      maxStep: 6
+    },
+    {
+      id:"attention",
+      name:"Mini Self-Attention",
+      desc:"Compute scores = (q·k)/√d → softmax → weighted sum of v.",
+      hint:"Edit q, k, v. Step through the exact attention computation.",
+      maxStep: 8
+    }
+  ];
+
+  function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+  function fmt(n){
+    if (!isFinite(n)) return "NaN";
+    const abs = Math.abs(n);
+    if (abs >= 1000) return n.toFixed(2);
+    if (abs >= 100)  return n.toFixed(3);
+    if (abs >= 10)   return n.toFixed(4);
+    return n.toFixed(5);
+  }
+  function dot2(a,b){ return a.x*b.x + a.y*b.y; }
+  function norm2(a){ return Math.hypot(a.x, a.y); }
+  function toCanvas(v){
+    return {
+      x: state.origin.x + v.x * state.scale,
+      y: state.origin.y - v.y * state.scale
+    };
+  }
+  function fromCanvas(p){
+    return {
+      x: (p.x - state.origin.x) / state.scale,
+      y: -(p.y - state.origin.y) / state.scale
+    };
+  }
+
+  function resize(){
+    const r = window.devicePixelRatio || 1;
+    state.pxRatio = r;
+    const rect = canvas.getBoundingClientRect();
+    state.w = Math.max(10, Math.floor(rect.width));
+    state.h = Math.max(10, Math.floor(rect.height));
+    canvas.width  = Math.floor(state.w * r);
+    canvas.height = Math.floor(state.h * r);
+    ctx.setTransform(r,0,0,r,0,0);
+    state.origin.x = state.w * 0.5;
+    state.origin.y = state.h * 0.52;
+  }
+  window.addEventListener("resize", () => { resize(); render(); });
+
+  function drawGrid(){
+    const step = state.scale;
+    ctx.lineWidth = 1;
+
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    for (let x = state.origin.x % step; x < state.w; x += step){
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,state.h); ctx.stroke();
+    }
+    for (let y = state.origin.y % step; y < state.h; y += step){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(state.w,y); ctx.stroke();
+    }
+
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.beginPath(); ctx.moveTo(0,state.origin.y); ctx.lineTo(state.w,state.origin.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(state.origin.x,0); ctx.lineTo(state.origin.x,state.h); ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    ctx.fillText("(0,0)", state.origin.x + 6, state.origin.y - 6);
+  }
+
+  function drawArrow(v, color, label){
+    const p0 = {x: state.origin.x, y: state.origin.y};
+    const p1 = toCanvas(v);
+
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
+
+    const dx = p1.x - p0.x;
+    const dy = p1.y - p0.y;
+    const ang = Math.atan2(dy, dx);
+
+    const headLen = 12;
+    const a1 = ang + Math.PI * 0.85;
+    const a2 = ang - Math.PI * 0.85;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p1.x + Math.cos(a1)*headLen, p1.y + Math.sin(a1)*headLen);
+    ctx.lineTo(p1.x + Math.cos(a2)*headLen, p1.y + Math.sin(a2)*headLen);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(p1.x, p1.y, 7, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(232,238,255,0.9)";
+    ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    ctx.fillText(label, p1.x + 10, p1.y - 10);
+  }
+
+  function drawTextBox(x,y,lines){
+    const pad=10;
+    ctx.font="12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    const w = Math.max(...lines.map(t=>ctx.measureText(t).width)) + pad*2;
+    const h = lines.length*16 + pad*2;
+    ctx.fillStyle="rgba(0,0,0,0.35)";
+    ctx.strokeStyle="rgba(255,255,255,0.10)";
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    roundRect(ctx, x, y, w, h, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle="rgba(232,238,255,0.9)";
+    for(let i=0;i<lines.length;i++){
+      ctx.fillText(lines[i], x+pad, y+pad+12+i*16);
+    }
+  }
+
+  function roundRect(c,x,y,w,h,r){
+    const rr = Math.min(r, w/2, h/2);
+    c.moveTo(x+rr, y);
+    c.arcTo(x+w, y, x+w, y+h, rr);
+    c.arcTo(x+w, y+h, x, y+h, rr);
+    c.arcTo(x, y+h, x, y, rr);
+    c.arcTo(x, y, x+w, y, rr);
+    c.closePath();
+  }
+
+  function setPage(id){
+    state.pageId = id;
+    state.step = 0;
+    const p = pages.find(x=>x.id===id);
+    pageTitle.textContent = p.name;
+    pageDesc.textContent  = p.desc;
+    stageHint.textContent = p.hint;
+    stageTag.textContent  = id;
+    buildPanel();
+    render();
+  }
+
+  function buildNav(){
+    const nav = document.getElementById("nav");
+    nav.innerHTML = "";
+    pages.forEach(p=>{
+      const b = document.createElement("button");
+      b.className = "navBtn";
+      b.innerHTML = `<span>${p.name}</span><span class="pill">${p.id}</span>`;
+      b.addEventListener("click", ()=> {
+        document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));
+        b.classList.add("active");
+        setPage(p.id);
+      });
+      nav.appendChild(b);
+    });
+    nav.querySelector("button")?.classList.add("active");
+  }
+
+  function buildPanel(){
+    const p = pages.find(x=>x.id===state.pageId);
+    stepInfo.textContent = `step ${state.step} / ${p.maxStep}`;
+
+    if(state.pageId==="vectors"){
+      panelBody.innerHTML = `
+        <div class="section">
+          <h3>Inputs (2D vectors)</h3>
+          <div class="row">
+            <label>Vector a (red): [ax, ay]
+              <div class="row">
+                <input type="number" step="0.1" id="ax" value="${state.vectors.a.x}">
+                <input type="number" step="0.1" id="ay" value="${state.vectors.a.y}">
+              </div>
+            </label>
+            <label>Vector b (teal): [bx, by]
+              <div class="row">
+                <input type="number" step="0.1" id="bx" value="${state.vectors.b.x}">
+                <input type="number" step="0.1" id="by" value="${state.vectors.b.y}">
+              </div>
+            </label>
+          </div>
+          <div class="small">Drag endpoints on the canvas or edit numbers here.</div>
+        </div>
+
+        <div class="section">
+          <h3>Outputs</h3>
+          <div class="calc" id="vecCalc"></div>
+        </div>
+      `;
+
+      const bind = (id, getter, setter) => {
+        const el = document.getElementById(id);
+        el.addEventListener("input", ()=>{
+          setter(parseFloat(el.value));
+          render();
+          buildPanel();
+        });
+      };
+
+      bind("ax", ()=>state.vectors.a.x, v=>state.vectors.a.x=v);
+      bind("ay", ()=>state.vectors.a.y, v=>state.vectors.a.y=v);
+      bind("bx", ()=>state.vectors.b.x, v=>state.vectors.b.x=v);
+      bind("by", ()=>state.vectors.b.y, v=>state.vectors.b.y=v);
+
+      document.getElementById("vecCalc").textContent = calcVectorsText();
+      return;
+    }
+
+    if(state.pageId==="projection"){
+      panelBody.innerHTML = `
+        <div class="section">
+          <h3>Inputs</h3>
+          <div class="row">
+            <label>v (red): [vx, vy]
+              <div class="row">
+                <input type="number" step="0.1" id="vx" value="${state.projection.v.x}">
+                <input type="number" step="0.1" id="vy" value="${state.projection.v.y}">
+              </div>
+            </label>
+            <label>u (teal): [ux, uy] (direction to project onto)
+              <div class="row">
+                <input type="number" step="0.1" id="ux" value="${state.projection.u.x}">
+                <input type="number" step="0.1" id="uy" value="${state.projection.u.y}">
+              </div>
+            </label>
+          </div>
+          <div class="small">Projection is a core “alignment” primitive used implicitly throughout attention.</div>
+        </div>
+
+        <div class="section">
+          <h3>Step-by-step</h3>
+          <div class="calc" id="projCalc"></div>
+        </div>
+      `;
+
+      const bind = (id, setter) => {
+        document.getElementById(id).addEventListener("input", (e)=>{
+          setter(parseFloat(e.target.value));
+          render();
+          buildPanel();
+        });
+      };
+      bind("vx", v=>state.projection.v.x=v);
+      bind("vy", v=>state.projection.v.y=v);
+      bind("ux", v=>state.projection.u.x=v);
+      bind("uy", v=>state.projection.u.y=v);
+
+      document.getElementById("projCalc").textContent = calcProjectionText();
+      return;
+    }
+
+    if(state.pageId==="matrix"){
+      const M = state.matrix.M;
+      panelBody.innerHTML = `
+        <div class="section">
+          <h3>Matrix M (2×2) and input vector x</h3>
+          <div class="row">
+            <label>M11 <input type="number" step="0.1" id="m11" value="${M[0][0]}"></label>
+            <label>M12 <input type="number" step="0.1" id="m12" value="${M[0][1]}"></label>
+          </div>
+          <div class="row">
+            <label>M21 <input type="number" step="0.1" id="m21" value="${M[1][0]}"></label>
+            <label>M22 <input type="number" step="0.1" id="m22" value="${M[1][1]}"></label>
+          </div>
+          <div class="row">
+            <label>x1 <input type="number" step="0.1" id="x1" value="${state.matrix.x.x}"></label>
+            <label>x2 <input type="number" step="0.1" id="x2" value="${state.matrix.x.y}"></label>
+          </div>
+          <div class="small">This is the math behind a transformer’s linear layers: y = Wx (+ b).</div>
+        </div>
+
+        <div class="section">
+          <h3>Step-by-step multiplication</h3>
+          <div class="calc" id="matCalc"></div>
+        </div>
+      `;
+
+      const bind = (id, fn) => document.getElementById(id).addEventListener("input", e=>{
+        fn(parseFloat(e.target.value));
+        render();
+        buildPanel();
+      });
+
+      bind("m11", v=>state.matrix.M[0][0]=v);
+      bind("m12", v=>state.matrix.M[0][1]=v);
+      bind("m21", v=>state.matrix.M[1][0]=v);
+      bind("m22", v=>state.matrix.M[1][1]=v);
+      bind("x1", v=>state.matrix.x.x=v);
+      bind("x2", v=>state.matrix.x.y=v);
+
+      document.getElementById("matCalc").textContent = calcMatrixText();
+      return;
+    }
+
+    if(state.pageId==="softmax"){
+      panelBody.innerHTML = `
+        <div class="section">
+          <h3>Inputs (logits)</h3>
+          <div class="row3">
+            ${state.softmax.logits.map((z,i)=>`
+              <label>z${i+1}
+                <input type="number" step="0.1" data-logit="${i}" value="${z}">
+              </label>
+            `).join("")}
+          </div>
+          <label>Temperature (T)
+            <input type="range" min="0.2" max="2.5" step="0.05" id="temp" value="${state.softmax.temperature}">
+          </label>
+          <div class="small">Softmax(z/T) controls how “peaked” the probabilities are.</div>
+        </div>
+
+        <div class="section">
+          <h3>Step-by-step</h3>
+          <div class="calc" id="smCalc"></div>
+        </div>
+      `;
+
+      panelBody.querySelectorAll("input[data-logit]").forEach(inp=>{
+        inp.addEventListener("input", e=>{
+          const i = parseInt(e.target.getAttribute("data-logit"),10);
+          state.softmax.logits[i] = parseFloat(e.target.value);
+          render();
+          buildPanel();
+        });
+      });
+
+      document.getElementById("temp").addEventListener("input", e=>{
+        state.softmax.temperature = parseFloat(e.target.value);
+        render();
+        buildPanel();
+      });
+
+      document.getElementById("smCalc").textContent = calcSoftmaxText();
+      return;
+    }
+
+    if(state.pageId==="attention"){
+      const a = state.attention;
+      panelBody.innerHTML = `
+        <div class="section">
+          <h3>Query q (dimension d=${a.d})</h3>
+          <div class="row">
+            <label>q1 <input type="number" step="0.1" id="q1" value="${a.q[0]}"></label>
+            <label>q2 <input type="number" step="0.1" id="q2" value="${a.q[1]}"></label>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Keys K (3 tokens)</h3>
+          ${a.k.map((kv,i)=>`
+            <div class="row">
+              <label>${a.labels[i]}: k1 <input type="number" step="0.1" data-k="${i}" data-d="0" value="${kv[0]}"></label>
+              <label>${a.labels[i]}: k2 <input type="number" step="0.1" data-k="${i}" data-d="1" value="${kv[1]}"></label>
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="section">
+          <h3>Values V (3 tokens)</h3>
+          ${a.v.map((vv,i)=>`
+            <div class="row">
+              <label>${a.labels[i]}: v1 <input type="number" step="0.1" data-v="${i}" data-d="0" value="${vv[0]}"></label>
+              <label>${a.labels[i]}: v2 <input type="number" step="0.1" data-v="${i}" data-d="1" value="${vv[1]}"></label>
+            </div>
+          `).join("")}
+          <div class="small">This is the core: scores = q·k / √d → softmax → output = Σ αᵢ vᵢ</div>
+        </div>
+
+        <div class="section">
+          <h3>Step-by-step attention</h3>
+          <div class="calc" id="attCalc"></div>
+        </div>
+      `;
+
+      const bindNum = (id, fn) => document.getElementById(id).addEventListener("input", e=>{
+        fn(parseFloat(e.target.value));
+        render();
+        buildPanel();
+      });
+
+      bindNum("q1", v=>a.q[0]=v);
+      bindNum("q2", v=>a.q[1]=v);
+
+      panelBody.querySelectorAll("input[data-k]").forEach(inp=>{
+        inp.addEventListener("input", e=>{
+          const i = parseInt(e.target.getAttribute("data-k"),10);
+          const d = parseInt(e.target.getAttribute("data-d"),10);
+          a.k[i][d] = parseFloat(e.target.value);
+          render();
+          buildPanel();
+        });
+      });
+      panelBody.querySelectorAll("input[data-v]").forEach(inp=>{
+        inp.addEventListener("input", e=>{
+          const i = parseInt(e.target.getAttribute("data-v"),10);
+          const d = parseInt(e.target.getAttribute("data-d"),10);
+          a.v[i][d] = parseFloat(e.target.value);
+          render();
+          buildPanel();
+        });
+      });
+
+      document.getElementById("attCalc").textContent = calcAttentionText();
+      return;
+    }
+  }
+
+  function calcVectorsText(){
+    const a = state.vectors.a;
+    const b = state.vectors.b;
+
+    const da = norm2(a);
+    const db = norm2(b);
+    const dp = dot2(a,b);
+    const cos = (da===0||db===0) ? NaN : dp/(da*db);
+    const ang = Math.acos(clamp(cos, -1, 1)) * 180/Math.PI;
+
+    const lines = [];
+    lines.push(`a = [${fmt(a.x)}, ${fmt(a.y)}]`);
+    lines.push(`b = [${fmt(b.x)}, ${fmt(b.y)}]`);
+    if(state.step>=1){
+      lines.push(``);
+      lines.push(`dot(a,b) = ax*bx + ay*by`);
+      lines.push(`         = (${fmt(a.x)})*(${fmt(b.x)}) + (${fmt(a.y)})*(${fmt(b.y)})`);
+      lines.push(`         = ${fmt(dp)}`);
+    }
+    if(state.step>=2){
+      lines.push(``);
+      lines.push(`||a|| = sqrt(ax^2 + ay^2) = ${fmt(da)}`);
+      lines.push(`||b|| = sqrt(bx^2 + by^2) = ${fmt(db)}`);
+    }
+    if(state.step>=3){
+      lines.push(``);
+      lines.push(`cosine(a,b) = dot(a,b) / (||a||*||b||)`);
+      lines.push(`           = ${fmt(cos)}`);
+    }
+    if(state.step>=4){
+      lines.push(``);
+      lines.push(`angle(a,b) = arccos(cosine) = ${fmt(ang)} degrees`);
+      lines.push(`Interpretation:`);
+      lines.push(`- dot > 0 => roughly same direction`);
+      lines.push(`- dot < 0 => opposite-ish direction`);
+      lines.push(`- cosine ignores length (pure direction similarity)`);
+    }
+    if(state.step===0){
+      lines.push(`(Press Step to reveal intermediate math)`);
+    }
+    return lines.join("\n");
+  }
+
+  function calcProjectionText(){
+    const v = state.projection.v;
+    const u = state.projection.u;
+
+    const uu = dot2(u,u);
+    const vu = dot2(v,u);
+    const alpha = (uu===0) ? NaN : vu/uu;
+    const proj = { x: alpha*u.x, y: alpha*u.y };
+    const perp = { x: v.x - proj.x, y: v.y - proj.y };
+
+    const lines = [];
+    lines.push(`v = [${fmt(v.x)}, ${fmt(v.y)}]`);
+    lines.push(`u = [${fmt(u.x)}, ${fmt(u.y)}]`);
+
+    if(state.step>=1){
+      lines.push(``);
+      lines.push(`Step 1: compute dot(v,u)`);
+      lines.push(`dot(v,u) = vx*ux + vy*uy = ${fmt(vu)}`);
+    }
+    if(state.step>=2){
+      lines.push(``);
+      lines.push(`Step 2: compute dot(u,u) (squared length of u)`);
+      lines.push(`dot(u,u) = ux^2 + uy^2 = ${fmt(uu)}`);
+    }
+    if(state.step>=3){
+      lines.push(``);
+      lines.push(`Step 3: scalar projection coefficient`);
+      lines.push(`alpha = dot(v,u) / dot(u,u) = ${fmt(alpha)}`);
+    }
+    if(state.step>=4){
+      lines.push(``);
+      lines.push(`Step 4: vector projection of v onto u`);
+      lines.push(`proj_u(v) = alpha * u = [${fmt(proj.x)}, ${fmt(proj.y)}]`);
+    }
+    if(state.step>=5){
+      lines.push(``);
+      lines.push(`Step 5: perpendicular component (what's left)`);
+      lines.push(`perp = v - proj = [${fmt(perp.x)}, ${fmt(perp.y)}]`);
+      lines.push(`Interpretation: proj is the part of v aligned with u.`);
+    }
+    if(state.step===0){
+      lines.push(`(Press Step to reveal intermediate math)`);
+    }
+    return lines.join("\n");
+  }
+
+  function calcMatrixText(){
+    const M = state.matrix.M;
+    const x = state.matrix.x;
+    const y1 = M[0][0]*x.x + M[0][1]*x.y;
+    const y2 = M[1][0]*x.x + M[1][1]*x.y;
+
+    const lines=[];
+    lines.push(`M = [[${fmt(M[0][0])}, ${fmt(M[0][1])}],`);
+    lines.push(`     [${fmt(M[1][0])}, ${fmt(M[1][1])}]]`);
+    lines.push(`x = [${fmt(x.x)}, ${fmt(x.y)}]`);
+    if(state.step>=1){
+      lines.push(``);
+      lines.push(`y = Mx`);
+    }
+    if(state.step>=2){
+      lines.push(``);
+      lines.push(`y1 = M11*x1 + M12*x2`);
+      lines.push(`   = (${fmt(M[0][0])})*(${fmt(x.x)}) + (${fmt(M[0][1])})*(${fmt(x.y)})`);
+      lines.push(`   = ${fmt(y1)}`);
+    }
+    if(state.step>=3){
+      lines.push(``);
+      lines.push(`y2 = M21*x1 + M22*x2`);
+      lines.push(`   = (${fmt(M[1][0])})*(${fmt(x.x)}) + (${fmt(M[1][1])})*(${fmt(x.y)})`);
+      lines.push(`   = ${fmt(y2)}`);
+    }
+    if(state.step>=4){
+      lines.push(``);
+      lines.push(`y = [${fmt(y1)}, ${fmt(y2)}]`);
+    }
+    if(state.step>=5){
+      lines.push(``);
+      lines.push(`Geometric intuition:`);
+      lines.push(`- columns of M show where unit basis vectors go`);
+      lines.push(`- M “shears/rotates/scales” the plane`);
+      lines.push(`- In transformers, learned matrices do this in high dimensions`);
+    }
+    if(state.step>=6){
+      lines.push(``);
+      lines.push(`Transformer connection:`);
+      lines.push(`- linear layer: y = Wx (+ b)`);
+      lines.push(`- attention uses multiple linear maps: Q = XWq, K = XWk, V = XWv`);
+    }
+    if(state.step===0){
+      lines.push(`(Press Step to reveal intermediate math)`);
+    }
+    return lines.join("\n");
+  }
+
+  function softmax(arr){
+    const m = Math.max(...arr);
+    const exps = arr.map(z => Math.exp(z - m));
+    const s = exps.reduce((a,b)=>a+b,0);
+    return { m, exps, s, probs: exps.map(e=>e/s) };
+  }
+
+  function calcSoftmaxText(){
+    const z = state.softmax.logits.slice();
+    const T = state.softmax.temperature;
+    const scaled = z.map(v=>v/T);
+    const { m, exps, s, probs } = softmax(scaled);
+
+    const lines=[];
+    lines.push(`logits z = [${z.map(fmt).join(", ")}]`);
+    lines.push(`temperature T = ${fmt(T)}`);
+    if(state.step>=1){
+      lines.push(``);
+      lines.push(`Step 1: scale logits by 1/T`);
+      lines.push(`z' = z/T = [${scaled.map(fmt).join(", ")}]`);
+    }
+    if(state.step>=2){
+      lines.push(``);
+      lines.push(`Step 2: numerical stability (subtract max)`);
+      lines.push(`max(z') = ${fmt(m)}`);
+      lines.push(`z'' = z' - max = [${scaled.map(v=>fmt(v-m)).join(", ")}]`);
+    }
+    if(state.step>=3){
+      lines.push(``);
+      lines.push(`Step 3: exponentiate`);
+      lines.push(`exp(z'') = [${exps.map(fmt).join(", ")}]`);
+    }
+    if(state.step>=4){
+      lines.push(``);
+      lines.push(`Step 4: sum`);
+      lines.push(`sum = ${fmt(s)}`);
+    }
+    if(state.step>=5){
+      lines.push(``);
+      lines.push(`Step 5: normalize`);
+      lines.push(`p = exp(z'') / sum = [${probs.map(fmt).join(", ")}]`);
+    }
+    if(state.step>=6){
+      lines.push(``);
+      lines.push(`Interpretation:`);
+      lines.push(`- outputs are positive and sum to 1`);
+      lines.push(`- larger logit => larger probability`);
+      lines.push(`- smaller T => more “confident/peaky”`);
+    }
+    if(state.step===0){
+      lines.push(`(Press Step to reveal intermediate math)`);
+    }
+    return lines.join("\n");
+  }
+
+  function calcAttentionText(){
+    const a = state.attention;
+    const q = a.q;
+    const d = a.d;
+    const scale = 1/Math.sqrt(d);
+
+    const raw = a.k.map(k => (q[0]*k[0] + q[1]*k[1]));
+    const scaled = raw.map(s => s*scale);
+    const { m, exps, s, probs } = softmax(scaled);
+
+    const out = [0,0];
+    for(let i=0;i<3;i++){
+      out[0] += probs[i]*a.v[i][0];
+      out[1] += probs[i]*a.v[i][1];
+    }
+
+    const lines=[];
+    lines.push(`d = ${d}, scale = 1/sqrt(d) = ${fmt(scale)}`);
+    lines.push(`q = [${fmt(q[0])}, ${fmt(q[1])}]`);
+
+    if(state.step>=1){
+      lines.push(``);
+      lines.push(`Step 1: dot products q·k_i`);
+      for(let i=0;i<3;i++){
+        const k = a.k[i];
+        lines.push(`q·k${i+1} = (${fmt(q[0])})*(${fmt(k[0])}) + (${fmt(q[1])})*(${fmt(k[1])}) = ${fmt(raw[i])}`);
+      }
+    }
+    if(state.step>=2){
+      lines.push(``);
+      lines.push(`Step 2: scale scores (q·k)/sqrt(d)`);
+      lines.push(`scaled = [${scaled.map(fmt).join(", ")}]`);
+    }
+    if(state.step>=3){
+      lines.push(``);
+      lines.push(`Step 3: apply softmax`);
+      lines.push(`max(scaled) = ${fmt(m)}`);
+      lines.push(`exp(scaled-max) = [${exps.map(fmt).join(", ")}]`);
+    }
+    if(state.step>=4){
+      lines.push(``);
+      lines.push(`Step 4: normalize to get attention weights α`);
+      lines.push(`sum = ${fmt(s)}`);
+      lines.push(`α = [${probs.map(fmt).join(", ")}]`);
+    }
+    if(state.step>=5){
+      lines.push(``);
+      lines.push(`Step 5: weighted sum of values`);
+      for(let i=0;i<3;i++){
+        lines.push(`α${i+1} * v${i+1} = ${fmt(probs[i])} * [${fmt(a.v[i][0])}, ${fmt(a.v[i][1])}]`);
+      }
+    }
+    if(state.step>=6){
+      lines.push(``);
+      lines.push(`Step 6: output = Σ α_i v_i`);
+      lines.push(`out = [${fmt(out[0])}, ${fmt(out[1])}]`);
+    }
+    if(state.step>=7){
+      lines.push(``);
+      lines.push(`Interpretation:`);
+      lines.push(`- q asks “what am I looking for?”`);
+      lines.push(`- k says “what do I contain?”`);
+      lines.push(`- v says “what information do I pass if attended?”`);
+    }
+    if(state.step>=8){
+      lines.push(``);
+      lines.push(`Transformer link:`);
+      lines.push(`- in real models, q,k,v are high-dimensional and come from linear layers`);
+      lines.push(`- multi-head attention repeats this with different learned projections`);
+    }
+    if(state.step===0){
+      lines.push(`(Press Step to reveal intermediate math)`);
+    }
+    return lines.join("\n");
+  }
+
+  function render(){
+    resize();
+    ctx.clearRect(0,0,state.w,state.h);
+    drawGrid();
+
+    if(state.pageId==="vectors"){
+      drawArrow(state.vectors.a, "rgba(255,107,138,0.95)", "a");
+      drawArrow(state.vectors.b, "rgba(113,240,196,0.95)", "b");
+
+      const a = state.vectors.a, b = state.vectors.b;
+      const dp = dot2(a,b);
+      const cos = dp/(norm2(a)*norm2(b));
+      const lines = [
+        `dot(a,b) = ${fmt(dp)}`,
+        `cos(a,b) = ${fmt(cos)}`
+      ];
+      drawTextBox(16,16,lines);
+      return;
+    }
+
+    if(state.pageId==="projection"){
+      const v = state.projection.v;
+      const u = state.projection.u;
+
+      const uu = dot2(u,u);
+      const alpha = (uu===0) ? 0 : dot2(v,u)/uu;
+      const proj = { x: alpha*u.x, y: alpha*u.y };
+      const pv = toCanvas(proj);
+
+      drawArrow(v, "rgba(255,107,138,0.95)", "v");
+      drawArrow(u, "rgba(113,240,196,0.95)", "u");
+      drawArrow(proj, "rgba(122,162,255,0.95)", "proj");
+
+      ctx.setLineDash([6,6]);
+      ctx.strokeStyle="rgba(255,255,255,0.22)";
+      ctx.lineWidth=2;
+      const vv = toCanvas(v);
+      ctx.beginPath();
+      ctx.moveTo(vv.x, vv.y);
+      ctx.lineTo(pv.x, pv.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      drawTextBox(16,16,[
+        `alpha = dot(v,u)/dot(u,u) = ${fmt(alpha)}`,
+        `proj = alpha*u = [${fmt(proj.x)}, ${fmt(proj.y)}]`
+      ]);
+      return;
+    }
+
+    if(state.pageId==="matrix"){
+      const M = state.matrix.M;
+      const x = state.matrix.x;
+      const y = {
+        x: M[0][0]*x.x + M[0][1]*x.y,
+        y: M[1][0]*x.x + M[1][1]*x.y
+      };
+
+      const step = state.scale;
+      ctx.strokeStyle="rgba(255,255,255,0.10)";
+      ctx.lineWidth=1;
+
+      for(let i=-5;i<=5;i++){
+        const p1 = toCanvas({x:i,y:-5});
+        const p2 = toCanvas({x:i,y: 5});
+        ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+
+        const q1 = applyM(M, {x:i,y:-5});
+        const q2 = applyM(M, {x:i,y: 5});
+        const t1 = toCanvas(q1);
+        const t2 = toCanvas(q2);
+        ctx.strokeStyle="rgba(122,162,255,0.14)";
+        ctx.beginPath(); ctx.moveTo(t1.x,t1.y); ctx.lineTo(t2.x,t2.y); ctx.stroke();
+        ctx.strokeStyle="rgba(255,255,255,0.10)";
+      }
+      for(let j=-5;j<=5;j++){
+        const p1 = toCanvas({x:-5,y:j});
+        const p2 = toCanvas({x: 5,y:j});
+        ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+
+        const q1 = applyM(M, {x:-5,y:j});
+        const q2 = applyM(M, {x: 5,y:j});
+        const t1 = toCanvas(q1);
+        const t2 = toCanvas(q2);
+        ctx.strokeStyle="rgba(113,240,196,0.12)";
+        ctx.beginPath(); ctx.moveTo(t1.x,t1.y); ctx.lineTo(t2.x,t2.y); ctx.stroke();
+        ctx.strokeStyle="rgba(255,255,255,0.10)";
+      }
+
+      drawArrow(x, "rgba(255,107,138,0.95)", "x");
+      drawArrow(y, "rgba(113,240,196,0.95)", "y=Mx");
+
+      drawTextBox(16,16,[
+        `x = [${fmt(x.x)}, ${fmt(x.y)}]`,
+        `y = [${fmt(y.x)}, ${fmt(y.y)}]`
+      ]);
+      return;
+    }
+
+    if(state.pageId==="softmax"){
+      const z = state.softmax.logits.slice();
+      const T = state.softmax.temperature;
+      const scaled = z.map(v=>v/T);
+      const { probs } = softmax(scaled);
+
+      const cx = state.w*0.14;
+      const cy = state.h*0.82;
+      const w = state.w*0.72;
+      const h = state.h*0.60;
+      const maxP = Math.max(...probs);
+
+      ctx.fillStyle="rgba(255,255,255,0.06)";
+      ctx.strokeStyle="rgba(255,255,255,0.10)";
+      ctx.lineWidth=1;
+      ctx.beginPath();
+      roundRect(ctx, state.w*0.08, state.h*0.18, state.w*0.84, state.h*0.70, 16);
+      ctx.fill(); ctx.stroke();
+
+      const n = probs.length;
+      const gap = w/(n*1.4);
+      const barW = gap*0.8;
+
+      for(let i=0;i<n;i++){
+        const bx = state.w*0.14 + i*gap*1.4;
+        const barH = (probs[i]/maxP) * (state.h*0.42);
+        ctx.fillStyle = "rgba(122,162,255,0.65)";
+        ctx.beginPath();
+        roundRect(ctx, bx, cy-barH, barW, barH, 10);
+        ctx.fill();
+
+        ctx.fillStyle="rgba(232,238,255,0.9)";
+        ctx.font="12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+        ctx.fillText(`p${i+1}=${fmt(probs[i])}`, bx, cy+18);
+      }
+
+      drawTextBox(16,16,[
+        `softmax(z/T)`,
+        `z=[${z.map(fmt).join(", ")}]`,
+        `T=${fmt(T)}`
+      ]);
+      return;
+    }
+
+    if(state.pageId==="attention"){
+      const a = state.attention;
+      const q = a.q;
+      const d = a.d;
+      const scale = 1/Math.sqrt(d);
+      const raw = a.k.map(k => q[0]*k[0] + q[1]*k[1]);
+      const scaled = raw.map(s => s*scale);
+      const { probs } = softmax(scaled);
+
+      const leftX = state.w*0.10;
+      const midX  = state.w*0.46;
+      const rightX= state.w*0.74;
+      const topY  = state.h*0.18;
+      const rowH  = 64;
+
+      drawTextBox(16,16,[
+        `scores_i = (q·k_i)/sqrt(d)`,
+        `α = softmax(scores)`,
+        `out = Σ α_i v_i`
+      ]);
+
+      const box = (x,y,w,h,accent,label,sub) => {
+        ctx.fillStyle="rgba(0,0,0,0.22)";
+        ctx.strokeStyle=accent;
+        ctx.lineWidth=2;
+        ctx.beginPath();
+        roundRect(ctx,x,y,w,h,14);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle="rgba(232,238,255,0.92)";
+        ctx.font="12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+        ctx.fillText(label, x+10, y+18);
+        ctx.fillStyle="rgba(232,238,255,0.75)";
+        ctx.fillText(sub, x+10, y+38);
+      };
+
+      box(leftX, topY-30, 220, 56, "rgba(255,107,138,0.8)", "q", `[${fmt(q[0])}, ${fmt(q[1])}]`);
+
+      for(let i=0;i<3;i++){
+        const y = topY + i*rowH;
+        box(midX, y, 240, 54, "rgba(122,162,255,0.55)", `k${i+1}`, `[${fmt(a.k[i][0])}, ${fmt(a.k[i][1])}]  score=${fmt(scaled[i])}`);
+        box(rightX, y, 240, 54, "rgba(113,240,196,0.55)", `v${i+1}`, `[${fmt(a.v[i][0])}, ${fmt(a.v[i][1])}]  α=${fmt(probs[i])}`);
+
+        ctx.strokeStyle="rgba(255,255,255,0.16)";
+        ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(leftX+220, topY-2);
+        ctx.lineTo(midX, y+26);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(midX+240, y+26);
+        ctx.lineTo(rightX, y+26);
+        ctx.stroke();
+      }
+
+      const out = [0,0];
+      for(let i=0;i<3;i++){
+        out[0] += probs[i]*a.v[i][0];
+        out[1] += probs[i]*a.v[i][1];
+      }
+      box(leftX, topY + 3*rowH + 10, 420, 58, "rgba(255,207,90,0.65)", "output", `[${fmt(out[0])}, ${fmt(out[1])}]`);
+      return;
+    }
+  }
+
+  function applyM(M, v){
+    return {
+      x: M[0][0]*v.x + M[0][1]*v.y,
+      y: M[1][0]*v.x + M[1][1]*v.y
+    };
+  }
+
+  function pickHandle(px, py){
+    const p = {x:px, y:py};
+    const dist = (p1,p2)=>Math.hypot(p1.x-p2.x,p1.y-p2.y);
+
+    if(state.pageId==="vectors"){
+      const ha = toCanvas(state.vectors.a);
+      const hb = toCanvas(state.vectors.b);
+      if(dist(p,ha) < 14) return {which:"a"};
+      if(dist(p,hb) < 14) return {which:"b"};
+    }
+    if(state.pageId==="projection"){
+      const hv = toCanvas(state.projection.v);
+      const hu = toCanvas(state.projection.u);
+      if(dist(p,hv) < 14) return {which:"v"};
+      if(dist(p,hu) < 14) return {which:"u"};
+    }
+    if(state.pageId==="matrix"){
+      const hx = toCanvas(state.matrix.x);
+      if(dist(p,hx) < 14) return {which:"x"};
+    }
+    return null;
+  }
+
+  function onPointerDown(e){
+    const rect = canvas.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+
+    const hit = pickHandle(px, py);
+    if(hit){
+      state.drag.active = true;
+      state.drag.which = hit.which;
+      canvas.setPointerCapture(e.pointerId);
+    }
+  }
+
+  function onPointerMove(e){
+    if(!state.drag.active) return;
+    const rect = canvas.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const v = fromCanvas({x:px, y:py});
+
+    if(state.pageId==="vectors"){
+      if(state.drag.which==="a"){ state.vectors.a.x=v.x; state.vectors.a.y=v.y; }
+      if(state.drag.which==="b"){ state.vectors.b.x=v.x; state.vectors.b.y=v.y; }
+    }
+    if(state.pageId==="projection"){
+      if(state.drag.which==="v"){ state.projection.v.x=v.x; state.projection.v.y=v.y; }
+      if(state.drag.which==="u"){ state.projection.u.x=v.x; state.projection.u.y=v.y; }
+    }
+    if(state.pageId==="matrix"){
+      if(state.drag.which==="x"){ state.matrix.x.x=v.x; state.matrix.x.y=v.y; }
+    }
+
+    render();
+    buildPanel();
+  }
+
+  function onPointerUp(e){
+    if(!state.drag.active) return;
+    state.drag.active = false;
+    state.drag.which = null;
+    try{ canvas.releasePointerCapture(e.pointerId); }catch(_){}
+  }
+
+  canvas.addEventListener("pointerdown", onPointerDown);
+  canvas.addEventListener("pointermove", onPointerMove);
+  canvas.addEventListener("pointerup", onPointerUp);
+  canvas.addEventListener("pointercancel", onPointerUp);
+
+  function stepOnce(){
+    const p = pages.find(x=>x.id===state.pageId);
+    state.step = Math.min(p.maxStep, state.step + 1);
+    buildPanel();
+    render();
+  }
+
+  function resetPage(){
+    state.step = 0;
+    if(state.pageId==="vectors"){
+      state.vectors.a = {x:1.2,y:0.6};
+      state.vectors.b = {x:0.4,y:1.1};
+    }
+    if(state.pageId==="projection"){
+      state.projection.v = {x:1.3,y:0.8};
+      state.projection.u = {x:1.0,y:0.2};
+    }
+    if(state.pageId==="matrix"){
+      state.matrix.M = [[1.0,0.2],[0.1,1.0]];
+      state.matrix.x = {x:1.2,y:0.5};
+    }
+    if(state.pageId==="softmax"){
+      state.softmax.logits = [1.0, 0.2, -0.8, 2.0];
+      state.softmax.temperature = 1.0;
+    }
+    if(state.pageId==="attention"){
+      state.attention.q = [0.8,0.2];
+      state.attention.k = [[0.3,0.9],[0.7,0.1],[-0.4,0.6]];
+      state.attention.v = [[1.0,0.0],[0.2,0.9],[-0.6,0.4]];
+    }
+    buildPanel();
+    render();
+  }
+
+  function randomize(){
+    const rnd = ()=> (Math.random()*2 - 1) * 1.4;
+    const rndm = ()=> (Math.random()*2 - 1) * 1.1;
+
+    if(state.pageId==="vectors"){
+      state.vectors.a = {x:rnd(), y:rnd()};
+      state.vectors.b = {x:rnd(), y:rnd()};
+    }
+    if(state.pageId==="projection"){
+      state.projection.v = {x:rnd(), y:rnd()};
+      state.projection.u = {x:rnd(), y:rnd()};
+    }
+    if(state.pageId==="matrix"){
+      state.matrix.M = [[rndm(), rndm()],[rndm(), rndm()]];
+      state.matrix.x = {x:rnd(), y:rnd()};
+    }
+    if(state.pageId==="softmax"){
+      state.softmax.logits = Array.from({length:4}, ()=> (Math.random()*4 - 2));
+      state.softmax.temperature = 0.6 + Math.random()*1.6;
+    }
+    if(state.pageId==="attention"){
+      state.attention.q = [rndm(), rndm()];
+      state.attention.k = Array.from({length:3}, ()=> [rndm(), rndm()]);
+      state.attention.v = Array.from({length:3}, ()=> [rndm(), rndm()]);
+    }
+    state.step = 0;
+    buildPanel();
+    render();
+  }
+
+  function togglePlay(){
+    state.playing = !state.playing;
+    btnPlay.textContent = state.playing ? "Pause" : "Play";
+    if(state.playing){
+      state.playTimer = setInterval(()=>{
+        const p = pages.find(x=>x.id===state.pageId);
+        if(state.step >= p.maxStep){
+          state.step = 0;
+        }else{
+          state.step++;
+        }
+        buildPanel();
+        render();
+      }, 900);
+    }else{
+      clearInterval(state.playTimer);
+      state.playTimer = null;
+    }
+  }
+
+  btnStep.addEventListener("click", stepOnce);
+  btnReset.addEventListener("click", resetPage);
+  btnRandom.addEventListener("click", randomize);
+  btnPlay.addEventListener("click", togglePlay);
+
+  buildNav();
+  setPage("vectors");
+})();
+</script>
+</body>
+</html>
