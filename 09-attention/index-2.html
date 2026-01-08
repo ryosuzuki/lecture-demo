@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Transformer Self-Attention (Step-by-Step Demo)</title>
+  <style>
+    :root{
+      --bg:#0b0f19;
+      --panel:#121a2b;
+      --panel2:#0f1526;
+      --text:#e9eefc;
+      --muted:#9fb0d0;
+      --line:#273451;
+      --accent:#7aa2ff;
+      --good:#53d19c;
+      --warn:#ffcf5a;
+      --bad:#ff6b7a;
+      --chip:#1a2440;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{ box-sizing: border-box; }
+    body{
+      margin:0;
+      background: radial-gradient(1000px 600px at 20% 0%, #142046 0%, var(--bg) 60%);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.35;
+    }
+    .wrap{
+      max-width: 1320px;
+      margin: 18px auto 40px;
+      padding: 0 16px;
+    }
+    header{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom: 14px;
+    }
+    .title{
+      display:flex; flex-direction:column; gap:6px;
+    }
+    h1{
+      margin:0;
+      font-size: 20px;
+      letter-spacing: .2px;
+    }
+    .subtitle{
+      color: var(--muted);
+      font-size: 13px;
+      max-width: 860px;
+    }
+    .topbar{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .btn{
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, #182449, #111a33);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor:pointer;
+      font-weight:600;
+      font-size: 12px;
+      box-shadow: var(--shadow);
+      user-select:none;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn.secondary{
+      background: linear-gradient(180deg, #121a2b, #0f1526);
+      box-shadow:none;
+    }
+    .btn.good{ border-color: rgba(83,209,156,.5); }
+    .btn.warn{ border-color: rgba(255,207,90,.55); }
+    .btn.bad{ border-color: rgba(255,107,122,.55); }
+    .pill{
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      background: rgba(10,14,26,.5);
+      padding: 6px 9px;
+      border-radius: 999px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 14px;
+      align-items:start;
+    }
+    @media (max-width: 1100px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(18,26,43,.9), rgba(12,17,32,.9));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding: 12px 12px 10px;
+      border-bottom: 1px solid var(--line);
+      display:flex;
+      justify-content:space-between;
+      gap: 12px;
+      align-items:flex-start;
+    }
+    .card .hd h2{
+      margin:0;
+      font-size: 13px;
+      letter-spacing:.2px;
+    }
+    .card .hd .hint{
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .card .bd{
+      padding: 12px;
+    }
+
+    .controls{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .row{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    }
+    input[type="text"]{
+      width: min(760px, 100%);
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(8,10,18,.55);
+      color: var(--text);
+      outline:none;
+      font-size: 13px;
+    }
+    input[type="number"]{
+      width: 86px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(8,10,18,.55);
+      color: var(--text);
+      outline:none;
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+    label{
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .small{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .tokens{
+      display:flex; gap:8px; flex-wrap:wrap;
+      margin-top: 8px;
+    }
+    .token{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(15,21,38,.65);
+      min-width: 120px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .token.active{
+      border-color: rgba(122,162,255,.8);
+      box-shadow: 0 0 0 2px rgba(122,162,255,.18) inset;
+    }
+    .token .t{
+      display:flex; gap:8px; align-items:center; justify-content:space-between;
+      font-weight:700;
+      font-size: 13px;
+    }
+    .token .idx{
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--chip);
+      border: 1px solid var(--line);
+      padding: 3px 7px;
+      border-radius: 999px;
+    }
+    .token .v{
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 260px;
+    }
+
+    .pipeline{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .stepper{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      margin-top: 8px;
+    }
+    .progress{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .dot{
+      width: 10px; height: 10px; border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.06);
+    }
+    .dot.on{ background: rgba(122,162,255,.85); border-color: rgba(122,162,255,.85); }
+    .dot.done{ background: rgba(83,209,156,.85); border-color: rgba(83,209,156,.85); }
+
+    .math{
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      background: rgba(10,14,26,.45);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      overflow:auto;
+      max-height: 310px;
+    }
+    .math .k{
+      color: var(--muted);
+    }
+    .math .hl{
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .two{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 900px){
+      .two{ grid-template-columns: 1fr; }
+    }
+
+    table{
+      border-collapse: collapse;
+      width: 100%;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    th, td{
+      border: 1px solid var(--line);
+      padding: 6px 7px;
+      text-align: right;
+      white-space:nowrap;
+    }
+    th{
+      text-align:left;
+      color: var(--muted);
+      background: rgba(26,36,64,.35);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .r{
+      text-align:right;
+    }
+    .l{
+      text-align:left;
+    }
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(26,36,64,.25);
+      color: var(--muted);
+      font-size: 11px;
+      font-family: var(--mono);
+      margin-right: 6px;
+    }
+    .tag b{ color: var(--text); font-weight:700; }
+    .bar{
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      overflow:hidden;
+    }
+    .bar > div{
+      height:100%;
+      width:0%;
+      background: rgba(122,162,255,.85);
+    }
+    .heat{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .wrow{
+      display:grid;
+      grid-template-columns: 1fr 92px;
+      gap: 10px;
+      align-items:center;
+    }
+    .muted{ color: var(--muted); }
+    .note{
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .callout{
+      border:1px dashed rgba(122,162,255,.6);
+      background: rgba(122,162,255,.08);
+      border-radius: 14px;
+      padding: 10px;
+      color: var(--text);
+      font-size: 12px;
+    }
+    .kbd{
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(26,36,64,.35);
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1>Transformer Embeddings & Self-Attention — Interactive, Step-by-Step (Single HTML)</h1>
+        <div class="subtitle">
+          Type a sentence, then click a token to compute its attention output step-by-step:
+          <span class="kbd">Embeddings</span> → <span class="kbd">Q/K/V</span> → <span class="kbd">Scores</span> → <span class="kbd">Softmax</span> → <span class="kbd">Weighted Sum</span> → <span class="kbd">Output</span>.
+          (Toy numbers, but the math is real.)
+        </div>
+      </div>
+      <div class="topbar">
+        <span class="pill">No libraries • JSBin-friendly • English UI</span>
+        <button class="btn secondary" id="btnReset">Reset Steps</button>
+        <button class="btn warn" id="btnRandomize">New Weights</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- LEFT: Slide-like explanation + tokens + step-by-step pipeline -->
+      <section class="card">
+        <div class="hd">
+          <div>
+            <h2>1) Input → Embeddings → Focus Token Pipeline</h2>
+            <div class="hint">Click a token to focus (like “token #3” in slide-style diagrams), then step through the computation.</div>
+          </div>
+          <div class="pill" id="modelInfo">d_model=?, d_head=?</div>
+        </div>
+        <div class="bd">
+          <div class="controls">
+            <div class="row">
+              <input id="sentence" type="text" value="The cat sat on the mat" />
+              <button class="btn good" id="btnApply">Apply Sentence</button>
+            </div>
+
+            <div class="row">
+              <label>Max tokens:</label>
+              <input id="maxTokens" type="number" min="2" max="16" value="8" />
+              <label>d_model:</label>
+              <input id="dModel" type="number" min="2" max="16" value="6" />
+              <label>d_head:</label>
+              <input id="dHead" type="number" min="2" max="16" value="3" />
+              <label>seed:</label>
+              <input id="seed" type="number" min="0" max="9999" value="7" />
+              <span class="small">Tip: try “A robot learns to cook pasta”</span>
+            </div>
+
+            <div class="tokens" id="tokens"></div>
+
+            <div class="stepper">
+              <div class="progress" id="progressDots"></div>
+              <div class="row">
+                <button class="btn secondary" id="btnPrev">◀ Prev</button>
+                <button class="btn" id="btnNext">Next ▶</button>
+              </div>
+            </div>
+
+            <div class="callout" id="stepNarration"></div>
+
+            <div class="pipeline">
+              <div class="two">
+                <div>
+                  <div class="tag"><b>Embedding</b> x<sub>t</sub> (token + position)</div>
+                  <div class="math" id="boxEmbedding"></div>
+                </div>
+                <div>
+                  <div class="tag"><b>Q/K/V</b> for focus token t</div>
+                  <div class="math" id="boxQKV"></div>
+                </div>
+              </div>
+
+              <div class="two">
+                <div>
+                  <div class="tag"><b>Scores</b> s<sub>t,j</sub> = (q<sub>t</sub> · k<sub>j</sub>) / √d</div>
+                  <div class="math" id="boxScores"></div>
+                </div>
+                <div>
+                  <div class="tag"><b>Softmax</b> a<sub>t,j</sub> = softmax(s<sub>t,*</sub>)</div>
+                  <div class="math" id="boxSoftmax"></div>
+                </div>
+              </div>
+
+              <div class="two">
+                <div>
+                  <div class="tag"><b>Weighted Values</b> a<sub>t,j</sub> · v<sub>j</sub></div>
+                  <div class="math" id="boxWeighted"></div>
+                </div>
+                <div>
+                  <div class="tag"><b>Output</b> o<sub>t</sub> = Σ a<sub>t,j</sub> v<sub>j</sub></div>
+                  <div class="math" id="boxOutput"></div>
+                </div>
+              </div>
+
+              <div class="note">
+                Notes:
+                <ul>
+                  <li>This is <b>single-head self-attention</b>. (Multi-head = repeat this per head, then concatenate & project.)</li>
+                  <li>Embeddings here are <b>toy embeddings</b> generated deterministically from the token string + seed (so it’s stable & explainable).</li>
+                  <li>You can teach the “token #t attention output” flow exactly like slide diagrams, but with real recomputation when the sentence changes.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Matrices / overview -->
+      <aside class="card">
+        <div class="hd">
+          <div>
+            <h2>2) Overview Tables (Scroll)</h2>
+            <div class="hint">See all token embeddings and K/V vectors; attention weights show how focus token attends to others.</div>
+          </div>
+          <div class="pill" id="focusInfo">focus t=?</div>
+        </div>
+        <div class="bd">
+          <div class="tag"><b>Token Embeddings</b> X (n × d_model)</div>
+          <div class="math" id="tblX"></div>
+
+          <div style="height:10px"></div>
+
+          <div class="tag"><b>Keys</b> K (n × d_head) and <b>Values</b> V (n × d_head)</div>
+          <div class="math" id="tblKV"></div>
+
+          <div style="height:10px"></div>
+
+          <div class="tag"><b>Attention Weights</b> a<sub>t,*</sub> (bars)</div>
+          <div class="heat" id="weightBars"></div>
+
+          <div style="height:12px"></div>
+          <div class="note">
+            Teaching tip: ask students to predict which token will get the largest weight for a given focus token, then click <span class="kbd">Next</span>.
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // -------------------------
+  // Utilities
+  // -------------------------
+  const fmt = (x, k=3) => {
+    if (!isFinite(x)) return String(x);
+    const s = x.toFixed(k);
+    return (s === "-0.000") ? "0.000" : s;
+  };
+
+  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+  function tokenize(text){
+    return text
+      .trim()
+      .replace(/\s+/g, " ")
+      .split(" ")
+      .filter(Boolean);
+  }
+
+  // Deterministic PRNG (Mulberry32)
+  function mulberry32(seed){
+    let t = seed >>> 0;
+    return function() {
+      t += 0x6D2B79F5;
+      let x = Math.imul(t ^ (t >>> 15), 1 | t);
+      x ^= x + Math.imul(x ^ (x >>> 7), 61 | x);
+      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Hash string -> 32-bit
+  function hash32(str){
+    let h = 2166136261 >>> 0;
+    for (let i=0;i<str.length;i++){
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  // Vector/matrix ops
+  const dot = (a,b) => a.reduce((s,ai,i)=>s+ai*b[i],0);
+  const add = (a,b) => a.map((ai,i)=>ai+b[i]);
+  const mulScalar = (a, s) => a.map(v=>v*s);
+
+  function matVec(M, v){ // M: rows x cols, v: cols
+    return M.map(row => dot(row, v));
+  }
+
+  function softmax(arr){
+    const m = Math.max(...arr);
+    const ex = arr.map(x => Math.exp(x - m));
+    const s = ex.reduce((a,b)=>a+b,0);
+    return ex.map(e => e/s);
+  }
+
+  function makeMatrix(rows, cols, rand, scale=1.0){
+    const M = [];
+    for (let r=0;r<rows;r++){
+      const row = [];
+      for (let c=0;c<cols;c++){
+        // centered small values
+        row.push((rand()*2 - 1) * scale);
+      }
+      M.push(row);
+    }
+    return M;
+  }
+
+  function vecToInline(v, label){
+    return `<span class="k">${label}</span> [ ${v.map(x=>fmt(x)).join(", ")} ]`;
+  }
+
+  function tableFromMatrix(M, rowLabels, colLabels){
+    const cols = M[0]?.length || 0;
+    const head = `<tr><th class="l">row</th>` + colLabels.map(c=>`<th>${c}</th>`).join("") + `</tr>`;
+    const body = M.map((row,i)=>{
+      const rl = rowLabels ? rowLabels[i] : String(i);
+      return `<tr><td class="l">${rl}</td>` + row.map(x=>`<td>${fmt(x)}</td>`).join("") + `</tr>`;
+    }).join("");
+    return `<table>${head}${body}</table>`;
+  }
+
+  // -------------------------
+  // State
+  // -------------------------
+  const STEP = [
+    "Embeddings (token + position)",
+    "Project to Q/K/V",
+    "Scores (scaled dot products)",
+    "Softmax weights",
+    "Weighted values",
+    "Output (sum)"
+  ];
+
+  const els = {
+    sentence: document.getElementById("sentence"),
+    maxTokens: document.getElementById("maxTokens"),
+    dModel: document.getElementById("dModel"),
+    dHead: document.getElementById("dHead"),
+    seed: document.getElementById("seed"),
+    btnApply: document.getElementById("btnApply"),
+    btnReset: document.getElementById("btnReset"),
+    btnPrev: document.getElementById("btnPrev"),
+    btnNext: document.getElementById("btnNext"),
+    btnRandomize: document.getElementById("btnRandomize"),
+    tokens: document.getElementById("tokens"),
+    progressDots: document.getElementById("progressDots"),
+    stepNarration: document.getElementById("stepNarration"),
+    boxEmbedding: document.getElementById("boxEmbedding"),
+    boxQKV: document.getElementById("boxQKV"),
+    boxScores: document.getElementById("boxScores"),
+    boxSoftmax: document.getElementById("boxSoftmax"),
+    boxWeighted: document.getElementById("boxWeighted"),
+    boxOutput: document.getElementById("boxOutput"),
+    tblX: document.getElementById("tblX"),
+    tblKV: document.getElementById("tblKV"),
+    weightBars: document.getElementById("weightBars"),
+    modelInfo: document.getElementById("modelInfo"),
+    focusInfo: document.getElementById("focusInfo")
+  };
+
+  const state = {
+    tokens: [],
+    n: 0,
+    dModel: 6,
+    dHead: 3,
+    seed: 7,
+    maxTokens: 8,
+    focus: 0,
+    step: 0,
+    // data
+    X: [],
+    Wq: [], Wk: [], Wv: [],
+    Q: [], K: [], V: [],
+    scores: [],
+    attn: [],
+    weighted: [],
+    out: []
+  };
+
+  // -------------------------
+  // Build embeddings (toy but deterministic)
+  // -------------------------
+  function tokenEmbedding(token, dModel, seed){
+    // Stable per token & seed: hash(token) ^ seed then PRNG
+    const h = (hash32(token.toLowerCase()) ^ (seed*2654435761)) >>> 0;
+    const r = mulberry32(h);
+    const v = [];
+    for (let i=0;i<dModel;i++){
+      // small-ish values
+      v.push((r()*2 - 1) * 0.9);
+    }
+    return v;
+  }
+
+  function positionalEmbedding(pos, dModel){
+    // Simple sin/cos positional encoding (like classic transformer)
+    const pe = [];
+    for (let i=0;i<dModel;i++){
+      const denom = Math.pow(10000, (2*Math.floor(i/2))/dModel);
+      const val = pos / denom;
+      pe.push(i%2===0 ? Math.sin(val) : Math.cos(val));
+    }
+    return pe;
+  }
+
+  // -------------------------
+  // Recompute all
+  // -------------------------
+  function recomputeAll(){
+    state.dModel = clamp(parseInt(els.dModel.value||"6",10), 2, 16);
+    state.dHead  = clamp(parseInt(els.dHead.value||"3",10), 2, 16);
+    state.seed   = clamp(parseInt(els.seed.value||"7",10), 0, 9999);
+    state.maxTokens = clamp(parseInt(els.maxTokens.value||"8",10), 2, 16);
+
+    const toks = tokenize(els.sentence.value || "");
+    state.tokens = toks.slice(0, state.maxTokens);
+    if (state.tokens.length < 2){
+      state.tokens = ["Hello", "world"];
+      els.sentence.value = state.tokens.join(" ");
+    }
+    state.n = state.tokens.length;
+    state.focus = clamp(state.focus, 0, state.n-1);
+
+    // weights derived from seed (separate stream so embeddings stable)
+    const r = mulberry32((state.seed + 12345) >>> 0);
+    const scale = 0.7;
+
+    state.Wq = makeMatrix(state.dHead, state.dModel, r, scale);
+    state.Wk = makeMatrix(state.dHead, state.dModel, r, scale);
+    state.Wv = makeMatrix(state.dHead, state.dModel, r, scale);
+
+    // X: tokenEmb + posEmb
+    state.X = state.tokens.map((t, i) => {
+      const te = tokenEmbedding(t, state.dModel, state.seed);
+      const pe = positionalEmbedding(i, state.dModel);
+      return add(te, mulScalar(pe, 0.35));
+    });
+
+    // Q/K/V for all tokens: (dHead x dModel) * (dModel)
+    state.Q = state.X.map(x => matVec(state.Wq, x));
+    state.K = state.X.map(x => matVec(state.Wk, x));
+    state.V = state.X.map(x => matVec(state.Wv, x));
+
+    computeAttentionForFocus();
+    renderAll();
+  }
+
+  function computeAttentionForFocus(){
+    const t = state.focus;
+    const q = state.Q[t];
+    const dk = state.dHead;
+    const inv = 1/Math.sqrt(dk);
+
+    state.scores = state.K.map((k) => dot(q, k) * inv);
+    state.attn = softmax(state.scores);
+
+    state.weighted = state.V.map((v, j) => mulScalar(v, state.attn[j]));
+    state.out = state.weighted.reduce((acc, w) => add(acc, w), new Array(state.dHead).fill(0));
+  }
+
+  // -------------------------
+  // Rendering
+  // -------------------------
+  function renderTokens(){
+    els.tokens.innerHTML = "";
+    state.tokens.forEach((tok, i) => {
+      const div = document.createElement("div");
+      div.className = "token" + (i===state.focus ? " active" : "");
+      div.innerHTML = `
+        <div class="t">
+          <span>${escapeHtml(tok)}</span>
+          <span class="idx">t=${i}</span>
+        </div>
+        <div class="v">x<sub>${i}</sub> ∈ R<sup>${state.dModel}</sup> → q/k/v ∈ R<sup>${state.dHead}</sup></div>
+      `;
+      div.addEventListener("click", () => {
+        state.focus = i;
+        computeAttentionForFocus();
+        state.step = clamp(state.step, 0, STEP.length-1);
+        renderAll();
+      });
+      els.tokens.appendChild(div);
+    });
+    els.focusInfo.textContent = `focus t=${state.focus}`;
+  }
+
+  function renderProgress(){
+    els.progressDots.innerHTML = "";
+    for (let i=0;i<STEP.length;i++){
+      const d = document.createElement("div");
+      d.className = "dot " + (i<state.step ? "done" : i===state.step ? "on" : "");
+      els.progressDots.appendChild(d);
+    }
+  }
+
+  function renderNarration(){
+    const t = state.focus;
+    const token = state.tokens[t];
+    const step = state.step;
+
+    const narr = [
+      `<b>Step 1 — Embeddings:</b> Build <span class="kbd">x<sub>i</sub></span> for each token by adding <span class="kbd">token embedding</span> + <span class="kbd">positional encoding</span>. Focus token is <b>"${escapeHtml(token)}"</b> (t=${t}).`,
+      `<b>Step 2 — Q/K/V:</b> Project embeddings with learned matrices:<br>
+       <span class="kbd">q<sub>i</sub>=W<sub>Q</sub>x<sub>i</sub></span>,
+       <span class="kbd">k<sub>i</sub>=W<sub>K</sub>x<sub>i</sub></span>,
+       <span class="kbd">v<sub>i</sub>=W<sub>V</sub>x<sub>i</sub></span>.`,
+      `<b>Step 3 — Scores:</b> For focus token t=${t}, compute similarity to every token j:<br>
+       <span class="kbd">s<sub>t,j</sub> = (q<sub>t</sub> · k<sub>j</sub>)/√d</span>.`,
+      `<b>Step 4 — Softmax:</b> Convert scores into attention weights that sum to 1:<br>
+       <span class="kbd">a<sub>t,*</sub> = softmax(s<sub>t,*</sub>)</span>.`,
+      `<b>Step 5 — Weighted Values:</b> Multiply each value vector by its weight:<br>
+       <span class="kbd">a<sub>t,j</sub> v<sub>j</sub></span>.`,
+      `<b>Step 6 — Output:</b> Sum all weighted values to get the attention output for token t=${t}:<br>
+       <span class="kbd">o<sub>t</sub> = Σ a<sub>t,j</sub> v<sub>j</sub></span>.`
+    ];
+
+    els.stepNarration.innerHTML = narr[step];
+  }
+
+  function renderStepBoxes(){
+    const t = state.focus;
+
+    // Step 1: embedding x_t (show token emb + pos + sum)
+    const te = tokenEmbedding(state.tokens[t], state.dModel, state.seed);
+    const pe = positionalEmbedding(t, state.dModel);
+    const x = state.X[t];
+
+    els.boxEmbedding.innerHTML = [
+      `<div>${vecToInline(te, "token embedding:")}</div>`,
+      `<div>${vecToInline(mulScalar(pe,0.35), "0.35 × pos encoding:")}</div>`,
+      `<div><span class="hl">x_t = sum:</span> [ ${x.map(v=>fmt(v)).join(", ")} ]</div>`
+    ].join("<div style='height:6px'></div>");
+
+    // Step 2: q_t k_t v_t
+    const q = state.Q[t], k = state.K[t], v = state.V[t];
+    els.boxQKV.innerHTML = [
+      `<div>${vecToInline(q, "q_t:")}</div>`,
+      `<div>${vecToInline(k, "k_t:")}</div>`,
+      `<div>${vecToInline(v, "v_t:")}</div>`,
+      `<div style="height:6px"></div>`,
+      `<div class="k">Shapes:</div>
+       <div>W_Q, W_K, W_V ∈ R<sup>${state.dHead}×${state.dModel}</sup>, x_t ∈ R<sup>${state.dModel}</sup>, so q_t ∈ R<sup>${state.dHead}</sup></div>`
+    ].join("<div style='height:6px'></div>");
+
+    // Step 3: scores
+    const inv = 1/Math.sqrt(state.dHead);
+    const lines = state.tokens.map((tok,j)=>{
+      const raw = dot(q, state.K[j]);
+      const sc = raw*inv;
+      return `<div><span class="k">j=${j} "${escapeHtml(tok)}":</span> q·k = ${fmt(raw)} → score s=${fmt(sc)}</div>`;
+    }).join("");
+    els.boxScores.innerHTML = `<div class="k">scaled by 1/√d = ${fmt(inv,4)} (d=${state.dHead})</div><div style="height:6px"></div>${lines}`;
+
+    // Step 4: softmax
+    const sm = state.attn;
+    const smLines = state.tokens.map((tok,j)=>{
+      return `<div><span class="k">j=${j} "${escapeHtml(tok)}":</span> a=${fmt(sm[j])}</div>`;
+    }).join("");
+    const sum = sm.reduce((a,b)=>a+b,0);
+    els.boxSoftmax.innerHTML = `<div class="k">weights sum to:</div><div class="hl">Σ a = ${fmt(sum,6)}</div><div style="height:6px"></div>${smLines}`;
+
+    // Step 5: weighted values
+    const wLines = state.tokens.map((tok,j)=>{
+      const wv = state.weighted[j];
+      return `<div><span class="k">j=${j}:</span> a·v = [ ${wv.map(x=>fmt(x)).join(", ")} ]</div>`;
+    }).join("");
+    els.boxWeighted.innerHTML = wLines;
+
+    // Step 6: output
+    els.boxOutput.innerHTML = `<div class="hl">o_t = [ ${state.out.map(x=>fmt(x)).join(", ")} ]</div>
+      <div style="height:8px"></div>
+      <div class="k">Interpretation:</div>
+      <div>This vector is a weighted mixture of value vectors, where weights reflect how strongly the focus token attends to each token.</div>`;
+
+    // Gating by step: fade future boxes a bit (simple)
+    const gate = (el, idx) => {
+      el.style.opacity = (state.step >= idx) ? "1" : "0.35";
+      el.style.filter = (state.step >= idx) ? "none" : "grayscale(.25)";
+    };
+    gate(els.boxEmbedding, 0);
+    gate(els.boxQKV, 1);
+    gate(els.boxScores, 2);
+    gate(els.boxSoftmax, 3);
+    gate(els.boxWeighted, 4);
+    gate(els.boxOutput, 5);
+  }
+
+  function renderTables(){
+    const colLabelsX = Array.from({length: state.dModel}, (_,i)=>`d${i}`);
+    const rowLabels = state.tokens.map((t,i)=>`t=${i} "${t}"`);
+    els.tblX.innerHTML = tableFromMatrix(state.X, rowLabels, colLabelsX);
+
+    const colLabelsKV = Array.from({length: state.dHead}, (_,i)=>`h${i}`);
+    const kvRows = state.tokens.map((t,i)=>({
+      label: `t=${i} "${t}"`,
+      k: state.K[i],
+      v: state.V[i]
+    }));
+
+    const head = `<tr>
+      <th class="l">row</th>
+      ${colLabelsKV.map(c=>`<th>K:${c}</th>`).join("")}
+      ${colLabelsKV.map(c=>`<th>V:${c}</th>`).join("")}
+    </tr>`;
+
+    const body = kvRows.map(r=>{
+      return `<tr>
+        <td class="l">${escapeHtml(r.label)}</td>
+        ${r.k.map(x=>`<td>${fmt(x)}</td>`).join("")}
+        ${r.v.map(x=>`<td>${fmt(x)}</td>`).join("")}
+      </tr>`;
+    }).join("");
+
+    els.tblKV.innerHTML = `<table>${head}${body}</table>`;
+  }
+
+  function renderWeightBars(){
+    const t = state.focus;
+    const a = state.attn;
+    const max = Math.max(...a);
+    els.weightBars.innerHTML = "";
+    state.tokens.forEach((tok,j)=>{
+      const row = document.createElement("div");
+      row.className = "wrow";
+      const left = document.createElement("div");
+      left.innerHTML = `<span class="tag"><b>j=${j}</b> ${escapeHtml(tok)}</span> <span class="muted">a=${fmt(a[j])}</span>
+                        <div class="bar"><div style="width:${(a[j]/max)*100}%"></div></div>`;
+      const right = document.createElement("div");
+      right.className = "pill";
+      right.textContent = (j===t) ? "self" : (a[j]===max ? "max" : "");
+      row.appendChild(left);
+      row.appendChild(right);
+      els.weightBars.appendChild(row);
+    });
+  }
+
+  function renderAll(){
+    els.modelInfo.textContent = `n=${state.n} • d_model=${state.dModel} • d_head=${state.dHead}`;
+    renderTokens();
+    renderProgress();
+    renderNarration();
+    renderStepBoxes();
+    renderTables();
+    renderWeightBars();
+  }
+
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  // -------------------------
+  // Events
+  // -------------------------
+  els.btnApply.addEventListener("click", () => {
+    state.step = 0;
+    state.focus = 0;
+    recomputeAll();
+  });
+
+  els.btnReset.addEventListener("click", () => {
+    state.step = 0;
+    renderAll();
+  });
+
+  els.btnPrev.addEventListener("click", () => {
+    state.step = clamp(state.step - 1, 0, STEP.length-1);
+    renderAll();
+  });
+
+  els.btnNext.addEventListener("click", () => {
+    state.step = clamp(state.step + 1, 0, STEP.length-1);
+    renderAll();
+  });
+
+  els.btnRandomize.addEventListener("click", () => {
+    // change seed slightly to get new W matrices; keep embeddings stable if you want by not changing seed,
+    // but for teaching it's nice to see different patterns.
+    state.seed = (state.seed + 1) % 10000;
+    els.seed.value = String(state.seed);
+    recomputeAll();
+  });
+
+  // Keyboard shortcuts
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight") els.btnNext.click();
+    if (e.key === "ArrowLeft") els.btnPrev.click();
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "enter") els.btnApply.click();
+  });
+
+  // Initialize
+  recomputeAll();
+})();
+</script>
+</body>
+</html>
