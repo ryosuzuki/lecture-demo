@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WebLLM Generative Agents Mini (Client-only)</title>
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --panel: #12161b;
+      --muted: #9aa4af;
+      --text: #e8eef6;
+      --accent: #7aa2ff;
+      --border: #222a33;
+      --good: #57d18b;
+      --warn: #ffcc66;
+      --bad: #ff6b6b;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.00));
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.02);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .btn {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn:hover { border-color: rgba(122,162,255,0.45); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    select, input[type="range"] {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 720px 1fr;
+      gap: 12px;
+      padding: 12px;
+      align-items: start;
+    }
+    @media (max-width: 1100px) {
+      main { grid-template-columns: 1fr; }
+    }
+    #worldWrap {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    #worldCanvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #0a0c0f;
+    }
+    #side {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      min-height: 600px;
+    }
+    .sectionTitle {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 12px 0 8px;
+    }
+    .agents {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .agentBtn {
+      text-align: left;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      border-radius: 12px;
+      padding: 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .agentBtn:hover { border-color: rgba(122,162,255,0.45); }
+    .agentBtn.active { border-color: rgba(122,162,255,0.8); box-shadow: 0 0 0 2px rgba(122,162,255,0.18) inset; }
+    .muted { color: var(--muted); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      padding: 10px;
+      border-radius: 12px;
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .log {
+      max-height: 210px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
+      background: rgba(0,0,0,0.18);
+      font-size: 12px;
+    }
+    .logItem { padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
+    .logItem:last-child { border-bottom: 0; }
+    .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 10px; font-size: 12px; }
+    .kv div:nth-child(odd) { color: var(--muted); }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 11px;
+      color: var(--muted);
+      margin-right: 6px;
+    }
+    .good { color: var(--good); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+    details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 12px;
+      margin: 10px 0;
+    }
+    .small { font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <span class="chip"><b>WebLLM Generative Agents Mini</b> <span class="muted">client-only</span></span>
+      <label class="chip">
+        Model:
+        <select id="modelSelect" title="WebLLM prebuilt models"></select>
+      </label>
+      <button class="btn" id="btnLoad">Load model</button>
+      <button class="btn" id="btnReset" disabled>Reset</button>
+      <button class="btn" id="btnStep" disabled>Step</button>
+      <button class="btn" id="btnRun" disabled>Run</button>
+      <button class="btn" id="btnPause" disabled>Pause</button>
+      <label class="chip">
+        Speed
+        <input id="speed" type="range" min="1" max="6" step="1" value="3" />
+        <span id="speedLabel" class="muted">x3</span>
+      </label>
+      <label class="chip">
+        Mode
+        <select id="modeSelect" title="fast: 1 LLM call per agent per tick / paper: more calls">
+          <option value="fast" selected>fast</option>
+          <option value="paper">paper-ish</option>
+        </select>
+      </label>
+      <span class="chip">Status: <span id="status" class="muted">not loaded</span></span>
+      <span class="chip">SimTime: <span id="simTime" class="muted">-</span></span>
+    </div>
+    <div class="small muted" style="margin-top:8px;">
+      WebGPU-capable browser required (Chrome/Edge/Safari). The first model load is cached. Fully client-side inference.
+    </div>
+  </header>
+
+  <main>
+    <div id="worldWrap">
+      <canvas id="worldCanvas" width="720" height="720"></canvas>
+    </div>
+    <div id="side">
+      <div class="sectionTitle">Agents</div>
+      <div class="agents" id="agentList"></div>
+
+      <div class="sectionTitle">Selected agent</div>
+      <div class="kv" id="agentKV"></div>
+
+      <details open>
+        <summary>Thought (latest)</summary>
+        <pre id="thoughtBox"></pre>
+      </details>
+
+      <details open>
+        <summary>Plan (today)</summary>
+        <pre id="planBox"></pre>
+      </details>
+
+      <details open>
+        <summary>Memories (top-k retrieval context)</summary>
+        <pre id="memoryBox"></pre>
+      </details>
+
+      <div class="sectionTitle">World log</div>
+      <div class="log" id="logBox"></div>
+
+      <details>
+        <summary>Prompt debug (last action prompt)</summary>
+        <pre id="promptBox"></pre>
+      </details>
+    </div>
+  </main>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

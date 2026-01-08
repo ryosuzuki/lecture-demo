@@ -1,0 +1,2451 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Interactive Math for Transformers (Single-File)</title>
+  <style>
+    :root{
+      --bg:#f6f7f9;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#e5e7eb;
+      --shadow: 0 8px 24px rgba(0,0,0,.06);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --blue:#1f77b4;
+      --green:#2ca02c;
+      --orange:#ff7f0e;
+      --red:#d62728;
+      --purple:#9467bd;
+      --gray:#4b5563;
+      --black:#111827;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:var(--sans);
+      line-height:1.5;
+    }
+    header{
+      position:sticky; top:0; z-index:20;
+      background:#0b1220;
+      color:white;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    header .wrap{
+      max-width:1200px;
+      margin:0 auto;
+      padding:12px 14px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    header h1{
+      margin:0;
+      font-size:14px;
+      letter-spacing:.2px;
+      font-weight:800;
+    }
+    nav{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    nav button{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+      color:white;
+      padding:7px 10px;
+      border-radius:999px;
+      cursor:pointer;
+      font-size:13px;
+      white-space:nowrap;
+    }
+    nav button.active{
+      background:rgba(255,255,255,.18);
+      border-color:rgba(255,255,255,.28);
+    }
+
+    main{
+      max-width:1200px;
+      margin:0 auto;
+      padding:14px;
+    }
+    .section{ display:none; }
+    .section.active{ display:block; }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .grid2{ grid-template-columns:1fr; }
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      box-shadow: var(--shadow);
+      padding:12px;
+    }
+    .card h2{
+      margin:0 0 6px 0;
+      font-size:18px;
+    }
+    .card h3{
+      margin:12px 0 6px 0;
+      font-size:14px;
+    }
+
+    .muted{ color:var(--muted); }
+    .mono{ font-family:var(--mono); }
+    .kbd{
+      font-family:var(--mono);
+      font-size:12px;
+      padding:2px 6px;
+      border:1px solid var(--border);
+      border-bottom-width:2px;
+      border-radius:8px;
+      background:#fafafa;
+      color:#111;
+      display:inline-block;
+    }
+
+    canvas.canvas{
+      width:100%;
+      height:420px;
+      display:block;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background: linear-gradient(180deg,#ffffff, #fbfbfd);
+      touch-action:none;
+    }
+    canvas.small{
+      height:210px;
+    }
+    canvas.tiny{
+      height:170px;
+    }
+
+    .controls{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top:10px;
+    }
+    .controls button, .controls select, .controls input[type="number"]{
+      border:1px solid var(--border);
+      background:#fff;
+      padding:7px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      font-size:13px;
+    }
+    .controls button.primary{
+      background:#eef2ff;
+      border-color:#c7d2fe;
+      font-weight:700;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:3px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-size:12px;
+      color:#111;
+      white-space:nowrap;
+    }
+
+    .inputs{
+      display:grid;
+      grid-template-columns: repeat(6, minmax(0,1fr));
+      gap:8px;
+      margin-top:10px;
+    }
+    .inputs .box{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:8px;
+      background:#fff;
+    }
+    .inputs label{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+    input[type="number"]{
+      width:100%;
+      padding:6px 8px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      font-family:var(--mono);
+      font-size:13px;
+    }
+    input[type="range"]{
+      width:100%;
+    }
+
+    .readout{
+      margin-top:10px;
+      border:1px solid var(--border);
+      background:#fcfcff;
+      border-radius:12px;
+      padding:10px;
+      font-family:var(--mono);
+      font-size:13px;
+      overflow:auto;
+      white-space:pre-wrap;
+    }
+
+    .legend{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:8px;
+      font-size:12px;
+      color:var(--muted);
+      align-items:center;
+    }
+    .dot{
+      width:10px; height:10px; border-radius:999px; display:inline-block; margin-right:6px;
+      border:1px solid rgba(0,0,0,.12);
+    }
+
+    .stepper{
+      margin-top:10px;
+      border:1px dashed var(--border);
+      border-radius:12px;
+      padding:10px;
+      background:#fff;
+    }
+    .stepper .top{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-bottom:8px;
+    }
+    .stepper .top .label{
+      font-size:12px;
+      color:var(--muted);
+    }
+    .steps{
+      margin:0;
+      padding-left:20px;
+    }
+    .steps li{
+      margin:6px 0;
+      padding:6px 8px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:#fafafa;
+      font-family:var(--mono);
+      font-size:13px;
+    }
+    .steps li.off{
+      opacity:.28;
+      filter:grayscale(1);
+    }
+
+    .grid3d{
+      display:grid;
+      grid-template-columns: 1fr 1.35fr;
+      gap:12px;
+      align-items:stretch;
+      margin-top:10px;
+    }
+    @media (max-width: 980px){
+      .grid3d{ grid-template-columns: 1fr; }
+    }
+    .stack{
+      display:grid;
+      gap:10px;
+    }
+
+    /* Matrix UI */
+    .matWrap{
+      display:grid;
+      gap:10px;
+      margin-top:10px;
+    }
+    .matRow{
+      display:grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap:10px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .matRow{ grid-template-columns:1fr; }
+    }
+    table.mat{
+      border-collapse:separate;
+      border-spacing:6px 6px;
+      width:100%;
+    }
+    table.mat td{
+      padding:0;
+      vertical-align:middle;
+    }
+    table.mat input{
+      width:100%;
+      padding:8px 8px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      font-family:var(--mono);
+      font-size:13px;
+      background:#fff;
+    }
+    .matTitle{
+      font-weight:800;
+      color:#111827;
+      font-size:12px;
+      margin-bottom:4px;
+    }
+    .op{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family:var(--mono);
+      font-size:16px;
+      color:#111827;
+      padding:10px 0;
+      user-select:none;
+    }
+    .matHint{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:4px;
+    }
+
+    .hlCell input{ outline:3px solid rgba(99,102,241,.35); border-color:#a5b4fc; }
+    .hlRow input{ background:#f3f4ff; }
+    .hlCol input{ background:#fff7ed; }
+    .hlRes input{ outline:3px solid rgba(16,185,129,.25); border-color:#86efac; }
+
+    /* Softmax rows */
+    .softRows{
+      display:grid;
+      gap:10px;
+      margin-top:10px;
+    }
+    .softRow{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px;
+      background:#fff;
+      display:grid;
+      grid-template-columns: 56px 1fr 110px;
+      gap:10px;
+      align-items:center;
+    }
+    @media (max-width: 720px){
+      .softRow{ grid-template-columns: 1fr; }
+    }
+    .bar{
+      height:16px;
+      border-radius:999px;
+      background:#f1f5f9;
+      border:1px solid var(--border);
+      overflow:hidden;
+    }
+    .fill{
+      height:100%;
+      width:0%;
+      background:#111827;
+      border-radius:999px;
+    }
+    .tinyText{ font-size:12px; color:var(--muted); }
+    .softTable{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      margin-top:10px;
+      overflow:hidden;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+    }
+    .softTable th, .softTable td{
+      padding:8px 10px;
+      border-bottom:1px solid var(--border);
+      font-family:var(--mono);
+      font-size:12px;
+    }
+    .softTable th{
+      background:#fafafa;
+      color:#111827;
+      text-align:left;
+      font-family:var(--sans);
+      font-size:12px;
+    }
+    .softTable tr:last-child td{ border-bottom:none; }
+
+    /* Attention weights */
+    .wBars{
+      display:grid;
+      gap:10px;
+      margin-top:10px;
+    }
+    .wRow{
+      display:grid;
+      grid-template-columns: 48px 1fr 90px;
+      gap:10px;
+      align-items:center;
+    }
+
+    details summary{
+      cursor:pointer;
+      font-weight:800;
+      color:#111827;
+      margin-top:8px;
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="wrap">
+    <h1>Interactive Math for Transformers (single HTML file)</h1>
+    <nav>
+      <button data-target="overview" class="active">0) Overview</button>
+      <button data-target="vec">1) Vectors (2D/3D)</button>
+      <button data-target="proj">2) Projection (2D/3D)</button>
+      <button data-target="matrix">3) Matrix Multiply</button>
+      <button data-target="softmax">4) Softmax</button>
+      <button data-target="attn">5) Mini Attention</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- 0) Overview -->
+  <section id="overview" class="section active">
+    <div class="card">
+      <h2>0) What math do you actually need for Transformers?</h2>
+      <p class="muted">
+        The core computation you want to be able to “follow by hand” is:
+      </p>
+      <div class="readout">Attention(Q, K, V) = softmax( (Q K^T) / sqrt(d) ) V</div>
+      <p class="muted">
+        This page turns that into interactive pieces:
+      </p>
+      <ul class="muted">
+        <li><b>Vectors</b>: dot product, norm, cosine similarity (2D and 3D).</li>
+        <li><b>Projection</b>: “component of a along b” (2D and 3D).</li>
+        <li><b>Matrix multiplication</b>: step-by-step row·column with highlights.</li>
+        <li><b>Softmax</b>: max-shift, exponentials, normalization, temperature.</li>
+        <li><b>Mini Attention</b>: scores → softmax weights → weighted sum of values.</li>
+      </ul>
+
+      <div class="card" style="box-shadow:none; margin-top:10px;">
+        <h3>Controls</h3>
+        <ul class="muted">
+          <li>Drag vector endpoints to edit (2D, and 3D via XY/XZ/YZ edit views).</li>
+          <li>In 3D preview: drag background to rotate, mouse wheel to zoom.</li>
+          <li>Use <span class="kbd">Step</span> to reveal calculations gradually.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1) Vectors -->
+  <section id="vec" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>1) Dot product & cosine similarity (2D / 3D)</h2>
+        <p class="muted">
+          Dot product is a similarity-like score used heavily inside attention.
+          Cosine similarity removes length and compares direction only.
+        </p>
+
+        <div class="controls">
+          <label class="pill">
+            Dimension:
+            <select id="vec_dim">
+              <option value="2">2D</option>
+              <option value="3">3D</option>
+            </select>
+          </label>
+          <button id="vec_random" class="primary">Random</button>
+          <button id="vec_ortho">Make ~orthogonal</button>
+          <button id="vec_parallel">Make ~parallel</button>
+          <span class="pill"><span class="muted">Tip:</span> drag endpoints</span>
+        </div>
+
+        <!-- 2D canvas -->
+        <div id="vec_2d">
+          <canvas id="vec_canvas2d" class="canvas"></canvas>
+        </div>
+
+        <!-- 3D canvases -->
+        <div id="vec_3d" style="display:none;">
+          <div class="grid3d">
+            <div class="stack">
+              <canvas id="vec_xy" class="canvas tiny"></canvas>
+              <canvas id="vec_xz" class="canvas tiny"></canvas>
+              <canvas id="vec_yz" class="canvas tiny"></canvas>
+              <div class="tinyText">
+                Edit by dragging endpoints in orthographic views:
+                XY changes (x,y), XZ changes (x,z), YZ changes (y,z).
+              </div>
+            </div>
+            <div>
+              <canvas id="vec_preview3d" class="canvas"></canvas>
+              <div class="tinyText">3D preview: drag to rotate, wheel to zoom.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span><span class="dot" style="background:var(--blue)"></span>a</span>
+          <span><span class="dot" style="background:var(--green)"></span>b</span>
+        </div>
+
+        <div class="inputs" id="vec_inputs">
+          <div class="box">
+            <label>a.x</label>
+            <input id="va_x" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>a.y</label>
+            <input id="va_y" type="number" step="0.1" />
+          </div>
+          <div class="box" id="va_z_box" style="display:none;">
+            <label>a.z</label>
+            <input id="va_z" type="number" step="0.1" />
+          </div>
+
+          <div class="box">
+            <label>b.x</label>
+            <input id="vb_x" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>b.y</label>
+            <input id="vb_y" type="number" step="0.1" />
+          </div>
+          <div class="box" id="vb_z_box" style="display:none;">
+            <label>b.z</label>
+            <input id="vb_z" type="number" step="0.1" />
+          </div>
+        </div>
+
+        <div id="vec_readout" class="readout"></div>
+
+        <div class="stepper">
+          <div class="top">
+            <button id="vec_step">Step</button>
+            <button id="vec_all">Show all</button>
+            <button id="vec_reset">Reset</button>
+            <span id="vec_stepLabel" class="label"></span>
+          </div>
+          <ol id="vec_steps" class="steps"></ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Key intuition</h3>
+        <ul class="muted">
+          <li><b>dot(a,b)</b> increases when vectors point in similar directions (and also when they are longer).</li>
+          <li><b>cos(a,b)</b> compares directions only (it normalizes by lengths).</li>
+          <li>In attention, scores often come from dot products between query and keys.</li>
+        </ul>
+
+        <details>
+          <summary>Formulas</summary>
+          <div class="readout">dot(a,b) = Σ_i a_i b_i
+
+||a|| = sqrt(dot(a,a))
+cos(a,b) = dot(a,b) / (||a|| ||b||)</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2) Projection -->
+  <section id="proj" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>2) Vector projection (2D / 3D)</h2>
+        <p class="muted">
+          Projecting <span class="mono">a</span> onto <span class="mono">b</span> extracts the “part of a that lies along b”.
+          The residual is what remains after removing that component.
+        </p>
+
+        <div class="controls">
+          <label class="pill">
+            Dimension:
+            <select id="proj_dim">
+              <option value="2">2D</option>
+              <option value="3">3D</option>
+            </select>
+          </label>
+          <button id="proj_random" class="primary">Random</button>
+          <button id="proj_makeClose">Make a closer to b</button>
+          <button id="proj_makeOrtho">Make a ~orthogonal to b</button>
+          <span class="pill"><span class="muted">Tip:</span> drag endpoints</span>
+        </div>
+
+        <!-- 2D canvas -->
+        <div id="proj_2d">
+          <canvas id="proj_canvas2d" class="canvas"></canvas>
+        </div>
+
+        <!-- 3D canvases -->
+        <div id="proj_3d" style="display:none;">
+          <div class="grid3d">
+            <div class="stack">
+              <canvas id="proj_xy" class="canvas tiny"></canvas>
+              <canvas id="proj_xz" class="canvas tiny"></canvas>
+              <canvas id="proj_yz" class="canvas tiny"></canvas>
+              <div class="tinyText">
+                In projection, you can read: <span class="mono">a = proj_b(a) + residual</span>.
+              </div>
+            </div>
+            <div>
+              <canvas id="proj_preview3d" class="canvas"></canvas>
+              <div class="tinyText">3D preview: drag to rotate, wheel to zoom.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span><span class="dot" style="background:var(--blue)"></span>a</span>
+          <span><span class="dot" style="background:var(--green)"></span>b</span>
+          <span><span class="dot" style="background:var(--orange)"></span>proj</span>
+          <span><span class="dot" style="background:var(--gray)"></span>residual</span>
+        </div>
+
+        <div class="inputs">
+          <div class="box">
+            <label>a.x</label>
+            <input id="pa_x" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>a.y</label>
+            <input id="pa_y" type="number" step="0.1" />
+          </div>
+          <div class="box" id="pa_z_box" style="display:none;">
+            <label>a.z</label>
+            <input id="pa_z" type="number" step="0.1" />
+          </div>
+
+          <div class="box">
+            <label>b.x</label>
+            <input id="pb_x" type="number" step="0.1" />
+          </div>
+          <div class="box">
+            <label>b.y</label>
+            <input id="pb_y" type="number" step="0.1" />
+          </div>
+          <div class="box" id="pb_z_box" style="display:none;">
+            <label>b.z</label>
+            <input id="pb_z" type="number" step="0.1" />
+          </div>
+        </div>
+
+        <div id="proj_readout" class="readout"></div>
+
+        <div class="stepper">
+          <div class="top">
+            <button id="proj_step">Step</button>
+            <button id="proj_all">Show all</button>
+            <button id="proj_reset">Reset</button>
+            <span id="proj_stepLabel" class="label"></span>
+          </div>
+          <ol id="proj_steps" class="steps"></ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Key intuition</h3>
+        <ul class="muted">
+          <li><span class="mono">proj_b(a)</span> is the “shadow” of <span class="mono">a</span> on direction <span class="mono">b</span>.</li>
+          <li>The residual is perpendicular to <span class="mono">b</span> (dot(residual, b) ≈ 0).</li>
+        </ul>
+
+        <details>
+          <summary>Formulas</summary>
+          <div class="readout">t = (a·b) / (b·b)
+proj_b(a) = t b
+residual r = a - proj_b(a)</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3) Matrix -->
+  <section id="matrix" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>3) Matrix multiplication (step-by-step)</h2>
+        <p class="muted">
+          This shows classic multiplication: <span class="mono">C = A · B</span>.
+          Each result cell <span class="mono">C[i,j]</span> is a dot product of row <span class="mono">i</span> from A and column <span class="mono">j</span> from B.
+        </p>
+
+        <div class="controls">
+          <label class="pill">
+            Size:
+            <select id="mat_size">
+              <option value="2x2">2×2 · 2×2</option>
+              <option value="3x3">3×3 · 3×3</option>
+              <option value="2x3_3x2">2×3 · 3×2</option>
+            </select>
+          </label>
+          <button id="mat_random" class="primary">Random</button>
+          <button id="mat_zero">Zero</button>
+          <button id="mat_identity">Identity (when square)</button>
+        </div>
+
+        <div class="controls">
+          <button id="mat_back">Back</button>
+          <button id="mat_next" class="primary">Next</button>
+          <button id="mat_play">Play</button>
+          <button id="mat_stop">Stop</button>
+          <span class="pill" id="mat_stepLabel">Step: -</span>
+        </div>
+
+        <div class="matWrap" id="mat_mount"></div>
+
+        <div id="mat_explain" class="readout"></div>
+
+        <details>
+          <summary>Quick reminder</summary>
+          <div class="readout">If A is (m×n) and B is (n×p),
+then C = A·B is (m×p)
+
+C[i,j] = Σ_k A[i,k] * B[k,j]</div>
+        </details>
+      </div>
+
+      <div class="card">
+        <h3>How to use this</h3>
+        <ul class="muted">
+          <li>Type values into A and B.</li>
+          <li>Click <span class="kbd">Next</span> to step through term-by-term.</li>
+          <li>Watch highlights: A row, B column, current term, and current result cell.</li>
+          <li><span class="kbd">Play</span> auto-advances.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4) Softmax -->
+  <section id="softmax" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>4) Softmax (what is happening, step-by-step)</h2>
+        <p class="muted">
+          Softmax turns raw scores (“logits”) into positive weights that sum to 1.
+          Attention uses softmax to convert similarity scores into mixing weights.
+        </p>
+
+        <div class="controls">
+          <label class="pill">
+            N:
+            <select id="soft_n">
+              <option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+            </select>
+          </label>
+          <label class="pill">
+            Temperature T:
+            <input id="soft_T" type="number" step="0.1" min="0.1" value="1.0" style="width:90px;">
+          </label>
+          <button id="soft_random" class="primary">Random</button>
+          <button id="soft_peaky">Make peaky (T small)</button>
+          <button id="soft_flat">Make flat (T big)</button>
+        </div>
+
+        <div id="soft_sliders" class="softRows"></div>
+
+        <div class="wBars" id="soft_bars"></div>
+
+        <div class="controls">
+          <button id="soft_step">Step</button>
+          <button id="soft_all" class="primary">Show all</button>
+          <button id="soft_reset">Reset</button>
+          <span id="soft_stepLabel" class="pill">Step: -</span>
+        </div>
+
+        <table class="softTable" id="soft_table"></table>
+
+        <div id="soft_readout" class="readout"></div>
+
+        <details>
+          <summary>Why subtract max?</summary>
+          <p class="muted">
+            Softmax uses exponentials, which can overflow. Subtracting the maximum logit keeps numbers stable
+            without changing the final probabilities.
+          </p>
+        </details>
+      </div>
+
+      <div class="card">
+        <h3>Key intuition</h3>
+        <ul class="muted">
+          <li>Only differences matter: adding +5 to every logit does not change softmax.</li>
+          <li>Temperature controls sharpness: smaller T makes the largest logit dominate.</li>
+          <li>Softmax creates weights for weighted averages (like attention’s value mixing).</li>
+        </ul>
+
+        <details>
+          <summary>Formula</summary>
+          <div class="readout">p_i = exp(z_i/T) / Σ_j exp(z_j/T)
+
+Stable form:
+m = max(z)
+p_i = exp((z_i - m)/T) / Σ_j exp((z_j - m)/T)</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5) Mini attention -->
+  <section id="attn" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>5) Mini Attention (drag q/k/v, see weights & output)</h2>
+        <p class="muted">
+          This is the “toy version” of attention for one query:
+          scores from q·k, softmax weights, then output is a weighted sum of values v.
+        </p>
+
+        <div class="controls">
+          <label class="pill">
+            Score:
+            <select id="att_score">
+              <option value="dot" selected>dot(q,k)</option>
+              <option value="cos">cosine(q,k)</option>
+            </select>
+          </label>
+          <label class="pill">
+            Scale by √d:
+            <select id="att_scale">
+              <option value="on" selected>on</option>
+              <option value="off">off</option>
+            </select>
+          </label>
+          <label class="pill">
+            Temperature T:
+            <input id="att_T" type="number" step="0.1" min="0.1" value="1.0" style="width:90px;">
+          </label>
+          <button id="att_random" class="primary">Random</button>
+          <button id="att_focus1">Make q close to k1</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px;">
+          <div>
+            <h3 style="margin:0 0 6px 0;">Key space (q and k’s)</h3>
+            <canvas id="att_key" class="canvas small"></canvas>
+            <div class="legend">
+              <span><span class="dot" style="background:var(--purple)"></span>q</span>
+              <span><span class="dot" style="background:var(--green)"></span>k1</span>
+              <span><span class="dot" style="background:var(--orange)"></span>k2</span>
+              <span><span class="dot" style="background:var(--red)"></span>k3</span>
+            </div>
+            <div class="tinyText muted">Line thickness from q→k is proportional to attention weight.</div>
+          </div>
+          <div>
+            <h3 style="margin:0 0 6px 0;">Value space (v’s and output)</h3>
+            <canvas id="att_val" class="canvas small"></canvas>
+            <div class="legend">
+              <span><span class="dot" style="background:var(--green)"></span>v1</span>
+              <span><span class="dot" style="background:var(--orange)"></span>v2</span>
+              <span><span class="dot" style="background:var(--red)"></span>v3</span>
+              <span><span class="dot" style="background:var(--black)"></span>out</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="wBars" id="att_wbars"></div>
+
+        <div class="controls">
+          <button id="att_step">Step</button>
+          <button id="att_all" class="primary">Show all</button>
+          <button id="att_reset">Reset</button>
+          <span id="att_stepLabel" class="pill">Step: -</span>
+        </div>
+
+        <div id="att_readout" class="readout"></div>
+
+        <div class="stepper">
+          <div class="top">
+            <span class="label muted">Step explanation:</span>
+          </div>
+          <ol id="att_steps" class="steps"></ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What to watch</h3>
+        <ul class="muted">
+          <li>Move <span class="mono">q</span> closer to a key <span class="mono">kᵢ</span>: that key’s weight increases.</li>
+          <li>Then output <span class="mono">out</span> moves toward that value <span class="mono">vᵢ</span>.</li>
+          <li>Softmax turns score differences into weight differences.</li>
+        </ul>
+
+        <details>
+          <summary>Mini formulas</summary>
+          <div class="readout">score_i = q·k_i  (or cosine)
+(optional) score_i = score_i / sqrt(d)
+w = softmax(score/T)
+out = Σ_i w_i v_i</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* =========================
+   Utilities
+========================= */
+const $ = (id)=>document.getElementById(id);
+const $$ = (sel)=>Array.from(document.querySelectorAll(sel));
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const fmt=(x,d=5)=>{
+  if(!Number.isFinite(x)) return "NaN";
+  const s = x.toFixed(d);
+  return s.replace(/^-0\./,"0.").replace(/^-0$/,"0");
+};
+function setDisplay(el, show){ el.style.display = show ? "" : "none"; }
+function readNum(id, fallback=0){
+  const v = Number($(id).value);
+  return Number.isFinite(v) ? v : fallback;
+}
+function setNum(id, v, d=2){ $(id).value = String(Number.isFinite(v)? Number(v.toFixed(d)) : v); }
+
+/* Vectors (2D/3D) */
+function v3(x=0,y=0,z=0){ return {x,y,z}; }
+function add3(a,b){ return v3(a.x+b.x, a.y+b.y, a.z+b.z); }
+function sub3(a,b){ return v3(a.x-b.x, a.y-b.y, a.z-b.z); }
+function mul3(a,t){ return v3(a.x*t, a.y*t, a.z*t); }
+function dot3(a,b){ return a.x*b.x + a.y*b.y + a.z*b.z; }
+function norm3(a){ return Math.sqrt(dot3(a,a)); }
+function cosine3(a,b){
+  const na=norm3(a), nb=norm3(b);
+  if(na===0 || nb===0) return NaN;
+  return dot3(a,b)/(na*nb);
+}
+
+/* Softmax */
+function softmax(arr, T=1){
+  const t = Math.max(0.1, T);
+  const m = Math.max(...arr);
+  const exps = arr.map(v=>Math.exp((v-m)/t));
+  const s = exps.reduce((p,c)=>p+c,0);
+  return {m, exps, sum:s, p: exps.map(e=>e/s), T:t};
+}
+
+/* Stepper */
+function createStepper(btnStep, btnAll, btnReset, labelEl, listEl, stepsFn){
+  let idx=0;
+  function render(){
+    const steps = stepsFn();
+    idx = clamp(idx, 0, Math.max(0, steps.length-1));
+    listEl.innerHTML="";
+    steps.forEach((html,i)=>{
+      const li=document.createElement("li");
+      li.innerHTML=html;
+      if(i>idx) li.classList.add("off");
+      listEl.appendChild(li);
+    });
+    labelEl.textContent = `Step: ${Math.min(idx+1, steps.length)}/${steps.length}`;
+  }
+  btnStep.onclick=()=>{ idx=Math.min(idx+1, stepsFn().length-1); render(); };
+  btnAll.onclick=()=>{ idx=stepsFn().length-1; render(); };
+  btnReset.onclick=()=>{ idx=0; render(); };
+  return {render, reset(){idx=0; render();}, set(i){idx=i; render();}, get(){return idx;}};
+}
+
+/* =========================
+   Canvas helpers (2D drawing + dragging)
+========================= */
+class Canvas2D {
+  constructor(canvas, opts={}){
+    this.canvas=canvas;
+    this.range=opts.range ?? 5;
+    this.onPointerDown = opts.onPointerDown ?? (()=>{});
+    this.onPointerMove = opts.onPointerMove ?? (()=>{});
+    this.onPointerUp   = opts.onPointerUp ?? (()=>{});
+    canvas.addEventListener("pointerdown",(e)=>this.onPointerDown(e));
+    window.addEventListener("pointermove",(e)=>this.onPointerMove(e));
+    window.addEventListener("pointerup",(e)=>this.onPointerUp(e));
+  }
+  rect(){ return this.canvas.getBoundingClientRect(); }
+  ctx(){
+    const r=this.rect();
+    const dpr=window.devicePixelRatio||1;
+    const w=Math.max(1,Math.round(r.width));
+    const h=Math.max(1,Math.round(r.height));
+    if(this.canvas.width!==w*dpr||this.canvas.height!==h*dpr){
+      this.canvas.width=w*dpr;
+      this.canvas.height=h*dpr;
+    }
+    const ctx=this.canvas.getContext("2d");
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {ctx,w,h};
+  }
+  worldToCanvas(x,y,w,h){
+    const s = Math.min(w,h)/(2*this.range);
+    const ox=w/2, oy=h/2;
+    return {cx:ox+x*s, cy:oy-y*s, s, ox, oy};
+  }
+  canvasToWorld(cx,cy,w,h){
+    const s = Math.min(w,h)/(2*this.range);
+    const ox=w/2, oy=h/2;
+    return {x:(cx-ox)/s, y:-(cy-oy)/s};
+  }
+  drawGrid(ctx,w,h, title=""){
+    const {s,ox,oy}=this.worldToCanvas(0,0,w,h);
+    ctx.clearRect(0,0,w,h);
+
+    // grid
+    ctx.lineWidth=1;
+    ctx.strokeStyle="rgba(17,24,39,0.06)";
+    for(let i=-this.range;i<=this.range;i++){
+      const x=ox+i*s;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+      const y=oy-i*s;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+    }
+
+    // axes
+    ctx.strokeStyle="rgba(17,24,39,0.25)";
+    ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(0,oy); ctx.lineTo(w,oy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox,0); ctx.lineTo(ox,h); ctx.stroke();
+
+    // origin dot
+    ctx.fillStyle="rgba(17,24,39,0.45)";
+    ctx.beginPath(); ctx.arc(ox,oy,3,0,Math.PI*2); ctx.fill();
+
+    // title
+    if(title){
+      ctx.fillStyle="rgba(17,24,39,0.65)";
+      ctx.font="12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+      ctx.fillText(title, 10, 18);
+    }
+  }
+  drawArrow(ctx, x1,y1,x2,y2, color, width=2.5){
+    ctx.strokeStyle=color;
+    ctx.fillStyle=color;
+    ctx.lineWidth=width;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+
+    // head
+    const dx=x2-x1, dy=y2-y1;
+    const len=Math.max(1e-6,Math.sqrt(dx*dx+dy*dy));
+    const ux=dx/len, uy=dy/len;
+    const head=10;
+    const leftx = x2 - ux*head - uy*head*0.55;
+    const lefty = y2 - uy*head + ux*head*0.55;
+    const rightx= x2 - ux*head + uy*head*0.55;
+    const righty= y2 - uy*head - ux*head*0.55;
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(leftx,lefty);
+    ctx.lineTo(rightx,righty);
+    ctx.closePath();
+    ctx.fill();
+
+    // endpoint handle
+    ctx.globalAlpha=0.18;
+    ctx.beginPath(); ctx.arc(x2,y2,12,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1;
+  }
+}
+
+/* A simple draggable vector set in 2D (from origin). */
+class DragVectors2D {
+  constructor(canvas, vectors, opts={}){
+    this.cv = new Canvas2D(canvas, {
+      range: opts.range ?? 5,
+      onPointerDown: (e)=>this.down(e),
+      onPointerMove: (e)=>this.move(e),
+      onPointerUp:   (e)=>this.up(e),
+    });
+    this.vectors=vectors; // [{id,label,x,y,color,draggable}]
+    this.onChange = opts.onChange ?? (()=>{});
+    this.dragging=null;
+    this.title = opts.title ?? "drag endpoints";
+    this.extraDraw = opts.extraDraw ?? (()=>{});
+    this.draw();
+  }
+  pick(world){
+    const thr=0.35;
+    let best=null, bestD=Infinity;
+    for(const v of this.vectors){
+      if(v.draggable===false) continue;
+      const dx=v.x-world.x, dy=v.y-world.y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<thr && d<bestD){ best=v; bestD=d; }
+    }
+    return best;
+  }
+  down(e){
+    const {ctx,w,h}=this.cv.ctx();
+    const r=this.cv.rect();
+    const p=this.cv.canvasToWorld(e.clientX-r.left, e.clientY-r.top, w,h);
+    const hit=this.pick(p);
+    if(hit){
+      this.dragging=hit;
+      this.cv.canvas.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    }
+  }
+  move(e){
+    if(!this.dragging) return;
+    const {ctx,w,h}=this.cv.ctx();
+    const r=this.cv.rect();
+    const p=this.cv.canvasToWorld(e.clientX-r.left, e.clientY-r.top, w,h);
+    this.dragging.x = clamp(p.x, -this.cv.range, this.cv.range);
+    this.dragging.y = clamp(p.y, -this.cv.range, this.cv.range);
+    this.onChange(this.dragging);
+    this.draw();
+  }
+  up(e){ this.dragging=null; }
+  draw(){
+    const {ctx,w,h}=this.cv.ctx();
+    this.cv.drawGrid(ctx,w,h,this.title);
+
+    const base=this.cv.worldToCanvas(0,0,w,h);
+    // extra draw (like residual segment)
+    this.extraDraw(ctx,w,h, base);
+
+    for(const v of this.vectors){
+      const p=this.cv.worldToCanvas(v.x,v.y,w,h);
+      this.cv.drawArrow(ctx, base.ox, base.oy, p.cx, p.cy, v.color || "#111827", 2.6);
+      ctx.fillStyle=v.color||"#111827";
+      ctx.globalAlpha=0.9;
+      ctx.font="12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+      ctx.fillText(v.label, p.cx+8, p.cy-8);
+      ctx.globalAlpha=1;
+    }
+  }
+}
+
+/* =========================
+   3D: Orthographic edit views (XY / XZ / YZ)
+========================= */
+class OrthoEdit3D {
+  constructor(canvas, plane, vecRefs, opts={}){
+    this.plane=plane; // "XY" "XZ" "YZ"
+    this.vecRefs=vecRefs; // [{ref: vec3Obj, label, color, draggable}]
+    this.range=opts.range ?? 5;
+    this.onChange=opts.onChange ?? (()=>{});
+    this.dragging=null;
+
+    this.cv=new Canvas2D(canvas,{
+      range:this.range,
+      onPointerDown:(e)=>this.down(e),
+      onPointerMove:(e)=>this.move(e),
+      onPointerUp:(e)=>this.up(e),
+    });
+
+    this.title = opts.title ?? plane;
+    this.extraSegments = opts.extraSegments ?? []; // [{from:vec3Obj,to:vec3Obj,color,width}]
+    this.draw();
+  }
+  proj(v){
+    if(this.plane==="XY") return {x:v.x, y:v.y};
+    if(this.plane==="XZ") return {x:v.x, y:v.z};
+    return {x:v.y, y:v.z}; // YZ
+  }
+  unprojDrag(v, p2){
+    // Update the dragged vector's relevant coords, keep the third coord unchanged
+    if(this.plane==="XY"){ v.x=p2.x; v.y=p2.y; }
+    else if(this.plane==="XZ"){ v.x=p2.x; v.z=p2.y; }
+    else { v.y=p2.x; v.z=p2.y; }
+  }
+  pick(world){
+    const thr=0.35;
+    let best=null, bestD=Infinity;
+    for(const it of this.vecRefs){
+      if(it.draggable===false) continue;
+      const p=this.proj(it.ref);
+      const dx=p.x-world.x, dy=p.y-world.y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<thr && d<bestD){ best=it; bestD=d; }
+    }
+    return best;
+  }
+  down(e){
+    const {w,h}=this.cv.ctx();
+    const r=this.cv.rect();
+    const p=this.cv.canvasToWorld(e.clientX-r.left, e.clientY-r.top, w,h);
+    const hit=this.pick(p);
+    if(hit){
+      this.dragging=hit;
+      this.cv.canvas.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    }
+  }
+  move(e){
+    if(!this.dragging) return;
+    const {w,h}=this.cv.ctx();
+    const r=this.cv.rect();
+    const p=this.cv.canvasToWorld(e.clientX-r.left, e.clientY-r.top, w,h);
+    const cl = {x: clamp(p.x, -this.range, this.range), y: clamp(p.y, -this.range, this.range)};
+    this.unprojDrag(this.dragging.ref, cl);
+    this.onChange(this.dragging.ref);
+    this.draw();
+  }
+  up(e){ this.dragging=null; }
+  draw(){
+    const {ctx,w,h}=this.cv.ctx();
+    this.cv.drawGrid(ctx,w,h, `${this.title} view (drag endpoints)`);
+
+    // draw extra segments first (like residual from proj to a)
+    const base=this.cv.worldToCanvas(0,0,w,h);
+    for(const seg of this.extraSegments){
+      const p1=this.proj(seg.from);
+      const p2=this.proj(seg.to);
+      const c1=this.cv.worldToCanvas(p1.x,p1.y,w,h);
+      const c2=this.cv.worldToCanvas(p2.x,p2.y,w,h);
+      this.cv.drawArrow(ctx, c1.cx, c1.cy, c2.cx, c2.cy, seg.color||"rgba(75,85,99,0.9)", seg.width||2.0);
+    }
+
+    // draw vectors from origin
+    for(const it of this.vecRefs){
+      const p=this.proj(it.ref);
+      const c=this.cv.worldToCanvas(p.x,p.y,w,h);
+      this.cv.drawArrow(ctx, base.ox, base.oy, c.cx, c.cy, it.color||"#111827", 2.6);
+      ctx.fillStyle=it.color||"#111827";
+      ctx.globalAlpha=0.9;
+      ctx.font="12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+      ctx.fillText(it.label, c.cx+8, c.cy-8);
+      ctx.globalAlpha=1;
+    }
+  }
+}
+
+/* =========================
+   3D Preview (rotation + zoom)
+========================= */
+class Preview3D {
+  constructor(canvas, getItemsFn, opts={}){
+    this.canvas=canvas;
+    this.getItems=getItemsFn; // returns {vectors:[{label,vec,color}], segments:[{from,to,color,width}]}
+    this.range=opts.range ?? 5;
+    this.yaw=-0.65;
+    this.pitch=0.45;
+    this.dist=12.0;
+    this.drag=false;
+    this.last=null;
+
+    canvas.addEventListener("pointerdown",(e)=>{
+      this.drag=true;
+      this.last={x:e.clientX,y:e.clientY};
+      canvas.setPointerCapture(e.pointerId);
+    });
+    window.addEventListener("pointermove",(e)=>{
+      if(!this.drag) return;
+      const dx=e.clientX-this.last.x;
+      const dy=e.clientY-this.last.y;
+      this.last={x:e.clientX,y:e.clientY};
+      this.yaw += dx*0.008;
+      this.pitch += dy*0.008;
+      this.pitch = clamp(this.pitch, -1.2, 1.2);
+      this.draw();
+    });
+    window.addEventListener("pointerup",(e)=>{ this.drag=false; });
+    canvas.addEventListener("wheel",(e)=>{
+      e.preventDefault();
+      this.dist *= (e.deltaY>0) ? 1.06 : 0.94;
+      this.dist = clamp(this.dist, 6, 30);
+      this.draw();
+    }, {passive:false});
+
+    this.draw();
+  }
+  ctx(){
+    const r=this.canvas.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    const w=Math.max(1,Math.round(r.width));
+    const h=Math.max(1,Math.round(r.height));
+    if(this.canvas.width!==w*dpr||this.canvas.height!==h*dpr){
+      this.canvas.width=w*dpr; this.canvas.height=h*dpr;
+    }
+    const ctx=this.canvas.getContext("2d");
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {ctx,w,h};
+  }
+  project(pt, w,h){
+    // rotate
+    const cy=Math.cos(this.yaw), sy=Math.sin(this.yaw);
+    const cp=Math.cos(this.pitch), sp=Math.sin(this.pitch);
+
+    let x =  cy*pt.x + sy*pt.z;
+    let z = -sy*pt.x + cy*pt.z;
+    let y = pt.y;
+
+    // pitch around X
+    let y2 =  cp*y - sp*z;
+    let z2 =  sp*y + cp*z;
+
+    // camera translate: push scene away
+    const zc = z2 + this.dist;
+
+    // perspective
+    const f = 380; // focal-ish
+    const s = f / Math.max(1e-3, zc);
+    const sx = x*s;
+    const sy2= y2*s;
+
+    // to screen
+    const ox=w/2, oy=h/2;
+    return {x: ox+sx, y: oy-sy2, z: zc, s};
+  }
+  drawAxes(ctx,w,h){
+    // axes lines in 3D: x red-ish, y green-ish, z blue-ish (subtle)
+    const axes = [
+      {a:v3(0,0,0), b:v3(4,0,0), color:"rgba(214,39,40,0.5)", label:"x"},
+      {a:v3(0,0,0), b:v3(0,4,0), color:"rgba(44,160,44,0.5)", label:"y"},
+      {a:v3(0,0,0), b:v3(0,0,4), color:"rgba(31,119,180,0.5)", label:"z"},
+    ];
+    for(const ax of axes){
+      const p1=this.project(ax.a,w,h);
+      const p2=this.project(ax.b,w,h);
+      ctx.strokeStyle=ax.color;
+      ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+      ctx.fillStyle=ax.color;
+      ctx.font="12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+      ctx.fillText(ax.label, p2.x+4, p2.y-4);
+    }
+  }
+  drawArrow3D(ctx, from, to, color, width=2.6){
+    // Draw simple line + 2D arrowhead
+    // Use projection; arrowhead computed in screen space
+    const {w,h} = {w:ctx.canvas.width, h:ctx.canvas.height}; // not used
+  }
+  draw(){
+    const {ctx,w,h}=this.ctx();
+    ctx.clearRect(0,0,w,h);
+
+    // background
+    ctx.fillStyle="rgba(255,255,255,1)";
+    ctx.fillRect(0,0,w,h);
+
+    // subtle border label
+    ctx.fillStyle="rgba(17,24,39,0.65)";
+    ctx.font="12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    ctx.fillText("3D preview (drag rotate, wheel zoom)", 10, 18);
+
+    // axes
+    this.drawAxes(ctx,w,h);
+
+    const items=this.getItems();
+
+    // draw segments first
+    if(items.segments){
+      for(const seg of items.segments){
+        const p1=this.project(seg.from,w,h);
+        const p2=this.project(seg.to,w,h);
+        ctx.strokeStyle=seg.color||"rgba(75,85,99,0.9)";
+        ctx.lineWidth=seg.width||2.2;
+        ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+      }
+    }
+
+    // draw vectors from origin
+    const origin=v3(0,0,0);
+    const o=this.project(origin,w,h);
+    for(const v of items.vectors){
+      const end=this.project(v.vec,w,h);
+
+      // line
+      ctx.strokeStyle=v.color||"#111827";
+      ctx.lineWidth=2.6;
+      ctx.beginPath(); ctx.moveTo(o.x,o.y); ctx.lineTo(end.x,end.y); ctx.stroke();
+
+      // arrow head in screen space
+      const dx=end.x-o.x, dy=end.y-o.y;
+      const len=Math.max(1e-6,Math.sqrt(dx*dx+dy*dy));
+      const ux=dx/len, uy=dy/len;
+      const head=10;
+      const leftx = end.x - ux*head - uy*head*0.55;
+      const lefty = end.y - uy*head + ux*head*0.55;
+      const rightx= end.x - ux*head + uy*head*0.55;
+      const righty= end.y - uy*head - ux*head*0.55;
+      ctx.fillStyle=v.color||"#111827";
+      ctx.beginPath();
+      ctx.moveTo(end.x,end.y);
+      ctx.lineTo(leftx,lefty);
+      ctx.lineTo(rightx,righty);
+      ctx.closePath();
+      ctx.fill();
+
+      // label
+      ctx.fillStyle=v.color||"#111827";
+      ctx.globalAlpha=0.9;
+      ctx.fillText(v.label, end.x+6, end.y-6);
+      ctx.globalAlpha=1;
+    }
+  }
+}
+
+/* =========================
+   Navigation
+========================= */
+$$("nav button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    $$("nav button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    const target=btn.dataset.target;
+    $$(".section").forEach(s=>s.classList.remove("active"));
+    $(target).classList.add("active");
+    requestAnimationFrame(()=>redrawAll());
+  });
+});
+
+/* =========================
+   1) Vectors (2D/3D)
+========================= */
+const VA=v3(3.0,1.0,1.2);
+const VB=v3(1.0,3.0,-0.6);
+
+function vecSyncInputs(){
+  setNum("va_x", VA.x); setNum("va_y", VA.y); setNum("va_z", VA.z);
+  setNum("vb_x", VB.x); setNum("vb_y", VB.y); setNum("vb_z", VB.z);
+}
+function vecSyncStateFromInputs(){
+  VA.x=readNum("va_x",VA.x); VA.y=readNum("va_y",VA.y); VA.z=readNum("va_z",VA.z);
+  VB.x=readNum("vb_x",VB.x); VB.y=readNum("vb_y",VB.y); VB.z=readNum("vb_z",VB.z);
+}
+
+const vec2D_A = {id:"a", label:"a", x:VA.x, y:VA.y, color:getComputedStyle(document.documentElement).getPropertyValue("--blue").trim()};
+const vec2D_B = {id:"b", label:"b", x:VB.x, y:VB.y, color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()};
+
+let vec2d = new DragVectors2D($("vec_canvas2d"), [vec2D_A, vec2D_B], {
+  range:5,
+  title:"2D (drag endpoints)",
+  onChange: ()=>{
+    VA.x=vec2D_A.x; VA.y=vec2D_A.y;
+    VB.x=vec2D_B.x; VB.y=vec2D_B.y;
+    vecSyncInputs(); vecUpdate();
+  }
+});
+
+let vecXY=null, vecXZ=null, vecYZ=null, vecPrev=null;
+
+function vecUpdate(){
+  const dim = Number($("vec_dim").value);
+  const d = (dim===2) ? 2 : 3;
+
+  const a = (dim===2) ? v3(VA.x, VA.y, 0) : VA;
+  const b = (dim===2) ? v3(VB.x, VB.y, 0) : VB;
+
+  const dprod = dot3(a,b);
+  const na=norm3(a), nb=norm3(b);
+  const c=cosine3(a,b);
+  const cc = Number.isFinite(c) ? clamp(c,-1,1) : NaN;
+  const ang = Number.isFinite(cc) ? Math.acos(cc) : NaN;
+
+  $("vec_readout").textContent =
+`Dimension: ${d}D
+
+a = (${fmt(a.x,3)}, ${fmt(a.y,3)}${dim===3?`, ${fmt(a.z,3)}`:""})
+b = (${fmt(b.x,3)}, ${fmt(b.y,3)}${dim===3?`, ${fmt(b.z,3)}`:""})
+
+dot(a,b) = ${fmt(dprod,6)}
+||a|| = ${fmt(na,6)}
+||b|| = ${fmt(nb,6)}
+cos(a,b) = ${fmt(c,6)}
+angle(a,b) = ${Number.isFinite(ang) ? fmt(ang*180/Math.PI,4)+" deg" : "NaN"}`;
+
+  vecStepper.render();
+
+  // redraw canvases
+  if(dim===2){
+    vec2D_A.x=VA.x; vec2D_A.y=VA.y;
+    vec2D_B.x=VB.x; vec2D_B.y=VB.y;
+    vec2d.draw();
+  }else{
+    if(vecXY) vecXY.draw();
+    if(vecXZ) vecXZ.draw();
+    if(vecYZ) vecYZ.draw();
+    if(vecPrev) vecPrev.draw();
+  }
+}
+
+const vecStepper = createStepper(
+  $("vec_step"), $("vec_all"), $("vec_reset"),
+  $("vec_stepLabel"), $("vec_steps"),
+  ()=>{
+    const dim = Number($("vec_dim").value);
+    const a = (dim===2) ? v3(VA.x, VA.y, 0) : VA;
+    const b = (dim===2) ? v3(VB.x, VB.y, 0) : VB;
+
+    const dprod = dot3(a,b);
+    const na=norm3(a), nb=norm3(b);
+    const c=cosine3(a,b);
+    const cc = Number.isFinite(c) ? clamp(c,-1,1) : NaN;
+    const ang = Number.isFinite(cc) ? Math.acos(cc) : NaN;
+
+    const sumParts = (dim===2)
+      ? `${fmt(a.x,3)}*${fmt(b.x,3)} + ${fmt(a.y,3)}*${fmt(b.y,3)}`
+      : `${fmt(a.x,3)}*${fmt(b.x,3)} + ${fmt(a.y,3)}*${fmt(b.y,3)} + ${fmt(a.z,3)}*${fmt(b.z,3)}`;
+
+    return [
+      `① Dot product: dot(a,b) = Σ a_i b_i = ${sumParts} = <b>${fmt(dprod,6)}</b>`,
+      `② Norms: ||a|| = <b>${fmt(na,6)}</b>,  ||b|| = <b>${fmt(nb,6)}</b>`,
+      `③ Cosine similarity: cos = dot/(||a|| ||b||) = <b>${fmt(c,6)}</b>`,
+      `④ Angle: θ = arccos(cos) = <b>${Number.isFinite(ang) ? fmt(ang*180/Math.PI,4)+" deg" : "NaN"}</b>`
+    ];
+  }
+);
+
+function vecSetDimUI(){
+  const dim = Number($("vec_dim").value);
+  setDisplay($("vec_2d"), dim===2);
+  setDisplay($("vec_3d"), dim===3);
+  setDisplay($("va_z_box"), dim===3);
+  setDisplay($("vb_z_box"), dim===3);
+
+  // Build 3D views once
+  if(dim===3 && !vecXY){
+    vecXY = new OrthoEdit3D($("vec_xy"), "XY",
+      [
+        {ref:VA, label:"a", color:getComputedStyle(document.documentElement).getPropertyValue("--blue").trim()},
+        {ref:VB, label:"b", color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()},
+      ],
+      {range:5, onChange: ()=>{ vecSyncInputs(); vecUpdate(); }}
+    );
+    vecXZ = new OrthoEdit3D($("vec_xz"), "XZ",
+      [
+        {ref:VA, label:"a", color:getComputedStyle(document.documentElement).getPropertyValue("--blue").trim()},
+        {ref:VB, label:"b", color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()},
+      ],
+      {range:5, onChange: ()=>{ vecSyncInputs(); vecUpdate(); }}
+    );
+    vecYZ = new OrthoEdit3D($("vec_yz"), "YZ",
+      [
+        {ref:VA, label:"a", color:getComputedStyle(document.documentElement).getPropertyValue("--blue").trim()},
+        {ref:VB, label:"b", color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()},
+      ],
+      {range:5, onChange: ()=>{ vecSyncInputs(); vecUpdate(); }}
+    );
+
+    vecPrev = new Preview3D($("vec_preview3d"), ()=>({
+      vectors:[
+        {label:"a", vec:VA, color:getComputedStyle(document.documentElement).getPropertyValue("--blue").trim()},
+        {label:"b", vec:VB, color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()},
+      ],
+      segments:[]
+    }), {range:5});
+  }
+
+  vecUpdate();
+}
+
+$("vec_dim").addEventListener("change", ()=>{ vecStepper.reset(); vecSetDimUI(); });
+["va_x","va_y","va_z","vb_x","vb_y","vb_z"].forEach(id=>{
+  $(id).addEventListener("input", ()=>{
+    vecSyncStateFromInputs();
+    // update 2D proxies
+    vec2D_A.x=VA.x; vec2D_A.y=VA.y;
+    vec2D_B.x=VB.x; vec2D_B.y=VB.y;
+    vecUpdate();
+  });
+});
+
+$("vec_random").onclick=()=>{
+  const rnd=()=>Math.random()*8-4;
+  VA.x=rnd(); VA.y=rnd(); VA.z=rnd();
+  VB.x=rnd(); VB.y=rnd(); VB.z=rnd();
+  vecSyncInputs(); vecUpdate();
+};
+$("vec_ortho").onclick=()=>{
+  // Make VB roughly orthogonal to VA:
+  // In 2D: b = (-ay, ax)
+  // In 3D: pick a simple vector orthogonal by swapping and negating two components
+  const dim = Number($("vec_dim").value);
+  if(dim===2){
+    VB.x = -VA.y; VB.y = VA.x; VB.z=0;
+  }else{
+    // Ensure dot ~ 0: choose b = (-ay, ax, 0) then keep z small
+    VB.x = -VA.y;
+    VB.y =  VA.x;
+    VB.z =  0.2*(Math.random()*2-1);
+  }
+  vecSyncInputs(); vecUpdate();
+};
+$("vec_parallel").onclick=()=>{
+  const t=1.2;
+  VB.x=t*VA.x; VB.y=t*VA.y; VB.z=t*VA.z;
+  vecSyncInputs(); vecUpdate();
+};
+
+/* =========================
+   2) Projection (2D/3D)
+========================= */
+const PA=v3(3.2,1.4,1.1);
+const PB=v3(2.0,3.0,-0.4);
+const PPROJ=v3(0,0,0);
+const PRES=v3(0,0,0);
+
+function projCalc(){
+  const dim = Number($("proj_dim").value);
+  const a = (dim===2) ? v3(PA.x, PA.y, 0) : PA;
+  const b = (dim===2) ? v3(PB.x, PB.y, 0) : PB;
+  const bb = dot3(b,b);
+  let t = NaN;
+  if(bb!==0) t = dot3(a,b)/bb;
+  const p = mul3(b,t);
+  const r = sub3(a,p);
+  return {dim,a,b,t,p,r, bb, ab:dot3(a,b), check:dot3(r,b)};
+}
+
+function projSyncInputs(){
+  setNum("pa_x", PA.x); setNum("pa_y", PA.y); setNum("pa_z", PA.z);
+  setNum("pb_x", PB.x); setNum("pb_y", PB.y); setNum("pb_z", PB.z);
+}
+function projSyncStateFromInputs(){
+  PA.x=readNum("pa_x",PA.x); PA.y=readNum("pa_y",PA.y); PA.z=readNum("pa_z",PA.z);
+  PB.x=readNum("pb_x",PB.x); PB.y=readNum("pb_y",PB.y); PB.z=readNum("pb_z",PB.z);
+}
+
+const proj2D_A = {id:"a", label:"a", x:PA.x, y:PA.y, color:getComputedStyle(document.documentElement).getPropertyValue("--blue").trim()};
+const proj2D_B = {id:"b", label:"b", x:PB.x, y:PB.y, color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()};
+const proj2D_P = {id:"p", label:"proj", x:0, y:0, color:getComputedStyle(document.documentElement).getPropertyValue("--orange").trim(), draggable:false};
+
+let proj2d = new DragVectors2D($("proj_canvas2d"), [proj2D_A, proj2D_B, proj2D_P], {
+  range:5,
+  title:"2D (drag endpoints)",
+  extraDraw: (ctx,w,h, base)=>{
+    // draw residual as arrow from proj endpoint to a endpoint (decomposition)
+    const calc=projCalc();
+    const pr=calc.p, a=calc.a;
+    const pC = proj2d.cv.worldToCanvas(pr.x, pr.y, w,h);
+    const aC = proj2d.cv.worldToCanvas(a.x, a.y, w,h);
+    proj2d.cv.drawArrow(ctx, pC.cx, pC.cy, aC.cx, aC.cy,
+      getComputedStyle(document.documentElement).getPropertyValue("--gray").trim(), 2.3);
+    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue("--gray").trim();
+    ctx.globalAlpha=0.9;
+    ctx.font="12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    ctx.fillText("residual", aC.cx+8, aC.cy+10);
+    ctx.globalAlpha=1;
+  },
+  onChange: ()=>{
+    PA.x=proj2D_A.x; PA.y=proj2D_A.y;
+    PB.x=proj2D_B.x; PB.y=proj2D_B.y;
+    projSyncInputs(); projUpdate();
+  }
+});
+
+let projXY=null, projXZ=null, projYZ=null, projPrev=null;
+
+function projUpdate(){
+  const calc=projCalc();
+  // store
+  PPROJ.x=calc.p.x; PPROJ.y=calc.p.y; PPROJ.z=calc.p.z;
+  PRES.x =calc.r.x; PRES.y =calc.r.y; PRES.z =calc.r.z;
+
+  $("proj_readout").textContent =
+`Dimension: ${calc.dim}D
+
+a = (${fmt(calc.a.x,3)}, ${fmt(calc.a.y,3)}${calc.dim===3?`, ${fmt(calc.a.z,3)}`:""})
+b = (${fmt(calc.b.x,3)}, ${fmt(calc.b.y,3)}${calc.dim===3?`, ${fmt(calc.b.z,3)}`:""})
+
+t = (a·b)/(b·b) = ${fmt(calc.t,8)}
+proj_b(a) = t b = (${fmt(calc.p.x,6)}, ${fmt(calc.p.y,6)}${calc.dim===3?`, ${fmt(calc.p.z,6)}`:""})
+residual r = a - proj = (${fmt(calc.r.x,6)}, ${fmt(calc.r.y,6)}${calc.dim===3?`, ${fmt(calc.r.z,6)}`:""})
+
+Check: dot(r,b) ≈ 0  →  ${fmt(calc.check,8)}`;
+
+  projStepper.render();
+
+  if(calc.dim===2){
+    proj2D_A.x=PA.x; proj2D_A.y=PA.y;
+    proj2D_B.x=PB.x; proj2D_B.y=PB.y;
+    proj2D_P.x=PPROJ.x; proj2D_P.y=PPROJ.y;
+    proj2d.draw();
+  }else{
+    if(projXY) projXY.draw();
+    if(projXZ) projXZ.draw();
+    if(projYZ) projYZ.draw();
+    if(projPrev) projPrev.draw();
+  }
+}
+
+const projStepper = createStepper(
+  $("proj_step"), $("proj_all"), $("proj_reset"),
+  $("proj_stepLabel"), $("proj_steps"),
+  ()=>{
+    const c=projCalc();
+    return [
+      `① Compute dot products: a·b = <b>${fmt(c.ab,6)}</b>,  b·b = <b>${fmt(c.bb,6)}</b>`,
+      `② Coefficient: t = (a·b)/(b·b) = <b>${fmt(c.t,8)}</b>`,
+      `③ Projection: proj = t b = <b>(${fmt(c.p.x,6)}, ${fmt(c.p.y,6)}${c.dim===3?`, ${fmt(c.p.z,6)}`:""})</b>`,
+      `④ Residual: r = a - proj = <b>(${fmt(c.r.x,6)}, ${fmt(c.r.y,6)}${c.dim===3?`, ${fmt(c.r.z,6)}`:""})</b>`,
+      `⑤ Orthogonality check: dot(r,b) = <b>${fmt(c.check,8)}</b> (should be near 0)`
+    ];
+  }
+);
+
+function projSetDimUI(){
+  const dim = Number($("proj_dim").value);
+  setDisplay($("proj_2d"), dim===2);
+  setDisplay($("proj_3d"), dim===3);
+  setDisplay($("pa_z_box"), dim===3);
+  setDisplay($("pb_z_box"), dim===3);
+
+  if(dim===3 && !projXY){
+    const blue=getComputedStyle(document.documentElement).getPropertyValue("--blue").trim();
+    const green=getComputedStyle(document.documentElement).getPropertyValue("--green").trim();
+    const orange=getComputedStyle(document.documentElement).getPropertyValue("--orange").trim();
+    const gray=getComputedStyle(document.documentElement).getPropertyValue("--gray").trim();
+
+    const makeSegs=()=>[
+      {from:PPROJ, to:PA, color:gray, width:2.2} // residual arrow from proj to a
+    ];
+
+    projXY = new OrthoEdit3D($("proj_xy"), "XY",
+      [
+        {ref:PA, label:"a", color:blue},
+        {ref:PB, label:"b", color:green},
+        {ref:PPROJ, label:"proj", color:orange, draggable:false},
+      ],
+      {range:5, extraSegments:makeSegs(), onChange: ()=>{ projSyncInputs(); projUpdate(); }}
+    );
+    projXZ = new OrthoEdit3D($("proj_xz"), "XZ",
+      [
+        {ref:PA, label:"a", color:blue},
+        {ref:PB, label:"b", color:green},
+        {ref:PPROJ, label:"proj", color:orange, draggable:false},
+      ],
+      {range:5, extraSegments:makeSegs(), onChange: ()=>{ projSyncInputs(); projUpdate(); }}
+    );
+    projYZ = new OrthoEdit3D($("proj_yz"), "YZ",
+      [
+        {ref:PA, label:"a", color:blue},
+        {ref:PB, label:"b", color:green},
+        {ref:PPROJ, label:"proj", color:orange, draggable:false},
+      ],
+      {range:5, extraSegments:makeSegs(), onChange: ()=>{ projSyncInputs(); projUpdate(); }}
+    );
+
+    projPrev = new Preview3D($("proj_preview3d"), ()=>({
+      vectors:[
+        {label:"a", vec:PA, color:blue},
+        {label:"b", vec:PB, color:green},
+        {label:"proj", vec:PPROJ, color:orange},
+      ],
+      segments:[
+        {from:PPROJ, to:PA, color:gray, width:2.2}
+      ]
+    }), {range:5});
+  }
+
+  projUpdate();
+}
+
+$("proj_dim").addEventListener("change", ()=>{ projStepper.reset(); projSetDimUI(); });
+
+["pa_x","pa_y","pa_z","pb_x","pb_y","pb_z"].forEach(id=>{
+  $(id).addEventListener("input", ()=>{
+    projSyncStateFromInputs();
+    proj2D_A.x=PA.x; proj2D_A.y=PA.y;
+    proj2D_B.x=PB.x; proj2D_B.y=PB.y;
+    projUpdate();
+  });
+});
+
+$("proj_random").onclick=()=>{
+  const rnd=()=>Math.random()*8-4;
+  PA.x=rnd(); PA.y=rnd(); PA.z=rnd();
+  PB.x=rnd(); PB.y=rnd(); PB.z=rnd();
+  projSyncInputs(); projUpdate();
+};
+$("proj_makeClose").onclick=()=>{
+  // a = t*b + small noise
+  const t=1.3;
+  PA.x=t*PB.x + (Math.random()*0.4-0.2);
+  PA.y=t*PB.y + (Math.random()*0.4-0.2);
+  PA.z=t*PB.z + (Math.random()*0.4-0.2);
+  projSyncInputs(); projUpdate();
+};
+$("proj_makeOrtho").onclick=()=>{
+  // Make a roughly orthogonal: use (-by, bx, 0) style
+  const dim=Number($("proj_dim").value);
+  if(dim===2){
+    PA.x=-PB.y; PA.y=PB.x; PA.z=0;
+  }else{
+    PA.x=-PB.y; PA.y=PB.x; PA.z=0.1*(Math.random()*2-1);
+  }
+  projSyncInputs(); projUpdate();
+};
+
+/* =========================
+   3) Matrix multiplication
+========================= */
+let mat = {
+  m:2, n:2, p:2,
+  A: [[1,2],[3,4]],
+  B: [[5,6],[7,8]],
+  C: [[0,0],[0,0]],
+  step: {cellI:0, cellJ:0, k:0, phase:"term"} // phase: "term" or "doneCell"
+};
+let matTimer=null;
+
+function matSetSize(kind){
+  if(kind==="2x2"){ mat.m=2; mat.n=2; mat.p=2; }
+  if(kind==="3x3"){ mat.m=3; mat.n=3; mat.p=3; }
+  if(kind==="2x3_3x2"){ mat.m=2; mat.n=3; mat.p=2; }
+  // init arrays
+  mat.A = Array.from({length:mat.m}, ()=>Array.from({length:mat.n}, ()=>0));
+  mat.B = Array.from({length:mat.n}, ()=>Array.from({length:mat.p}, ()=>0));
+  mat.C = Array.from({length:mat.m}, ()=>Array.from({length:mat.p}, ()=>0));
+
+  mat.step = {cellI:0, cellJ:0, k:0, phase:"term"};
+  matBuildUI();
+  matRecomputeAll();
+  matHighlight();
+  matExplain();
+}
+
+function matRand(){
+  const rnd=()=>Math.round((Math.random()*8-4)*10)/10;
+  for(let i=0;i<mat.m;i++) for(let k=0;k<mat.n;k++) mat.A[i][k]=rnd();
+  for(let k=0;k<mat.n;k++) for(let j=0;j<mat.p;j++) mat.B[k][j]=rnd();
+}
+function matZero(){
+  for(let i=0;i<mat.m;i++) for(let k=0;k<mat.n;k++) mat.A[i][k]=0;
+  for(let k=0;k<mat.n;k++) for(let j=0;j<mat.p;j++) mat.B[k][j]=0;
+}
+function matIdentity(){
+  // only for square sizes where m=n and n=p
+  if(!(mat.m===mat.n && mat.n===mat.p)) return;
+  for(let i=0;i<mat.m;i++) for(let k=0;k<mat.n;k++) mat.A[i][k]=(i===k)?1:0;
+  for(let k=0;k<mat.n;k++) for(let j=0;j<mat.p;j++) mat.B[k][j]=(k===j)?1:0;
+}
+
+function matBuildTable(name, rows, cols, getVal, setVal){
+  const wrap=document.createElement("div");
+  const title=document.createElement("div");
+  title.className="matTitle";
+  title.textContent=name;
+  wrap.appendChild(title);
+
+  const tbl=document.createElement("table");
+  tbl.className="mat";
+  tbl.dataset.name=name;
+
+  for(let r=0;r<rows;r++){
+    const tr=document.createElement("tr");
+    for(let c=0;c<cols;c++){
+      const td=document.createElement("td");
+      td.dataset.r=r; td.dataset.c=c;
+      const inp=document.createElement("input");
+      inp.type="number"; inp.step="0.1";
+      inp.value = String(getVal(r,c));
+      inp.addEventListener("input", ()=>{
+        const v=Number(inp.value);
+        setVal(r,c, Number.isFinite(v)? v : 0);
+        matRecomputeAll();
+        matExplain();
+        matHighlight();
+      });
+      td.appendChild(inp);
+      tr.appendChild(td);
+    }
+    tbl.appendChild(tr);
+  }
+  wrap.appendChild(tbl);
+  return wrap;
+}
+
+function matBuildUI(){
+  const mount=$("mat_mount");
+  mount.innerHTML="";
+
+  const row=document.createElement("div");
+  row.className="matRow";
+
+  const A = matBuildTable("A", mat.m, mat.n, (r,c)=>mat.A[r][c], (r,c,v)=>mat.A[r][c]=v);
+  const B = matBuildTable("B", mat.n, mat.p, (r,c)=>mat.B[r][c], (r,c,v)=>mat.B[r][c]=v);
+  const C = matBuildTable("C = A·B", mat.m, mat.p, (r,c)=>mat.C[r][c], (r,c,v)=>{ /* read-only */ });
+
+  // mark C as read-only
+  C.querySelectorAll("input").forEach(inp=>{
+    inp.readOnly=true;
+    inp.style.background="#f9fafb";
+  });
+
+  const op1=document.createElement("div"); op1.className="op"; op1.textContent="×";
+  const op2=document.createElement("div"); op2.className="op"; op2.textContent="=";
+
+  row.appendChild(A);
+  row.appendChild(op1);
+  row.appendChild(B);
+  row.appendChild(op2);
+  row.appendChild(C);
+
+  mount.appendChild(row);
+
+  const hint=document.createElement("div");
+  hint.className="matHint";
+  hint.textContent=`A is ${mat.m}×${mat.n}, B is ${mat.n}×${mat.p}, so C is ${mat.m}×${mat.p}.`;
+  mount.appendChild(hint);
+}
+
+function matComputeCell(i,j){
+  let s=0;
+  for(let k=0;k<mat.n;k++) s += mat.A[i][k]*mat.B[k][j];
+  return s;
+}
+function matRecomputeAll(){
+  for(let i=0;i<mat.m;i++){
+    for(let j=0;j<mat.p;j++){
+      mat.C[i][j]=matComputeCell(i,j);
+    }
+  }
+  // update UI C table inputs
+  const tbl = $("mat_mount").querySelector('table.mat[data-name="C = A·B"]');
+  if(tbl){
+    for(let i=0;i<mat.m;i++){
+      for(let j=0;j<mat.p;j++){
+        const td = tbl.rows[i].cells[j];
+        td.querySelector("input").value = String(Number(mat.C[i][j].toFixed(4)));
+      }
+    }
+  }
+}
+
+function matClearHighlights(){
+  $("mat_mount").querySelectorAll("table.mat td").forEach(td=>{
+    td.classList.remove("hlCell","hlRow","hlCol","hlRes");
+  });
+}
+
+function matHighlight(){
+  matClearHighlights();
+  const {cellI:i, cellJ:j, k} = mat.step;
+
+  const tblA = $("mat_mount").querySelector('table.mat[data-name="A"]');
+  const tblB = $("mat_mount").querySelector('table.mat[data-name="B"]');
+  const tblC = $("mat_mount").querySelector('table.mat[data-name="C = A·B"]');
+
+  if(!tblA || !tblB || !tblC) return;
+
+  // highlight row i in A and col j in B
+  for(let kk=0; kk<mat.n; kk++){
+    tblA.rows[i].cells[kk].classList.add("hlRow");
+  }
+  for(let kk=0; kk<mat.n; kk++){
+    tblB.rows[kk].cells[j].classList.add("hlCol");
+  }
+
+  // highlight current term cell A[i,k] and B[k,j]
+  tblA.rows[i].cells[k].classList.add("hlCell");
+  tblB.rows[k].cells[j].classList.add("hlCell");
+
+  // highlight result cell C[i,j]
+  tblC.rows[i].cells[j].classList.add("hlRes");
+
+  $("mat_stepLabel").textContent = `Step: computing C[${i+1},${j+1}] term k=${k+1}/${mat.n}`;
+}
+
+function matExplain(){
+  const {cellI:i, cellJ:j, k} = mat.step;
+
+  // partial sum up to k
+  let partial=0;
+  const parts=[];
+  for(let kk=0; kk<=k; kk++){
+    const a=mat.A[i][kk], b=mat.B[kk][j];
+    partial += a*b;
+    parts.push(`${fmt(a,3)}*${fmt(b,3)}`);
+  }
+
+  const fullParts=[];
+  for(let kk=0; kk<mat.n; kk++){
+    fullParts.push(`${fmt(mat.A[i][kk],3)}*${fmt(mat.B[kk][j],3)}`);
+  }
+
+  $("mat_explain").textContent =
+`Currently computing: C[${i+1},${j+1}]
+
+Formula:
+C[i,j] = Σ_k A[i,k] * B[k,j]
+
+Full expansion:
+C[${i+1},${j+1}] = ${fullParts.join(" + ")}
+
+Partial sum up to current k=${k+1}:
+${parts.join(" + ")} = ${fmt(partial,6)}
+
+Final C[${i+1},${j+1}] (already computed):
+${fmt(mat.C[i][j],6)}`;
+}
+
+function matAdvance(dir=+1){
+  // dir: +1 next, -1 back
+  // We'll move term-by-term across C cells, in row-major order.
+  const m=mat.m, p=mat.p, n=mat.n;
+  let {cellI:i, cellJ:j, k} = mat.step;
+
+  function next(){
+    k++;
+    if(k>=n){
+      k=0; j++;
+      if(j>=p){ j=0; i++; }
+      if(i>=m){ i=m-1; j=p-1; k=n-1; return "end"; }
+    }
+    return "ok";
+  }
+  function back(){
+    k--;
+    if(k<0){
+      k=n-1; j--;
+      if(j<0){ j=p-1; i--; }
+      if(i<0){ i=0; j=0; k=0; return "start"; }
+    }
+    return "ok";
+  }
+
+  if(dir>0) next(); else back();
+  mat.step={cellI:i, cellJ:j, k, phase:"term"};
+  matHighlight();
+  matExplain();
+}
+
+$("mat_size").addEventListener("change", ()=> matSetSize($("mat_size").value));
+$("mat_random").onclick=()=>{ matRand(); matBuildUI(); matRecomputeAll(); matHighlight(); matExplain(); };
+$("mat_zero").onclick=()=>{ matZero(); matBuildUI(); matRecomputeAll(); matHighlight(); matExplain(); };
+$("mat_identity").onclick=()=>{ matIdentity(); matBuildUI(); matRecomputeAll(); matHighlight(); matExplain(); };
+
+$("mat_next").onclick=()=>matAdvance(+1);
+$("mat_back").onclick=()=>matAdvance(-1);
+
+$("mat_play").onclick=()=>{
+  if(matTimer) return;
+  matTimer=setInterval(()=>matAdvance(+1), 450);
+};
+$("mat_stop").onclick=()=>{
+  if(matTimer){ clearInterval(matTimer); matTimer=null; }
+};
+
+/* =========================
+   4) Softmax
+========================= */
+let soft = {
+  n: 3,
+  z: [1.0, 2.2, 0.2],
+  T: 1.0,
+  stepIdx: 0,
+  stepMax: 4 // 0..4 reveal level
+};
+
+function softEnsureN(n){
+  soft.n=n;
+  if(soft.z.length<n){
+    while(soft.z.length<n) soft.z.push(0);
+  }else if(soft.z.length>n){
+    soft.z = soft.z.slice(0,n);
+  }
+}
+
+function softBuildSliders(){
+  const mount=$("soft_sliders");
+  mount.innerHTML="";
+  for(let i=0;i<soft.n;i++){
+    const row=document.createElement("div");
+    row.className="softRow";
+
+    const lab=document.createElement("div");
+    lab.className="mono";
+    lab.textContent=`z${i+1}`;
+    row.appendChild(lab);
+
+    const mid=document.createElement("div");
+    mid.style.display="grid";
+    mid.style.gridTemplateColumns="1fr 90px";
+    mid.style.gap="10px";
+    mid.style.alignItems="center";
+
+    const slider=document.createElement("input");
+    slider.type="range";
+    slider.min="-6"; slider.max="6"; slider.step="0.1";
+    slider.value=String(soft.z[i]);
+    slider.addEventListener("input", ()=>{
+      soft.z[i]=Number(slider.value);
+      num.value=String(soft.z[i]);
+      softUpdate();
+    });
+
+    const num=document.createElement("input");
+    num.type="number"; num.step="0.1";
+    num.value=String(soft.z[i]);
+    num.addEventListener("input", ()=>{
+      soft.z[i]=Number(num.value);
+      slider.value=String(soft.z[i]);
+      softUpdate();
+    });
+
+    mid.appendChild(slider);
+    mid.appendChild(num);
+
+    row.appendChild(mid);
+
+    const tiny=document.createElement("div");
+    tiny.className="tinyText mono";
+    tiny.textContent=fmt(soft.z[i],3);
+    row.appendChild(tiny);
+
+    mount.appendChild(row);
+  }
+}
+
+function softBuildBars(p){
+  const mount=$("soft_bars");
+  mount.innerHTML="";
+  for(let i=0;i<soft.n;i++){
+    const r=document.createElement("div");
+    r.className="wRow";
+
+    const name=document.createElement("div");
+    name.className="mono";
+    name.textContent=`p${i+1}`;
+    r.appendChild(name);
+
+    const bar=document.createElement("div");
+    bar.className="bar";
+    const fill=document.createElement("div");
+    fill.className="fill";
+    fill.style.width=(p[i]*100).toFixed(1)+"%";
+    bar.appendChild(fill);
+    r.appendChild(bar);
+
+    const val=document.createElement("div");
+    val.className="mono";
+    val.textContent=fmt(p[i],6);
+    r.appendChild(val);
+
+    mount.appendChild(r);
+  }
+}
+
+function softBuildTable(calc){
+  const reveal = soft.stepIdx; // 0..4
+  const headers = ["i","z_i"];
+  if(reveal>=1) headers.push("z_i - m");
+  if(reveal>=2) headers.push("(z_i - m)/T");
+  if(reveal>=3) headers.push("exp(...)");
+  if(reveal>=4) headers.push("p_i");
+
+  let html="<tr>"+headers.map(h=>`<th>${h}</th>`).join("")+"</tr>";
+
+  for(let i=0;i<soft.n;i++){
+    const row=[];
+    row.push(String(i+1));
+    row.push(fmt(calc.z[i],6));
+    if(reveal>=1) row.push(fmt(calc.shift[i],6));
+    if(reveal>=2) row.push(fmt(calc.scaled[i],6));
+    if(reveal>=3) row.push(fmt(calc.exps[i],6));
+    if(reveal>=4) row.push(fmt(calc.p[i],6));
+    html += "<tr>"+row.map(v=>`<td>${v}</td>`).join("")+"</tr>";
+  }
+  // footer
+  const foot=[];
+  foot.push("<b>sum</b>");
+  foot.push("");
+  if(reveal>=1) foot.push("");
+  if(reveal>=2) foot.push("");
+  if(reveal>=3) foot.push("<b>"+fmt(calc.sum,6)+"</b>");
+  if(reveal>=4) foot.push("<b>"+fmt(calc.p.reduce((a,b)=>a+b,0),6)+"</b>");
+  html += "<tr>"+foot.map(v=>`<td>${v}</td>`).join("")+"</tr>";
+
+  $("soft_table").innerHTML=html;
+}
+
+function softCompute(){
+  const T=soft.T;
+  const z=soft.z.slice(0,soft.n);
+  const sm=softmax(z,T);
+  const shift = z.map(v=>v-sm.m);
+  const scaled = shift.map(v=>v/sm.T);
+  return {z, T:sm.T, m:sm.m, shift, scaled, exps:sm.exps, sum:sm.sum, p:sm.p};
+}
+
+function softUpdate(){
+  soft.T = Math.max(0.1, readNum("soft_T",1.0));
+  $("soft_T").value = String(soft.T);
+
+  const calc=softCompute();
+  softBuildBars(calc.p);
+  softBuildTable(calc);
+
+  $("soft_readout").textContent =
+`Softmax settings:
+N=${soft.n},  T=${fmt(calc.T,4)}
+
+Stable softmax:
+m = max(z) = ${fmt(calc.m,6)}
+p_i = exp((z_i - m)/T) / Σ exp((z_j - m)/T)
+
+Note:
+- subtracting m does not change final probabilities
+- smaller T => sharper distribution`;
+
+  $("soft_stepLabel").textContent = `Step: ${soft.stepIdx+1}/5`;
+}
+
+$("soft_n").addEventListener("change", ()=>{
+  softEnsureN(Number($("soft_n").value));
+  softBuildSliders();
+  soft.stepIdx=0;
+  softUpdate();
+});
+$("soft_T").addEventListener("input", ()=>softUpdate());
+
+$("soft_random").onclick=()=>{
+  soft.z = soft.z.map(()=>Math.round((Math.random()*6-3)*10)/10);
+  softBuildSliders();
+  softUpdate();
+};
+$("soft_peaky").onclick=()=>{ $("soft_T").value="0.35"; softUpdate(); };
+$("soft_flat").onclick=()=>{ $("soft_T").value="2.5"; softUpdate(); };
+
+$("soft_step").onclick=()=>{
+  soft.stepIdx = Math.min(4, soft.stepIdx+1);
+  softUpdate();
+};
+$("soft_all").onclick=()=>{
+  soft.stepIdx=4;
+  softUpdate();
+};
+$("soft_reset").onclick=()=>{
+  soft.stepIdx=0;
+  softUpdate();
+};
+
+/* =========================
+   5) Mini Attention
+========================= */
+const AQ = {id:"q", label:"q", x:2.4, y:1.0, color:getComputedStyle(document.documentElement).getPropertyValue("--purple").trim()};
+const AK1= {id:"k1",label:"k1",x:3.0, y:1.1, color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()};
+const AK2= {id:"k2",label:"k2",x:-0.6,y:2.4, color:getComputedStyle(document.documentElement).getPropertyValue("--orange").trim()};
+const AK3= {id:"k3",label:"k3",x:-2.4,y:-1.1,color:getComputedStyle(document.documentElement).getPropertyValue("--red").trim()};
+
+const AV1= {id:"v1",label:"v1",x:2.6, y:0.2, color:getComputedStyle(document.documentElement).getPropertyValue("--green").trim()};
+const AV2= {id:"v2",label:"v2",x:-0.2,y:2.4, color:getComputedStyle(document.documentElement).getPropertyValue("--orange").trim()};
+const AV3= {id:"v3",label:"v3",x:-2.2,y:-0.5,color:getComputedStyle(document.documentElement).getPropertyValue("--red").trim()};
+const AOUT={id:"out",label:"out",x:0,  y:0,  color:getComputedStyle(document.documentElement).getPropertyValue("--black").trim(), draggable:false};
+
+let attWeights=[1/3,1/3,1/3];
+
+let attKey = new DragVectors2D($("att_key"), [AQ,AK1,AK2,AK3], {
+  range:5,
+  title:"drag q/k endpoints",
+  extraDraw: (ctx,w,h, base)=>{
+    // draw connecting lines q->k with width proportional to weights
+    const qC = attKey.cv.worldToCanvas(AQ.x,AQ.y,w,h);
+    const ks=[AK1,AK2,AK3];
+    for(let i=0;i<3;i++){
+      const k=ks[i];
+      const kC = attKey.cv.worldToCanvas(k.x,k.y,w,h);
+      const wgt = attWeights[i];
+      ctx.strokeStyle = "rgba(17,24,39,0.25)";
+      ctx.lineWidth = 1 + 10*wgt;
+      ctx.beginPath(); ctx.moveTo(qC.cx,qC.cy); ctx.lineTo(kC.cx,kC.cy); ctx.stroke();
+    }
+  },
+  onChange: ()=>attUpdate()
+});
+
+let attVal = new DragVectors2D($("att_val"), [AV1,AV2,AV3,AOUT], {
+  range:5,
+  title:"drag v endpoints",
+  onChange: ()=>attUpdate()
+});
+
+function attScore(q,k, mode){
+  const a=v3(q.x,q.y,0), b=v3(k.x,k.y,0);
+  if(mode==="cos"){
+    const c=cosine3(a,b);
+    return Number.isFinite(c)? c : -1e9;
+  }
+  return dot3(a,b);
+}
+
+function attUpdate(){
+  const mode=$("att_score").value;
+  const scale=$("att_scale").value==="on";
+  const T=Math.max(0.1, readNum("att_T",1.0));
+  $("att_T").value=String(T);
+
+  const d=2;
+  const scores=[attScore(AQ,AK1,mode), attScore(AQ,AK2,mode), attScore(AQ,AK3,mode)];
+  const scaled=scores.map(s=>scale ? s/Math.sqrt(d) : s);
+  const sm=softmax(scaled, T);
+  const w=sm.p;
+  attWeights=w;
+
+  // out = Σ w_i v_i
+  const outX = w[0]*AV1.x + w[1]*AV2.x + w[2]*AV3.x;
+  const outY = w[0]*AV1.y + w[1]*AV2.y + w[2]*AV3.y;
+  AOUT.x=outX; AOUT.y=outY;
+
+  // Update weight bars
+  const mount=$("att_wbars");
+  mount.innerHTML="";
+  const labels=["w1","w2","w3"];
+  for(let i=0;i<3;i++){
+    const r=document.createElement("div");
+    r.className="wRow";
+
+    const name=document.createElement("div");
+    name.className="mono";
+    name.textContent=labels[i];
+    r.appendChild(name);
+
+    const bar=document.createElement("div");
+    bar.className="bar";
+    const fill=document.createElement("div");
+    fill.className="fill";
+    fill.style.width=(w[i]*100).toFixed(1)+"%";
+    bar.appendChild(fill);
+    r.appendChild(bar);
+
+    const val=document.createElement("div");
+    val.className="mono";
+    val.textContent=fmt(w[i],6);
+    r.appendChild(val);
+
+    mount.appendChild(r);
+  }
+
+  $("att_readout").textContent =
+`Settings:
+score = ${mode}   scale(/√d) = ${scale ? "on" : "off"}   T = ${fmt(T,4)}
+
+Scores:
+s = [${scores.map(v=>fmt(v,6)).join(", ")}]
+scaled ŝ = [${scaled.map(v=>fmt(v,6)).join(", ")}]
+
+Softmax weights:
+w = softmax(ŝ/T) = [${w.map(v=>fmt(v,6)).join(", ")}]  (sum=${fmt(w.reduce((a,b)=>a+b,0),6)})
+
+Output:
+out = w1*v1 + w2*v2 + w3*v3
+    = (${fmt(AOUT.x,6)}, ${fmt(AOUT.y,6)})`;
+
+  attKey.draw();
+  attVal.draw();
+  attStepper.render();
+}
+
+const attStepper = createStepper(
+  $("att_step"), $("att_all"), $("att_reset"),
+  $("att_stepLabel"), $("att_steps"),
+  ()=>{
+    const mode=$("att_score").value;
+    const scale=$("att_scale").value==="on";
+    const T=Math.max(0.1, readNum("att_T",1.0));
+    const d=2;
+    const scores=[attScore(AQ,AK1,mode), attScore(AQ,AK2,mode), attScore(AQ,AK3,mode)];
+    const scaled=scores.map(s=>scale ? s/Math.sqrt(d) : s);
+    const sm=softmax(scaled, T);
+    const w=sm.p;
+    const outX = w[0]*AV1.x + w[1]*AV2.x + w[2]*AV3.x;
+    const outY = w[0]*AV1.y + w[1]*AV2.y + w[2]*AV3.y;
+
+    return [
+      `① Compute scores: s_i = ${mode==="cos"?"cos(q,k_i)":"dot(q,k_i)"} = <b>[${scores.map(v=>fmt(v,6)).join(", ")}]</b>`,
+      `② (Optional) scale: ŝ_i = s_i ${scale?"/√2":""} = <b>[${scaled.map(v=>fmt(v,6)).join(", ")}]</b>`,
+      `③ Softmax: w = softmax(ŝ/T) = <b>[${w.map(v=>fmt(v,6)).join(", ")}]</b>`,
+      `④ Weighted sum: out = Σ w_i v_i = <b>(${fmt(outX,6)}, ${fmt(outY,6)})</b>`
+    ];
+  }
+);
+
+$("att_score").addEventListener("change", ()=>{ attStepper.reset(); attUpdate(); });
+$("att_scale").addEventListener("change", ()=>{ attStepper.reset(); attUpdate(); });
+$("att_T").addEventListener("input", ()=>attUpdate());
+
+$("att_random").onclick=()=>{
+  const rnd=()=>Math.random()*8-4;
+  AQ.x=rnd(); AQ.y=rnd();
+  AK1.x=rnd(); AK1.y=rnd();
+  AK2.x=rnd(); AK2.y=rnd();
+  AK3.x=rnd(); AK3.y=rnd();
+  AV1.x=rnd(); AV1.y=rnd();
+  AV2.x=rnd(); AV2.y=rnd();
+  AV3.x=rnd(); AV3.y=rnd();
+  attStepper.reset();
+  attUpdate();
+};
+$("att_focus1").onclick=()=>{
+  AQ.x=AK1.x + (Math.random()*0.4-0.2);
+  AQ.y=AK1.y + (Math.random()*0.4-0.2);
+  attStepper.reset();
+  attUpdate();
+};
+
+/* =========================
+   Init + redraw
+========================= */
+function redrawAll(){
+  // vectors
+  vecUpdate();
+  // projection
+  projUpdate();
+  // matrix
+  matHighlight();
+  matExplain();
+  // softmax
+  softUpdate();
+  // attention
+  attUpdate();
+}
+
+function init(){
+  // vectors
+  vecSyncInputs();
+  vecSetDimUI();
+
+  // projection
+  projSyncInputs();
+  projSetDimUI();
+
+  // matrix
+  matBuildUI();
+  matRecomputeAll();
+  matHighlight();
+  matExplain();
+
+  // softmax
+  softEnsureN(Number($("soft_n").value));
+  softBuildSliders();
+  soft.stepIdx=0;
+  softUpdate();
+
+  // attention
+  attStepper.reset();
+  attUpdate();
+}
+init();
+</script>
+
+</body>
+</html>
