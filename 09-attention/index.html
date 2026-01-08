@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Interactive Self-Attention (Embeddings → Q/K/V → Softmax → Output)</title>
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#111a33; --panel2:#0e1630; --border:#243058;
+      --text:#eaf0ff; --muted:#a8b3d9;
+      --accent:#7aa2ff; --good:#79f2c0; --warn:#ffd479; --bad:#ff7a8a;
+      --q:#ff7a8a; --k:#ffd479; --v:#b18cff;
+      --score:#78d7ff; --mul:#ffe58a; --sum:#8ff0a4;
+      --chip:#16224a;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:var(--sans);
+      background: radial-gradient(1200px 600px at 20% -10%, #1a2a66 0%, rgba(26,42,102,0) 60%),
+                  radial-gradient(900px 500px at 110% 30%, #2a175c 0%, rgba(42,23,92,0) 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    header{
+      padding:18px 18px 10px;
+      border-bottom:1px solid rgba(255,255,255,0.06);
+      display:flex; align-items:flex-end; justify-content:space-between; gap:14px;
+    }
+    header .title{
+      display:flex; flex-direction:column; gap:6px;
+    }
+    header h1{
+      margin:0; font-size:18px; letter-spacing:.2px; font-weight:720;
+    }
+    header .subtitle{
+      color:var(--muted); font-size:12px; line-height:1.35;
+      max-width: 920px;
+    }
+    .wrap{
+      display:grid;
+      grid-template-columns: 380px 1fr;
+      gap:14px;
+      padding:14px 14px 18px;
+      max-width: 1280px;
+      margin:0 auto;
+    }
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:14px;
+      overflow:hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    .panel .hd{
+      padding:12px 12px 10px;
+      border-bottom:1px solid rgba(255,255,255,0.06);
+      display:flex; justify-content:space-between; align-items:center;
+      gap:10px;
+    }
+    .panel .hd .kicker{
+      font-size:12px; color:var(--muted);
+    }
+    .panel .hd .hdtitle{
+      font-size:13px; font-weight:700; margin-top:2px;
+    }
+    .panel .bd{ padding:12px; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    label{ font-size:12px; color:var(--muted); }
+    input[type="text"]{
+      width:100%;
+      padding:10px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.25);
+      color:var(--text);
+      outline:none;
+      font-size:13px;
+    }
+    input[type="text"]:focus{
+      border-color: rgba(122,162,255,0.7);
+      box-shadow: 0 0 0 3px rgba(122,162,255,0.15);
+    }
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .chip{
+      font-family:var(--mono);
+      background: var(--chip);
+      border:1px solid rgba(255,255,255,0.10);
+      color:var(--text);
+      padding:6px 10px;
+      border-radius:999px;
+      cursor:pointer;
+      user-select:none;
+      font-size:12px;
+      transition: transform .08s ease, border-color .12s ease;
+    }
+    .chip:hover{ transform: translateY(-1px); border-color: rgba(122,162,255,0.55); }
+    .chip.active{
+      border-color: rgba(122,162,255,0.95);
+      box-shadow: 0 0 0 3px rgba(122,162,255,0.18);
+    }
+    .btnbar{ display:flex; gap:8px; flex-wrap:wrap; }
+    button{
+      cursor:pointer;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:9px 10px;
+      border-radius:10px;
+      font-size:13px;
+      transition: transform .08s ease, background .12s ease, border-color .12s ease;
+    }
+    button:hover{ transform: translateY(-1px); background: rgba(255,255,255,0.09); border-color: rgba(122,162,255,0.55); }
+    button:disabled{ opacity:0.5; cursor:not-allowed; transform:none; }
+    .pill{
+      padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.18);
+      font-size:12px; color:var(--muted);
+      display:inline-flex; align-items:center; gap:8px;
+    }
+    .pill b{ color:var(--text); font-weight:700; font-family:var(--mono); }
+    .note{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+    }
+    .mono{ font-family:var(--mono); }
+    .math{
+      font-family: var(--mono);
+      font-size: 12px;
+      padding:10px;
+      border-radius:12px;
+      background: rgba(0,0,0,0.20);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #d9e5ff;
+      line-height:1.55;
+      white-space: pre-wrap;
+    }
+    .warn{
+      border-left:3px solid var(--warn);
+      padding:10px 10px;
+      border-radius:12px;
+      background: rgba(255,212,121,0.10);
+      color: #ffe6b5;
+      font-size:12px;
+      line-height:1.4;
+      margin-top:10px;
+    }
+
+    /* Diagram layout */
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:12px;
+      padding:12px;
+    }
+    .card{
+      border-radius:14px;
+      padding:12px;
+      border:1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.25));
+      min-height: 130px;
+      position:relative;
+      overflow:hidden;
+    }
+    .card.active{
+      border-color: rgba(122,162,255,0.85);
+      box-shadow: 0 0 0 3px rgba(122,162,255,0.16);
+    }
+    .card .tag{
+      font-size:11px;
+      color:var(--muted);
+      letter-spacing:.15px;
+      display:flex; gap:8px; align-items:center;
+      margin-bottom:10px;
+    }
+    .tag .dot{
+      width:10px; height:10px; border-radius:999px;
+      background: rgba(255,255,255,0.18);
+      border:1px solid rgba(255,255,255,0.20);
+    }
+    .tag .dot.q{ background: rgba(255,122,138,0.45); border-color: rgba(255,122,138,0.75); }
+    .tag .dot.k{ background: rgba(255,212,121,0.45); border-color: rgba(255,212,121,0.75); }
+    .tag .dot.v{ background: rgba(177,140,255,0.45); border-color: rgba(177,140,255,0.75); }
+    .tag .dot.s{ background: rgba(120,215,255,0.45); border-color: rgba(120,215,255,0.75); }
+    .tag .dot.m{ background: rgba(255,229,138,0.45); border-color: rgba(255,229,138,0.75); }
+    .tag .dot.a{ background: rgba(143,240,164,0.45); border-color: rgba(143,240,164,0.75); }
+
+    .table{
+      width:100%;
+      overflow:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.18);
+    }
+    table{
+      border-collapse:separate;
+      border-spacing:0;
+      width:100%;
+      font-family: var(--mono);
+      font-size: 12px;
+      min-width: 320px;
+    }
+    th, td{
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,0.06);
+      border-right:1px solid rgba(255,255,255,0.06);
+      text-align:right;
+      white-space:nowrap;
+    }
+    th:first-child, td:first-child{ text-align:left; }
+    tr:last-child td{ border-bottom:none; }
+    th:last-child, td:last-child{ border-right:none; }
+    thead th{
+      position:sticky; top:0;
+      background: rgba(16,26,51,0.95);
+      color:#dce6ff;
+      font-weight:700;
+      z-index:1;
+    }
+    .hl{ outline:2px solid rgba(122,162,255,0.85); outline-offset:-2px; background: rgba(122,162,255,0.12) !important; }
+    .hl2{ outline:2px solid rgba(255,212,121,0.85); outline-offset:-2px; background: rgba(255,212,121,0.12) !important; }
+    .tiny{
+      font-size:11px;
+      color:var(--muted);
+      margin-top:8px;
+      line-height:1.35;
+    }
+
+    .bigFlow{
+      grid-column: 1 / -1;
+      display:grid;
+      grid-template-columns: 1.1fr 1fr 1.1fr;
+      gap:12px;
+      padding-top:0;
+    }
+    .flowCard{
+      border-radius:14px;
+      padding:12px;
+      border:1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(0,0,0,0.12), rgba(0,0,0,0.23));
+    }
+    .flowTitle{
+      font-size:13px;
+      font-weight:750;
+      margin:0 0 6px 0;
+      letter-spacing:.2px;
+    }
+    .flowDesc{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+      margin:0 0 10px 0;
+    }
+    .stepMeter{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-top:10px;
+      flex-wrap:wrap;
+    }
+    .meter{
+      flex:1;
+      height:10px;
+      border-radius:999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      overflow:hidden;
+      min-width: 180px;
+    }
+    .meter > div{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(122,162,255,0.0), rgba(122,162,255,0.85));
+    }
+    .kbd{
+      font-family:var(--mono);
+      font-size:11px;
+      color: #cfe0ff;
+      padding:2px 6px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.18);
+    }
+    @media (max-width: 980px){
+      .wrap{ grid-template-columns: 1fr; }
+      .grid{ grid-template-columns: 1fr; }
+      .bigFlow{ grid-template-columns: 1fr; }
+      table{ min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <h1>Interactive Self-Attention: step-by-step (Embeddings → Q/K/V → Softmax → Output)</h1>
+    <div class="subtitle">
+      Single-head, tiny dimensions for clarity. Type a sentence, pick a <span class="mono">focus</span> token, then press <span class="kbd">Next</span> to compute attention one step at a time.
+      (All UI and examples are in English.)
+    </div>
+  </div>
+  <div class="pill">dims: <b>d_model=4</b> → <b>d_head=3</b> | scale: <b>1/√d</b></div>
+</header>
+
+<div class="wrap">
+  <!-- Left panel: controls + explanation -->
+  <section class="panel">
+    <div class="hd">
+      <div>
+        <div class="kicker">Controls</div>
+        <div class="hdtitle">Input & Stepper</div>
+      </div>
+      <div class="pill">focus token: <b id="focusLabel">#1</b></div>
+    </div>
+    <div class="bd">
+      <label for="sentence">Sentence (space-separated tokens)</label>
+      <input id="sentence" type="text" value="spring is coming" />
+
+      <div class="chips" id="tokenChips"></div>
+
+      <div class="row" style="margin-top:10px; justify-content:space-between;">
+        <div class="btnbar">
+          <button id="prevBtn">Prev</button>
+          <button id="nextBtn">Next</button>
+          <button id="resetBtn" title="Reset to step 0">Reset</button>
+        </div>
+        <div class="btnbar">
+          <button id="autoBtn" title="Auto-advance steps">Auto ▶</button>
+          <button id="stopBtn" disabled>Stop</button>
+        </div>
+      </div>
+
+      <div class="stepMeter">
+        <div class="meter"><div id="meterFill"></div></div>
+        <div class="pill">step <b id="stepNow">0</b>/<b id="stepMax">0</b></div>
+      </div>
+
+      <div class="warn" id="limitWarn" style="display:none;">
+        This demo limits tokens to 8 for readability. Extra tokens were ignored.
+      </div>
+
+      <div style="height:10px"></div>
+      <div class="kicker" style="margin-bottom:6px;">What this demo is doing (math)</div>
+      <div class="math" id="mathBox"></div>
+
+      <div style="height:10px"></div>
+      <div class="note">
+        Notes:
+        <ul style="margin:6px 0 0 18px; padding:0; color:var(--muted);">
+          <li>Embeddings here are deterministic pseudo-random vectors per token (so you can type any word).</li>
+          <li>We use fixed matrices <span class="mono">Wq, Wk, Wv</span> for projection.</li>
+          <li>This is the core of scaled dot-product self-attention (no multi-head, no residuals, no layer norm).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Right panel: diagram -->
+  <section class="panel">
+    <div class="hd">
+      <div>
+        <div class="kicker">Diagram</div>
+        <div class="hdtitle">Like the slide: query → score → multiplication → addition → output</div>
+      </div>
+      <div class="pill">click tokens on the left ↙</div>
+    </div>
+
+    <div class="grid">
+      <div class="card" id="cardEmb">
+        <div class="tag"><span class="dot"></span><b>Embeddings</b> (E)</div>
+        <div class="table" id="tblEmb"></div>
+        <div class="tiny">Each token gets a 4D embedding vector (demo values).</div>
+      </div>
+
+      <div class="card" id="cardQKV">
+        <div class="tag"><span class="dot q"></span><b>Q</b> &nbsp; <span class="dot k"></span><b>K</b> &nbsp; <span class="dot v"></span><b>V</b> (linear projections)</div>
+        <div class="table" id="tblQKV"></div>
+        <div class="tiny"><span class="mono">Q = E·Wq</span>, <span class="mono">K = E·Wk</span>, <span class="mono">V = E·Wv</span> (here: 4→3).</div>
+      </div>
+
+      <div class="card" id="cardScores">
+        <div class="tag"><span class="dot s"></span><b>Scores</b> (scaled dot products)</div>
+        <div class="table" id="tblScores"></div>
+        <div class="tiny"><span class="mono">score[j] = (q_focus · k[j]) / √d</span>.</div>
+      </div>
+
+      <div class="card" id="cardSoftmax">
+        <div class="tag"><span class="dot s"></span><b>Softmax</b> weights</div>
+        <div class="table" id="tblSoftmax"></div>
+        <div class="tiny">Weights sum to 1. Larger score ⇒ larger weight.</div>
+      </div>
+
+      <div class="card" id="cardMul">
+        <div class="tag"><span class="dot m"></span><b>Multiplication</b> (weight × value)</div>
+        <div class="table" id="tblMul"></div>
+        <div class="tiny">We show one token at a time: <span class="mono">weight[j] · v[j]</span>.</div>
+      </div>
+
+      <div class="card" id="cardAdd">
+        <div class="tag"><span class="dot a"></span><b>Addition</b> (accumulate)</div>
+        <div class="table" id="tblAdd"></div>
+        <div class="tiny">Accumulator after each add. Final accumulator = attention output.</div>
+      </div>
+
+      <div class="bigFlow">
+        <div class="flowCard" id="flowLeft">
+          <div class="flowTitle">Focus token</div>
+          <p class="flowDesc">We compute the output for exactly one token (the focus). In a Transformer layer, you do this for every token.</p>
+          <div class="pill">focus: <b id="focusTokenText">spring</b></div>
+        </div>
+
+        <div class="flowCard" id="flowMid">
+          <div class="flowTitle">Final output vector</div>
+          <p class="flowDesc">After softmax weighting and summing values, we get the output (3D here).</p>
+          <div class="table" id="tblOut"></div>
+        </div>
+
+        <div class="flowCard" id="flowRight">
+          <div class="flowTitle">Keyboard tips</div>
+          <p class="flowDesc">You can step through quickly:</p>
+          <div class="note">
+            <div><span class="kbd">→</span> Next</div>
+            <div><span class="kbd">←</span> Prev</div>
+            <div><span class="kbd">R</span> Reset</div>
+          </div>
+          <div style="height:10px"></div>
+          <div class="note">Try inputs like:</div>
+          <div class="pill"><b>transformers love attention</b></div>
+          <div class="pill"><b>the cat sat</b></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<script>
+/**
+ * Interactive Self-Attention demo (single-head).
+ * - deterministic pseudo-random embeddings per token
+ * - fixed Wq/Wk/Wv
+ * - step-by-step computation with per-token accumulation
+ */
+
+// ---------- Small linear algebra helpers ----------
+const dot = (a,b)=>a.reduce((s,ai,i)=>s+ai*b[i],0);
+const add = (a,b)=>a.map((ai,i)=>ai+b[i]);
+const mulScalar = (a,s)=>a.map(x=>x*s);
+const matMul = (rows, mat)=>{ // rows: [N x d_in], mat: [d_in x d_out] => [N x d_out]
+  const dOut = mat[0].length;
+  return rows.map(r=>{
+    const out = Array(dOut).fill(0);
+    for(let j=0;j<dOut;j++){
+      let sum=0;
+      for(let i=0;i<r.length;i++) sum += r[i]*mat[i][j];
+      out[j]=sum;
+    }
+    return out;
+  });
+};
+const softmax = (xs)=>{
+  const m = Math.max(...xs);
+  const exps = xs.map(x=>Math.exp(x-m));
+  const s = exps.reduce((a,b)=>a+b,0);
+  return exps.map(e=>e/s);
+};
+const fmt = (x)=> (Math.abs(x) < 1e-12 ? "0.00" : x.toFixed(2));
+
+// ---------- Deterministic PRNG for embeddings ----------
+function hashString(str){
+  // FNV-1a-ish
+  let h = 2166136261 >>> 0;
+  for(let i=0;i<str.length;i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function mulberry32(seed){
+  return function(){
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+}
+function makeEmbedding(token, d=4){
+  const rand = mulberry32(hashString(token.toLowerCase()));
+  // centered values, small range, then lightly normalize
+  let v = Array.from({length:d}, ()=> (rand()*2-1));
+  const norm = Math.sqrt(v.reduce((s,x)=>s+x*x,0)) || 1;
+  v = v.map(x=>x/(norm+1e-9));
+  return v;
+}
+
+// ---------- Fixed projection matrices (4x3) ----------
+const Wq = [
+  [ 0.60, -0.10,  0.20],
+  [-0.40,  0.50,  0.30],
+  [ 0.10,  0.20, -0.50],
+  [ 0.30, -0.20,  0.40],
+];
+const Wk = [
+  [ 0.20,  0.70, -0.10],
+  [ 0.50, -0.20,  0.40],
+  [-0.30,  0.10,  0.60],
+  [ 0.40,  0.00, -0.50],
+];
+const Wv = [
+  [ 0.50,  0.10,  0.30],
+  [-0.20,  0.60,  0.10],
+  [ 0.40, -0.30,  0.20],
+  [ 0.10,  0.20,  0.70],
+];
+
+const dModel = 4;
+const dHead  = 3;
+const scale = 1/Math.sqrt(dHead);
+
+// ---------- State ----------
+let tokens = [];
+let focus = 0;
+
+let E = [];   // [N x 4]
+let Q = [];   // [N x 3]
+let K = [];   // [N x 3]
+let V = [];   // [N x 3]
+let scores = [];  // [N]
+let weights = []; // [N]
+let weightedVs = []; // [N x 3]
+let accSteps = [];   // [N x 3] accumulator after each add
+let out = [0,0,0];
+
+let steps = [];
+let stepIndex = 0;
+let timer = null;
+
+// ---------- DOM ----------
+const elSentence = document.getElementById('sentence');
+const elChips = document.getElementById('tokenChips');
+
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const resetBtn = document.getElementById('resetBtn');
+const autoBtn  = document.getElementById('autoBtn');
+const stopBtn  = document.getElementById('stopBtn');
+
+const stepNow = document.getElementById('stepNow');
+const stepMax = document.getElementById('stepMax');
+const meterFill = document.getElementById('meterFill');
+
+const focusLabel = document.getElementById('focusLabel');
+const focusTokenText = document.getElementById('focusTokenText');
+const limitWarn = document.getElementById('limitWarn');
+
+const mathBox = document.getElementById('mathBox');
+
+const cards = {
+  emb: document.getElementById('cardEmb'),
+  qkv: document.getElementById('cardQKV'),
+  scores: document.getElementById('cardScores'),
+  softmax: document.getElementById('cardSoftmax'),
+  mul: document.getElementById('cardMul'),
+  add: document.getElementById('cardAdd'),
+};
+const tblEmb = document.getElementById('tblEmb');
+const tblQKV = document.getElementById('tblQKV');
+const tblScores = document.getElementById('tblScores');
+const tblSoftmax = document.getElementById('tblSoftmax');
+const tblMul = document.getElementById('tblMul');
+const tblAdd = document.getElementById('tblAdd');
+const tblOut = document.getElementById('tblOut');
+
+function clearActiveCards(){
+  Object.values(cards).forEach(c=>c.classList.remove('active'));
+}
+function setActiveCard(key){
+  clearActiveCards();
+  if(cards[key]) cards[key].classList.add('active');
+}
+
+function buildTable(headers, rows, opts={}){
+  // rows: array of {label: string, values: number[] or string[], highlight?: bool, cellHighlights?: number[]}
+  const { highlightRowIndex=null, highlightCells=null } = opts;
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  headers.forEach(h=>{
+    const th = document.createElement('th');
+    th.textContent = h;
+    trh.appendChild(th);
+  });
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  rows.forEach((r, ri)=>{
+    const tr = document.createElement('tr');
+    const td0 = document.createElement('td');
+    td0.textContent = r.label;
+    tr.appendChild(td0);
+
+    r.values.forEach((v, ci)=>{
+      const td = document.createElement('td');
+      td.textContent = v;
+      if(highlightRowIndex === ri) td.classList.add('hl');
+      if(highlightCells && highlightCells.some(h=>h.ri===ri && h.ci===ci)) td.classList.add('hl2');
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  const wrap = document.createElement('div');
+  wrap.className = 'table';
+  wrap.appendChild(table);
+  return wrap;
+}
+
+function renderChips(){
+  elChips.innerHTML = '';
+  tokens.forEach((t, i)=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (i===focus ? ' active' : '');
+    chip.textContent = `${i+1}: ${t}`;
+    chip.addEventListener('click', ()=>{
+      focus = i;
+      stepIndex = 0;
+      rebuildSteps();
+      renderAll();
+    });
+    elChips.appendChild(chip);
+  });
+}
+
+function computeAll(){
+  E = tokens.map(t=>makeEmbedding(t, dModel));
+  Q = matMul(E, Wq);
+  K = matMul(E, Wk);
+  V = matMul(E, Wv);
+
+  const q = Q[focus];
+  scores = K.map(k=> dot(q,k) * scale);
+  weights = softmax(scores);
+
+  weightedVs = V.map((v,i)=> mulScalar(v, weights[i]));
+  accSteps = [];
+  let acc = [0,0,0];
+  for(let i=0;i<tokens.length;i++){
+    acc = add(acc, weightedVs[i]);
+    accSteps.push(acc);
+  }
+  out = accSteps.length ? accSteps[accSteps.length-1] : [0,0,0];
+}
+
+function rebuildSteps(){
+  computeAll();
+
+  const N = tokens.length;
+  steps = [];
+  steps.push({ key:'emb', title:'Tokenization & Embeddings', render: renderEmb, math: mathEmb });
+  steps.push({ key:'qkv', title:'Project to Q/K/V', render: renderQKV, math: mathQKV });
+  steps.push({ key:'scores', title:'Scores for focus token', render: renderScores, math: mathScores });
+  steps.push({ key:'softmax', title:'Softmax weights', render: renderSoftmax, math: mathSoftmax });
+
+  // Multiplication + accumulation per token
+  for(let i=0;i<N;i++){
+    steps.push({ key:'muladd', tokenIndex:i, title:`Weight × Value (token #${i+1}) and Add`, render: ()=>renderMulAdd(i), math: ()=>mathMulAdd(i) });
+  }
+  steps.push({ key:'out', title:'Final output', render: renderOut, math: mathOut });
+
+  stepMax.textContent = String(Math.max(steps.length-1, 0));
+}
+
+function setMeter(){
+  const max = Math.max(steps.length-1, 0);
+  stepNow.textContent = String(stepIndex);
+  const pct = max===0 ? 0 : (stepIndex/max)*100;
+  meterFill.style.width = pct.toFixed(1)+'%';
+}
+function setFocusLabels(){
+  focusLabel.textContent = `#${focus+1}`;
+  focusTokenText.textContent = tokens[focus] || '(none)';
+  // update chip highlight
+  [...elChips.children].forEach((c,i)=> c.classList.toggle('active', i===focus));
+}
+
+function renderEmb(){
+  const headers = ['token', 'e1','e2','e3','e4'];
+  const rows = tokens.map((t,i)=>({
+    label: `${i+1}: ${t}`,
+    values: E[i].map(fmt),
+  }));
+  tblEmb.innerHTML = '';
+  tblEmb.appendChild(buildTable(headers, rows, { highlightRowIndex: focus }));
+  setActiveCard('emb');
+}
+function renderQKV(){
+  // Show Q,K,V concatenated columns
+  const headers = ['token', 'q1','q2','q3', 'k1','k2','k3', 'v1','v2','v3'];
+  const rows = tokens.map((t,i)=>({
+    label: `${i+1}: ${t}`,
+    values: [...Q[i], ...K[i], ...V[i]].map(fmt),
+  }));
+  tblQKV.innerHTML = '';
+  tblQKV.appendChild(buildTable(headers, rows, { highlightRowIndex: focus }));
+  setActiveCard('qkv');
+}
+function renderScores(){
+  const q = Q[focus];
+  const headers = ['token', 'q·k / √d'];
+  const rows = tokens.map((t,i)=>({
+    label: `${i+1}: ${t}`,
+    values: [fmt(scores[i])],
+  }));
+  tblScores.innerHTML = '';
+  tblScores.appendChild(buildTable(headers, rows, { highlightRowIndex: focus }));
+  setActiveCard('scores');
+}
+function renderSoftmax(){
+  const headers = ['token', 'weight'];
+  const rows = tokens.map((t,i)=>({
+    label: `${i+1}: ${t}`,
+    values: [weights[i].toFixed(4)],
+  }));
+  tblSoftmax.innerHTML = '';
+  tblSoftmax.appendChild(buildTable(headers, rows, { highlightRowIndex: focus }));
+  setActiveCard('softmax');
+}
+function renderMulAdd(i){
+  // Multiplication view: show v[i], weight[i], weighted v[i]
+  const headersMul = ['item', 'x1','x2','x3'];
+  const mulRows = [
+    { label: `v[#${i+1}]`, values: V[i].map(fmt) },
+    { label: `weight[#${i+1}]`, values: [weights[i], weights[i], weights[i]].map(x=>x.toFixed(4)) },
+    { label: `weight·v[#${i+1}]`, values: weightedVs[i].map(fmt) },
+  ];
+  tblMul.innerHTML = '';
+  tblMul.appendChild(buildTable(headersMul, mulRows, { highlightRowIndex: 2 }));
+
+  // Accumulator view: show acc after add i, and previous acc if any
+  const addRows = [];
+  if(i===0){
+    addRows.push({ label: `acc before`, values: [0,0,0].map(fmt) });
+  }else{
+    addRows.push({ label: `acc before`, values: accSteps[i-1].map(fmt) });
+  }
+  addRows.push({ label: `+ (weight·v[#${i+1}])`, values: weightedVs[i].map(fmt) });
+  addRows.push({ label: `acc after`, values: accSteps[i].map(fmt) });
+
+  tblAdd.innerHTML = '';
+  tblAdd.appendChild(buildTable(['item','a1','a2','a3'], addRows, { highlightRowIndex: 2 }));
+
+  // also keep other tables visible (optional) — we re-render them lightly for context
+  renderEmb();
+  renderQKV();
+  renderScores();
+  renderSoftmax();
+
+  setActiveCard('mul');
+  // mark add as active too by subtle extra class
+  cards.add.classList.add('active');
+}
+function renderOut(){
+  const headers = ['vector', 'y1','y2','y3'];
+  const rows = [{ label: `output (focus #${focus+1})`, values: out.map(fmt) }];
+  tblOut.innerHTML = '';
+  tblOut.appendChild(buildTable(headers, rows));
+  setActiveCard('add');
+}
+
+// ---------- Math explanations per step ----------
+function mathEmb(){
+  return [
+`Step 1 — Embeddings`,
+`We map tokens to vectors (demo embeddings):`,
+`E[i] ∈ R^{d_model}, here d_model = 4.`,
+`(In real models, embeddings are learned parameters.)`
+  ].join('\n');
+}
+function mathQKV(){
+  return [
+`Step 2 — Linear projections`,
+`For each token i:`,
+`Q[i] = E[i] · Wq`,
+`K[i] = E[i] · Wk`,
+`V[i] = E[i] · Wv`,
+`Here: Wq, Wk, Wv ∈ R^{4×3} so Q,K,V ∈ R^{3}.`
+  ].join('\n');
+}
+function mathScores(){
+  const q = Q[focus].map(fmt).join(', ');
+  return [
+`Step 3 — Scores (for focus token t = #${focus+1})`,
+`q = Q[t] = [${q}]`,
+`For each token j:`,
+`score[j] = ( q · K[j] ) / √d_head`,
+`Here d_head = 3, so scale = 1/√3.`
+  ].join('\n');
+}
+function mathSoftmax(){
+  return [
+`Step 4 — Softmax weights`,
+`weight[j] = softmax(score)[j]`,
+`= exp(score[j]) / Σ_k exp(score[k])`,
+`Weights are positive and sum to 1.`
+  ].join('\n');
+}
+function mathMulAdd(i){
+  const w = weights[i];
+  return [
+`Step 5 — Multiply and Add (token j = #${i+1})`,
+`weightedV[j] = weight[j] · V[j]`,
+`Here weight[#${i+1}] = ${w.toFixed(4)}`,
+`acc = acc + weightedV[j]`,
+`(We accumulate tokens one by one.)`
+  ].join('\n');
+}
+function mathOut(){
+  return [
+`Final — Output for the focus token`,
+`output = Σ_j weight[j] · V[j]`,
+`This output is the self-attention result for the chosen token.`,
+`(A Transformer layer computes this for every token in parallel.)`
+  ].join('\n');
+}
+
+// ---------- Render orchestration ----------
+function renderAll(){
+  setFocusLabels();
+  setMeter();
+
+  // Always keep tables up-to-date (but highlight depends on step)
+  computeAll();
+
+  const s = steps[stepIndex] || steps[0];
+  if(!s){ return; }
+
+  // Render based on step
+  if(s.key==='emb') renderEmb();
+  else if(s.key==='qkv') renderQKV();
+  else if(s.key==='scores') renderScores();
+  else if(s.key==='softmax') renderSoftmax();
+  else if(s.key==='muladd') renderMulAdd(s.tokenIndex);
+  else if(s.key==='out') { renderOut(); }
+
+  // Update math box
+  mathBox.textContent = (typeof s.math === 'function') ? s.math() : String(s.math || '');
+
+  // Buttons
+  prevBtn.disabled = stepIndex<=0;
+  nextBtn.disabled = stepIndex>=steps.length-1;
+}
+
+function parseTokens(str){
+  const raw = (str||'').trim();
+  if(!raw) return [];
+  const arr = raw.split(/\s+/).filter(Boolean);
+  if(arr.length > 8){
+    limitWarn.style.display = 'block';
+    return arr.slice(0,8);
+  }
+  limitWarn.style.display = 'none';
+  return arr;
+}
+
+function onSentenceChange(){
+  tokens = parseTokens(elSentence.value);
+  if(tokens.length===0){
+    tokens = ['(empty)'];
+  }
+  if(focus >= tokens.length) focus = Math.max(0, tokens.length-1);
+  renderChips();
+  stepIndex = 0;
+  rebuildSteps();
+  renderAll();
+}
+
+// ---------- Events ----------
+prevBtn.addEventListener('click', ()=>{
+  stepIndex = Math.max(0, stepIndex-1);
+  renderAll();
+});
+nextBtn.addEventListener('click', ()=>{
+  stepIndex = Math.min(steps.length-1, stepIndex+1);
+  renderAll();
+});
+resetBtn.addEventListener('click', ()=>{
+  stepIndex = 0;
+  renderAll();
+});
+autoBtn.addEventListener('click', ()=>{
+  if(timer) return;
+  autoBtn.disabled = true;
+  stopBtn.disabled = false;
+  timer = setInterval(()=>{
+    if(stepIndex >= steps.length-1){
+      clearInterval(timer); timer=null;
+      autoBtn.disabled = false;
+      stopBtn.disabled = true;
+      return;
+    }
+    stepIndex++;
+    renderAll();
+  }, 650);
+});
+stopBtn.addEventListener('click', ()=>{
+  if(timer){
+    clearInterval(timer);
+    timer=null;
+  }
+  autoBtn.disabled = false;
+  stopBtn.disabled = true;
+});
+
+elSentence.addEventListener('input', ()=>{
+  // debounce-ish
+  if(timer){ /* don't auto stop */ }
+  onSentenceChange();
+});
+
+// keyboard shortcuts
+window.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight'){ nextBtn.click(); }
+  if(e.key === 'ArrowLeft'){ prevBtn.click(); }
+  if(e.key.toLowerCase() === 'r'){ resetBtn.click(); }
+});
+
+// ---------- Init ----------
+tokens = parseTokens(elSentence.value);
+renderChips();
+rebuildSteps();
+renderAll();
+</script>
+</body>
+</html>
