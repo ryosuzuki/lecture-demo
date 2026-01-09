@@ -1,0 +1,1585 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WebLLM Class Demo: No‑RAG / RAG / Tool Use / MCP (Single File)</title>
+
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; }
+    header { padding: 14px 16px; border-bottom: 1px solid #ddd; }
+    header h1 { font-size: 16px; margin: 0 0 4px 0; }
+    header p { margin: 0; font-size: 12px; color: #555; line-height: 1.35; }
+
+    main { display: grid; grid-template-columns: 440px 1fr; gap: 12px; padding: 12px; }
+    @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+
+    .panel { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
+    .panel h2 { font-size: 14px; margin: 0 0 10px 0; }
+    .panel h3 { font-size: 13px; margin: 14px 0 8px; }
+    .panel h4 { font-size: 12px; margin: 12px 0 6px; color: #333; }
+
+    .row { display: grid; grid-template-columns: 150px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .row label { font-size: 12px; color: #333; }
+    select, input[type="text"], input[type="number"], textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+    textarea { min-height: 92px; resize: vertical; }
+
+    .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      border: 1px solid #bbb;
+      background: #f7f7f7;
+      padding: 8px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button:hover { background: #f0f0f0; }
+    button.primary { border-color: #666; background: #222; color: #fff; }
+    button.primary:hover { background: #111; }
+
+    .hint { font-size: 12px; color: #666; margin-top: 6px; line-height: 1.35; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    .status {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      background: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .output {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      background: #0b1020;
+      color: #e9eefc;
+      border-radius: 12px;
+      padding: 10px;
+      min-height: 120px;
+    }
+    .output.small { min-height: 90px; }
+
+    .progress { height: 10px; background: #eee; border-radius: 999px; overflow: hidden; }
+    .progress > div { height: 100%; width: 0%; background: #4a7; transition: width .1s linear; }
+
+    details summary { cursor: pointer; user-select: none; }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border: 1px solid #ccc;
+      border-radius: 999px;
+      font-size: 11px;
+      color: #444;
+      background: #fafafa;
+      white-space: nowrap;
+    }
+
+    /* Prompt inspector */
+    .prompt-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .prompt-cards { display: grid; gap: 8px; margin-top: 10px; }
+    .msg-card {
+      border: 1px solid #eee;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .msg-head {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      background: #fafafa;
+    }
+    .msg-role { font-weight: 700; }
+    .msg-body {
+      padding: 10px;
+      white-space: pre-wrap;
+      font-size: 12px;
+      line-height: 1.35;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #fff;
+    }
+    .role-system .msg-head { background: #f2f7ff; }
+    .role-user .msg-head { background: #f6fff2; }
+    .role-assistant .msg-head { background: #fff7f2; }
+
+    /* Hidden sections */
+    .hidden { display: none !important; }
+
+    hr { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>WebLLM Class Demo (Single File): No‑RAG / RAG / Tool Use / MCP</h1>
+    <p>
+      Purpose: teach “what changes when you add RAG / tools / MCP” with a browser‑only demo.
+      Includes: readable Prompt Inspector, raw text → auto‑chunk → index, file import, and a scale test.
+    </p>
+  </header>
+
+  <main>
+    <!-- LEFT: controls -->
+    <section class="panel">
+      <h2>1) Model (WebLLM)</h2>
+
+      <div class="row">
+        <label for="modelSelect">Model</label>
+        <select id="modelSelect"></select>
+      </div>
+
+      <div class="row">
+        <label for="useWorker">Run in WebWorker</label>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <input id="useWorker" type="checkbox" checked />
+          <span class="hint" style="margin:0;">Recommended (keeps the UI more responsive)</span>
+        </div>
+      </div>
+
+      <div class="btns" style="margin-bottom:8px;">
+        <button id="loadBtn" class="primary">Load model</button>
+        <button id="unloadBtn">Unload</button>
+      </div>
+
+      <div class="progress" aria-label="model load progress"><div id="progressBar"></div></div>
+      <div class="hint">
+        First load downloads model weights. WebGPU browser required.
+      </div>
+
+      <h3>Status</h3>
+      <div id="status" class="status">Ready. Load a model to start.</div>
+
+      <hr>
+
+      <h2>2) Demo</h2>
+
+      <div class="row">
+        <label for="modeSelect">Mode</label>
+        <select id="modeSelect">
+          <option value="no_rag">LLM only (No‑RAG)</option>
+          <option value="rag">RAG (app retrieves → inject context)</option>
+          <option value="tool">Tool Use (LLM outputs JSON tool call → run tool → final)</option>
+          <option value="mcp">MCP‑style (JSON‑RPC: tools/list + tools/call shown)</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="presetSelect">Example question</label>
+        <select id="presetSelect">
+          <option value="">(select)</option>
+          <option value="What is the warranty period for the K‑200? Any extension conditions?">Warranty period</option>
+          <option value="What does error code E3 mean and what should I do?">Error code E3</option>
+          <option value="What is the return window? Is an opened item eligible?">Return policy</option>
+          <option value="What is the rated power consumption of the K‑200?">Power consumption</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="question">Question</label>
+        <textarea id="question" placeholder="Example: What is the warranty period for the K‑200?"></textarea>
+      </div>
+
+      <div class="btns">
+        <button id="runBtn" class="primary">Run</button>
+        <button id="clearBtn">Clear outputs</button>
+      </div>
+
+      <hr>
+
+      <h2>3) Retrieval & Index Settings</h2>
+
+      <div class="row">
+        <label for="retrieverSelect">Retriever</label>
+        <select id="retrieverSelect">
+          <option value="lexical">Lexical TF‑IDF (fast, reliable)</option>
+          <option value="embedding" disabled>Embeddings (optional, not enabled in this file)</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="tokenizerSelect">Tokenizer</label>
+        <select id="tokenizerSelect">
+          <option value="auto">Auto (CJK → char bigrams, otherwise → words)</option>
+          <option value="word">Word tokens</option>
+          <option value="char2">Character bigrams (CJK‑friendly)</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label>Top‑K</label>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <input id="topK" type="range" min="1" max="8" value="3" />
+          <span class="pill" id="topKLabel">3</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="maxContextChars">Max context chars</label>
+        <input id="maxContextChars" type="number" min="500" max="20000" step="500" value="4000" />
+      </div>
+
+      <div class="row">
+        <label for="autoChunkLongDocs">Auto‑chunk long docs</label>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <input id="autoChunkLongDocs" type="checkbox" checked />
+          <span class="hint" style="margin:0;">Applies to JSON docs too</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="chunkSize">Chunk size (chars)</label>
+        <input id="chunkSize" type="number" min="200" max="8000" step="100" value="900" />
+      </div>
+
+      <div class="row">
+        <label for="chunkOverlap">Chunk overlap (chars)</label>
+        <input id="chunkOverlap" type="number" min="0" max="2000" step="50" value="150" />
+      </div>
+
+      <h3>Index build</h3>
+      <div class="btns" style="margin-bottom:8px;">
+        <button id="buildIndexBtn" class="primary">Build / Reindex</button>
+        <button id="resetDocsBtn">Reset sample docs</button>
+        <button id="clearDocsBtn">Clear docs</button>
+      </div>
+
+      <div class="progress" aria-label="index build progress"><div id="indexProgressBar"></div></div>
+
+      <div id="indexStats" class="status" style="margin-top:8px;">Index: not built yet.</div>
+
+      <details style="margin-top:10px;">
+        <summary>What does “Build / Reindex” do?</summary>
+        <div class="hint" style="margin-top:8px;">
+          It rebuilds the retriever index from your current documents:
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li><b>Parse docs</b> (JSON docs or raw text → documents)</li>
+            <li><b>Chunk</b> long text (fixed char size + overlap) if enabled</li>
+            <li><b>Tokenize</b> each chunk (Auto / Word / Char‑bigrams)</li>
+            <li><b>Compute TF‑IDF</b> weights and store per‑doc norms</li>
+            <li>Show <b>stats</b> (doc count, vocabulary size, build time)</li>
+          </ul>
+          Note: this demo uses a lexical index for clarity. If you later swap in embeddings, the “Build” step becomes “compute embeddings per chunk”.
+        </div>
+      </details>
+
+      <hr>
+
+      <h2>4) Documents (Search Target)</h2>
+
+      <div class="row">
+        <label for="docInputMode">Input format</label>
+        <select id="docInputMode">
+          <option value="raw">Raw text (paste anything)</option>
+          <option value="json">JSON array (advanced)</option>
+        </select>
+      </div>
+
+      <div id="rawBox">
+        <div class="hint">
+          Paste any text. Separate documents with a line that contains only <span class="mono">---</span>.
+          Long documents will be auto‑chunked.
+        </div>
+        <textarea id="rawTextEditor"></textarea>
+
+        <div class="row" style="margin-top:8px;">
+          <label for="fileInput">Import files</label>
+          <input id="fileInput" type="file" multiple accept=".txt,.md,.json,text/plain,application/json" />
+        </div>
+
+        <div class="hint">
+          Tip: import a large .txt to simulate “real world” docs, then try No‑RAG vs RAG.
+        </div>
+      </div>
+
+      <div id="jsonBox" class="hidden">
+        <div class="hint">
+          JSON must be an array of objects: <span class="mono">{ "id": "...", "title": "...", "text": "..." }</span>.
+          (You can also use an array of strings; they will be auto‑converted.)
+        </div>
+        <textarea id="docsJsonEditor"></textarea>
+      </div>
+
+      <h3>Scale test (simulate many docs)</h3>
+      <div class="row">
+        <label for="dupCount">Duplicate docs ×N</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input id="dupCount" type="number" min="2" max="2000" step="1" value="50" />
+          <button id="dupBtn">Duplicate</button>
+        </div>
+      </div>
+      <div class="hint">
+        This is just for teaching performance tradeoffs. Large N can be slow in the browser.
+      </div>
+    </section>
+
+    <!-- RIGHT: outputs -->
+    <section class="panel">
+      <h2>Outputs</h2>
+
+      <h3>Answer</h3>
+      <div id="answer" class="output">(The answer will appear here)</div>
+
+      <h3>Retrieval results (RAG / retrieve tool)</h3>
+      <div id="retrieval" class="output small">(Retrieval output will appear here)</div>
+
+      <h3>Tool / MCP trace (the “teaching gold” panel)</h3>
+      <div id="trace" class="output small">(Tool calls and JSON‑RPC logs will appear here)</div>
+
+      <details style="margin-top:10px;" open>
+        <summary>Prompt Inspector (readable)</summary>
+        <div class="prompt-toolbar" style="margin-top:10px;">
+          <span class="pill" id="promptLabel">No prompt yet</span>
+
+          <label class="hint" style="margin:0;">View</label>
+          <select id="promptViewMode" style="width:auto;">
+            <option value="cards">Cards (recommended)</option>
+            <option value="pseudo">Pseudo‑JSON (readable structure)</option>
+          </select>
+
+          <button id="copyPromptBtn" style="margin-left:auto;">Copy (pseudo)</button>
+        </div>
+
+        <div id="promptPseudo" class="status hidden" style="margin-top:10px;"></div>
+        <div id="promptCards" class="prompt-cards"></div>
+      </details>
+    </section>
+  </main>
+
+  <script type="module">
+    // WebLLM: CDN import (single-file demo)
+    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+    // -----------------------------
+    // DOM helpers
+    // -----------------------------
+    const $ = (id) => document.getElementById(id);
+
+    const statusEl = $("status");
+    const answerEl = $("answer");
+    const retrievalEl = $("retrieval");
+    const traceEl = $("trace");
+
+    const progressBarEl = $("progressBar");
+    const indexProgressBarEl = $("indexProgressBar");
+    const indexStatsEl = $("indexStats");
+
+    const promptLabelEl = $("promptLabel");
+    const promptViewModeEl = $("promptViewMode");
+    const promptPseudoEl = $("promptPseudo");
+    const promptCardsEl = $("promptCards");
+
+    function setStatus(msg) { statusEl.textContent = msg; }
+    function setAnswer(msg) { answerEl.textContent = msg; }
+    function setRetrieval(msg) { retrievalEl.textContent = msg; }
+    function setTrace(msg) { traceEl.textContent = msg; }
+    function appendTrace(line) {
+      traceEl.textContent = (traceEl.textContent || "") + (traceEl.textContent ? "\n" : "") + line;
+    }
+
+    function setProgress(pct) { progressBarEl.style.width = `${clamp(pct, 0, 100)}%`; }
+    function setIndexProgress(pct) { indexProgressBarEl.style.width = `${clamp(pct, 0, 100)}%`; }
+
+    function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+
+    function prettyJson(obj) {
+      try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    async function yieldToUI() { await sleep(0); }
+
+    // -----------------------------
+    // Sample corpus (English, messier paragraphs)
+    // -----------------------------
+    const DEFAULT_DOCS = [
+      {
+        id: "k200_manual",
+        title: "ACME SmartKettle K‑200 — User Manual (Excerpt)",
+        text:
+`Thank you for purchasing the ACME SmartKettle K‑200.
+Warranty: Standard warranty coverage is 24 months from the purchase date.
+Extended warranty: if you complete online registration within 30 days of purchase,
+coverage is extended to 36 months. Keep your receipt for proof of purchase.
+
+Rated capacity: 1.2L. Rated power: 1200W (region dependent).
+Do not use abrasive cleaners. For descaling, see the care guide.`
+      },
+      {
+        id: "k200_errors",
+        title: "K‑200 Troubleshooting — Error Codes",
+        text:
+`E1: Lid is not properly closed. Confirm the lid is fully latched.
+E3: Temperature sensor fault. Power off, let the unit cool down, and try again.
+If E3 persists after a cool-down cycle, contact support.
+
+Note: If you see repeated E3 after descaling, rinse thoroughly and try again.`
+      },
+      {
+        id: "returns_policy",
+        title: "Returns & Exchanges Policy (Store Policy)",
+        text:
+`Unopened and unused items can be returned within 14 days of delivery.
+Opened items are eligible for exchange only if the issue is a manufacturing defect.
+Customer-initiated returns require the customer to pay return shipping.
+
+Refunds are issued after inspection of the returned product and accessories.`
+      },
+      {
+        id: "support_contact",
+        title: "Support Contact Information",
+        text:
+`Support hours: Monday–Friday, 10:00–17:00 (local time).
+Email: support@example.com
+When contacting support, include your model number (K‑200) and your purchase date.`
+      },
+      {
+        id: "care_guide",
+        title: "Care Guide — Descaling Instructions",
+        text:
+`Descaling (citric acid method):
+1) Mix 20g citric acid into 1.0L water.
+2) Boil, then let stand for 30 minutes.
+3) Discard water and rinse thoroughly.
+
+Avoid metal scrubbers and abrasive compounds.`
+      },
+      {
+        id: "k300_marketing",
+        title: "ACME SmartKettle K‑300 — Marketing FAQ (Not K‑200)",
+        text:
+`The K‑300 features rapid boil technology and may list different power ratings.
+Warranty terms may differ by region and retailer.
+
+If you own a K‑200, refer to the K‑200 manual and warranty terms.`
+      },
+      {
+        id: "shipping_info",
+        title: "Shipping Information",
+        text:
+`Standard shipping: 3–5 business days after order confirmation.
+Expedited shipping: 1–2 business days.
+Delivery time may vary during holidays and severe weather.`
+      },
+      {
+        id: "safety_notes",
+        title: "Safety Notes (General)",
+        text:
+`Do not immerse the base in water. Unplug before cleaning.
+Keep away from children. Do not operate with a damaged cord.
+If you smell burning or see smoke, unplug immediately and contact support.`
+      }
+    ];
+
+    // -----------------------------
+    // Document input state
+    // -----------------------------
+    let docs = structuredClone(DEFAULT_DOCS);
+
+    function syncEditorsFromDocs() {
+      // Raw editor: a human-friendly “---” separated text version
+      const raw = docs.map(d => `# ${d.title}\n[id: ${d.id}]\n\n${d.text}`).join("\n\n---\n\n");
+      $("rawTextEditor").value = raw;
+
+      // JSON editor: canonical structured form
+      $("docsJsonEditor").value = JSON.stringify(docs, null, 2);
+    }
+
+    // -----------------------------
+    // Parsing: JSON docs
+    // -----------------------------
+    function normalizeDocObject(x, fallbackId) {
+      if (typeof x === "string") {
+        return { id: fallbackId, title: `Doc ${fallbackId}`, text: x };
+      }
+      if (!x || typeof x !== "object") {
+        return { id: fallbackId, title: `Doc ${fallbackId}`, text: String(x) };
+      }
+      const id = String(x.id ?? fallbackId);
+      const title = String(x.title ?? `Doc ${id}`);
+      const text = String(x.text ?? x.content ?? "");
+      return { ...x, id, title, text };
+    }
+
+    function parseDocsFromJson(text) {
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed)) throw new Error("JSON must be an array.");
+      const out = [];
+      for (let i = 0; i < parsed.length; i++) {
+        out.push(normalizeDocObject(parsed[i], `doc_${i + 1}`));
+      }
+      return out;
+    }
+
+    // -----------------------------
+    // Parsing: raw text → documents → chunks
+    // -----------------------------
+    function pickTitleFromBlock(block, idx) {
+      const lines = block.split("\n").map(s => s.trim()).filter(Boolean);
+      if (!lines.length) return `Untitled ${idx}`;
+      const first = lines[0];
+      if (first.startsWith("#")) return first.replace(/^#+\s*/, "").slice(0, 120);
+      if (/^title\s*:/i.test(first)) return first.replace(/^title\s*:/i, "").trim().slice(0, 120);
+      return lines.join(" ").slice(0, 80);
+    }
+
+    function splitRawIntoBlocks(raw) {
+      // Split on lines that contain ONLY '---' (allow surrounding whitespace)
+      const lines = raw.replace(/\r\n/g, "\n").split("\n");
+      const blocks = [];
+      let cur = [];
+      for (const line of lines) {
+        if (line.trim() === "---") {
+          const b = cur.join("\n").trim();
+          if (b) blocks.push(b);
+          cur = [];
+        } else {
+          cur.push(line);
+        }
+      }
+      const tail = cur.join("\n").trim();
+      if (tail) blocks.push(tail);
+      return blocks;
+    }
+
+    function chunkText(text, chunkSize, overlap) {
+      const t = (text || "").trim();
+      if (!t) return [];
+      if (t.length <= chunkSize) return [t];
+
+      const out = [];
+      const step = Math.max(1, chunkSize - overlap);
+      for (let start = 0; start < t.length; start += step) {
+        const end = Math.min(t.length, start + chunkSize);
+        out.push(t.slice(start, end));
+        if (end >= t.length) break;
+      }
+      return out;
+    }
+
+    function parseDocsFromRawText(raw, { chunkSize, overlap }) {
+      const blocks = splitRawIntoBlocks(raw || "");
+      const baseDocs = blocks.map((block, i) => {
+        const title = pickTitleFromBlock(block, i + 1);
+        // Try to capture an explicit [id: ...] marker if present
+        const idMatch = block.match(/\[id:\s*([^\]]+)\]/i);
+        const id = idMatch ? idMatch[1].trim() : `raw_${i + 1}`;
+        // Remove the [id: ...] line from text for cleanliness
+        const cleaned = block.replace(/\[id:\s*[^\]]+\]\s*/ig, "").trim();
+        return { id, title, text: cleaned };
+      });
+
+      // Always chunk raw docs (because raw may contain huge pastes)
+      const out = [];
+      for (const d of baseDocs) {
+        const chunks = chunkText(d.text, chunkSize, overlap);
+        if (chunks.length === 1) {
+          out.push(d);
+        } else {
+          chunks.forEach((c, idx) => {
+            out.push({
+              ...d,
+              id: `${d.id}__chunk_${idx + 1}`,
+              title: `${d.title} (chunk ${idx + 1}/${chunks.length})`,
+              text: c,
+              sourceId: d.id,
+              chunkIndex: idx + 1,
+              chunkCount: chunks.length
+            });
+          });
+        }
+      }
+      return out;
+    }
+
+    // -----------------------------
+    // Tokenization + TF‑IDF index (lexical)
+    // -----------------------------
+    let INDEX = null;
+
+    function containsCJK(s) {
+      return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(s || "");
+    }
+
+    function wordTokens(s) {
+      const t = (s || "").toLowerCase();
+      // Keep numbers and hyphenated segments.
+      const m = t.match(/[a-z0-9]+(?:-[a-z0-9]+)*/g);
+      return m ? m : [];
+    }
+
+    function charBigrams(s) {
+      const t = (s || "").toLowerCase().replace(/\s+/g, "");
+      if (!t) return [];
+      if (t.length <= 2) return [t];
+      const grams = [];
+      for (let i = 0; i <= t.length - 2; i++) grams.push(t.slice(i, i + 2));
+      return grams;
+    }
+
+    function tokenize(s, mode) {
+      const m = mode || "auto";
+      if (m === "word") return wordTokens(s);
+      if (m === "char2") return charBigrams(s);
+      // auto
+      if (containsCJK(s) || (s && s.length > 0 && (s.split(/\s+/).length <= 2))) return charBigrams(s);
+      return wordTokens(s);
+    }
+
+    function buildTfIdfIndexSync(docsForIndex, tokenizerMode) {
+      // Index format:
+      // {
+      //   docs: [{doc, tf: Map, norm}],
+      //   idf: Map(term -> number),
+      //   df: Map(term -> df),
+      //   tokenizerMode: string
+      // }
+      const df = new Map();
+      const docRows = [];
+
+      // Build TF and DF
+      for (const doc of docsForIndex) {
+        const tokens = tokenize(`${doc.title}\n${doc.text}`, tokenizerMode);
+        const tf = new Map();
+        for (const tok of tokens) tf.set(tok, (tf.get(tok) || 0) + 1);
+
+        const uniq = new Set(tokens);
+        for (const tok of uniq) df.set(tok, (df.get(tok) || 0) + 1);
+
+        docRows.push({ doc, tf, norm: 1 });
+      }
+
+      const N = Math.max(1, docRows.length);
+      const idf = new Map();
+      for (const [term, dfi] of df.entries()) {
+        // Smooth IDF
+        const val = Math.log((N + 1) / (dfi + 1)) + 1;
+        idf.set(term, val);
+      }
+
+      // Precompute doc norms
+      for (const row of docRows) {
+        let sum = 0;
+        for (const [term, c] of row.tf.entries()) {
+          const w = (1 + Math.log(c)) * (idf.get(term) || 1);
+          sum += w * w;
+        }
+        row.norm = Math.sqrt(sum) || 1;
+      }
+
+      return { docs: docRows, df, idf, tokenizerMode, N };
+    }
+
+    async function buildIndex() {
+      const mode = $("docInputMode").value;
+      const tokenizerMode = $("tokenizerSelect").value;
+      const retriever = $("retrieverSelect").value;
+
+      if (retriever !== "lexical") {
+        throw new Error("Only the lexical TF‑IDF retriever is enabled in this single‑file version.");
+      }
+
+      setIndexProgress(0);
+      const t0 = performance.now();
+
+      const chunkSize = Number($("chunkSize").value);
+      const overlap = Number($("chunkOverlap").value);
+      const autoChunkJson = $("autoChunkLongDocs").checked;
+
+      // Parse docs from the selected editor
+      let parsedDocs = [];
+      if (mode === "json") {
+        parsedDocs = parseDocsFromJson($("docsJsonEditor").value);
+
+        // Optional: auto-chunk long JSON docs too
+        if (autoChunkJson) {
+          const expanded = [];
+          for (const d of parsedDocs) {
+            const chunks = chunkText(d.text, chunkSize, overlap);
+            if (chunks.length === 1) {
+              expanded.push(d);
+            } else {
+              chunks.forEach((c, idx) => {
+                expanded.push({
+                  ...d,
+                  id: `${d.id}__chunk_${idx + 1}`,
+                  title: `${d.title} (chunk ${idx + 1}/${chunks.length})`,
+                  text: c,
+                  sourceId: d.id,
+                  chunkIndex: idx + 1,
+                  chunkCount: chunks.length
+                });
+              });
+            }
+          }
+          parsedDocs = expanded;
+        }
+      } else {
+        parsedDocs = parseDocsFromRawText($("rawTextEditor").value, { chunkSize, overlap });
+      }
+
+      // Guard
+      if (!parsedDocs.length) {
+        INDEX = null;
+        indexStatsEl.textContent = "Index cleared (no documents).";
+        setIndexProgress(0);
+        return;
+      }
+
+      // Build TF‑IDF. For a large doc set, yield to UI.
+      // We keep the build itself synchronous for simplicity, but we can yield before/after.
+      await yieldToUI();
+      setIndexProgress(10);
+
+      INDEX = buildTfIdfIndexSync(parsedDocs, tokenizerMode);
+
+      const t1 = performance.now();
+      setIndexProgress(100);
+
+      // Stats
+      const totalChars = parsedDocs.reduce((a, d) => a + (d.text?.length || 0), 0);
+      const vocabSize = INDEX.df.size;
+      const ms = (t1 - t0).toFixed(1);
+
+      indexStatsEl.textContent =
+`Index built ✓
+Docs (chunks): ${parsedDocs.length}
+Total text chars: ${totalChars}
+Tokenizer: ${tokenizerMode}
+Vocabulary size: ${vocabSize}
+Build time: ${ms} ms`;
+
+      // Keep canonical docs in memory too (so scale-test can duplicate)
+      docs = parsedDocs;
+    }
+
+    function formatPreview(text, max = 650) {
+      const t = (text || "").trim();
+      if (t.length <= max) return t;
+      return t.slice(0, max) + " …";
+    }
+
+    async function retrieve(query, topK) {
+      if (!INDEX) return [];
+      const t0 = performance.now();
+
+      const tokenizerMode = INDEX.tokenizerMode;
+      const tokens = tokenize(query, tokenizerMode);
+      const qtf = new Map();
+      for (const tok of tokens) qtf.set(tok, (qtf.get(tok) || 0) + 1);
+
+      // Query weights
+      let qnorm2 = 0;
+      const qw = new Map();
+      for (const [term, c] of qtf.entries()) {
+        const idf = INDEX.idf.get(term) || (Math.log((INDEX.N + 1) / 1) + 1);
+        const w = (1 + Math.log(c)) * idf;
+        qw.set(term, w);
+        qnorm2 += w * w;
+      }
+      const qnorm = Math.sqrt(qnorm2) || 1;
+
+      const scored = [];
+      for (const row of INDEX.docs) {
+        let dot = 0;
+        for (const [term, qwt] of qw.entries()) {
+          const dc = row.tf.get(term);
+          if (!dc) continue;
+          const idf = INDEX.idf.get(term) || 1;
+          const dwt = (1 + Math.log(dc)) * idf;
+          dot += qwt * dwt;
+        }
+        const score = dot / (row.norm * qnorm);
+        scored.push({ doc: row.doc, score });
+      }
+
+      scored.sort((a, b) => b.score - a.score);
+      const out = scored.slice(0, topK);
+
+      const t1 = performance.now();
+      const ms = (t1 - t0).toFixed(1);
+      appendTrace(`(retrieve) query="${query}" topK=${topK} time=${ms} ms`);
+
+      return out;
+    }
+
+    function renderResults(results) {
+      if (!results || results.length === 0) return "(no hits)";
+      return results.map((r, i) => {
+        const pct = (r.score * 100).toFixed(1);
+        return `${i + 1}) score=${pct}%  [${r.doc.id}] ${r.doc.title}\n${formatPreview(r.doc.text)}`;
+      }).join("\n\n");
+    }
+
+    function buildContext(results, maxChars) {
+      const blocks = [];
+      let used = 0;
+
+      for (const r of results) {
+        const block =
+`[doc:${r.doc.id}] ${r.doc.title}
+${r.doc.text}`.trim();
+
+        if (used + block.length + 2 > maxChars) {
+          // Add a truncated version and stop.
+          const remain = Math.max(0, maxChars - used - 2);
+          if (remain > 200) {
+            blocks.push(block.slice(0, remain) + " …");
+          }
+          break;
+        }
+
+        blocks.push(block);
+        used += block.length + 2;
+        if (used >= maxChars) break;
+      }
+
+      return blocks.join("\n\n");
+    }
+
+    // -----------------------------
+    // WebLLM engine
+    // -----------------------------
+    let engine = null;
+
+    function populateModelList() {
+      const sel = $("modelSelect");
+      sel.innerHTML = "";
+
+      const list = (webllm?.prebuiltAppConfig?.model_list) || [];
+      if (!list.length) {
+        const opt = document.createElement("option");
+        opt.value = "Llama-3.1-8B-Instruct";
+        opt.textContent = "Llama-3.1-8B-Instruct (fallback)";
+        sel.appendChild(opt);
+        return;
+      }
+
+      for (const rec of list) {
+        const opt = document.createElement("option");
+        opt.value = rec.model_id;
+        opt.textContent = rec.model_id;
+        sel.appendChild(opt);
+      }
+    }
+
+    async function createEngine(modelId) {
+      const useWorker = $("useWorker").checked;
+
+      const initProgressCallback = (progress) => {
+        const txt = typeof progress === "string" ? progress : prettyJson(progress);
+        setStatus(`Loading...\n${txt}`);
+        // Best-effort progress extraction
+        const p =
+          (progress && typeof progress === "object" && typeof progress.progress === "number")
+            ? progress.progress * 100
+            : null;
+        if (p != null) setProgress(p);
+      };
+
+      setProgress(0);
+      setStatus("Initializing engine...");
+
+      if (useWorker) {
+        // Single-file demo: create the worker from a Blob.
+        // The worker imports WebWorkerMLCEngineHandler from the same CDN source.
+        const workerSrc = `
+          import { WebWorkerMLCEngineHandler } from "https://esm.run/@mlc-ai/web-llm";
+          const handler = new WebWorkerMLCEngineHandler();
+          self.onmessage = (msg) => handler.onmessage(msg);
+        `;
+        const blob = new Blob([workerSrc], { type: "text/javascript" });
+        const workerUrl = URL.createObjectURL(blob);
+        const worker = new Worker(workerUrl, { type: "module" });
+
+        engine = await webllm.CreateWebWorkerMLCEngine(worker, modelId, { initProgressCallback });
+      } else {
+        engine = await webllm.CreateMLCEngine(modelId, { initProgressCallback });
+      }
+
+      setProgress(100);
+
+      // Optional GPU info
+      let gpuInfo = "";
+      try {
+        const vendor = await engine.getGPUVendor();
+        const maxBuf = await engine.getMaxStorageBufferBindingSize();
+        gpuInfo = `\nGPU Vendor: ${vendor}\nMax Storage Buffer Binding Size: ${maxBuf}`;
+      } catch {
+        gpuInfo = "\n(GPU info may be unavailable in some environments.)";
+      }
+
+      setStatus(`Loaded: ${modelId}${gpuInfo}`);
+    }
+
+    async function unloadEngine() {
+      if (!engine) return;
+      try { await engine.unload(); } catch {}
+      engine = null;
+      setProgress(0);
+      setStatus("Unloaded.");
+    }
+
+    // -----------------------------
+    // Prompt Inspector (readable)
+    // -----------------------------
+    let lastPrompt = { label: "No prompt yet", messages: [] };
+
+    function setPrompt(label, messages) {
+      lastPrompt = { label, messages: Array.isArray(messages) ? messages : [] };
+      promptLabelEl.textContent = label;
+      renderPromptInspector();
+    }
+
+    function toPseudoJson(messages) {
+      // Not valid JSON on purpose; it's readable.
+      const lines = [];
+      lines.push("[");
+      messages.forEach((m, i) => {
+        lines.push("  {");
+        lines.push(`    role: "${String(m.role)}",`);
+        if (m.name) lines.push(`    name: "${String(m.name)}",`);
+        lines.push("    content: \"\"\"");
+        lines.push(String(m.content ?? ""));
+        lines.push("    \"\"\"");
+        lines.push(i === messages.length - 1 ? "  }" : "  },");
+      });
+      lines.push("]");
+      return lines.join("\n");
+    }
+
+    function renderPromptInspector() {
+      const mode = promptViewModeEl.value;
+
+      // Reset
+      promptCardsEl.innerHTML = "";
+      promptPseudoEl.textContent = "";
+
+      if (mode === "pseudo") {
+        promptPseudoEl.classList.remove("hidden");
+        promptCardsEl.classList.add("hidden");
+        promptPseudoEl.textContent = toPseudoJson(lastPrompt.messages);
+        return;
+      }
+
+      // Cards view
+      promptPseudoEl.classList.add("hidden");
+      promptCardsEl.classList.remove("hidden");
+
+      lastPrompt.messages.forEach((m, idx) => {
+        const card = document.createElement("div");
+        card.className = `msg-card role-${m.role}`;
+
+        const head = document.createElement("div");
+        head.className = "msg-head";
+
+        const left = document.createElement("div");
+        left.innerHTML = `<span class="msg-role">${idx + 1}. ${m.role}</span>` + (m.name ? ` <span class="pill">${m.name}</span>` : "");
+
+        const right = document.createElement("div");
+        right.className = "mono";
+        right.textContent = `chars: ${(m.content || "").length}`;
+
+        head.appendChild(left);
+        head.appendChild(right);
+
+        const body = document.createElement("div");
+        body.className = "msg-body";
+        body.textContent = String(m.content ?? "");
+
+        card.appendChild(head);
+        card.appendChild(body);
+        promptCardsEl.appendChild(card);
+      });
+    }
+
+    async function copyPseudoPrompt() {
+      const txt = toPseudoJson(lastPrompt.messages);
+      try {
+        await navigator.clipboard.writeText(txt);
+        appendTrace("(ui) Copied prompt (pseudo) to clipboard.");
+      } catch {
+        appendTrace("(ui) Clipboard copy failed (browser permission).");
+      }
+    }
+
+    // -----------------------------
+    // WebLLM chat helpers
+    // -----------------------------
+    async function chatTextStreaming(messages, { temperature = 0.7 } = {}) {
+      const chunks = await engine.chat.completions.create({
+        messages,
+        temperature,
+        stream: true,
+        stream_options: { include_usage: true },
+      });
+
+      let out = "";
+      for await (const chunk of chunks) {
+        out += chunk.choices[0]?.delta?.content || "";
+        setAnswer(out);
+      }
+      return out;
+    }
+
+    async function chatOnce(messages, extra = {}) {
+      const resp = await engine.chat.completions.create({
+        messages,
+        stream: false,
+        ...extra,
+      });
+      return resp?.choices?.[0]?.message?.content || "";
+    }
+
+    function tryParseJson(text) {
+      if (!text) throw new Error("Empty JSON response.");
+      try { return JSON.parse(text); } catch {}
+      // Extract first {...}
+      const m = text.match(/\{[\s\S]*\}/);
+      if (m) return JSON.parse(m[0]);
+      throw new Error("Invalid JSON output (could not parse).");
+    }
+
+    async function chatJson(messages) {
+      // Best effort: request JSON. Fallback if the engine doesn't support response_format.
+      try {
+        const txt = await chatOnce(messages, { response_format: { type: "json_object" }, temperature: 0 });
+        return tryParseJson(txt);
+      } catch {
+        const txt = await chatOnce(messages, { temperature: 0 });
+        return tryParseJson(txt);
+      }
+    }
+
+    // -----------------------------
+    // Local tools (Tool Use mode)
+    // -----------------------------
+    function safeCalc(expression) {
+      const expr = (expression || "").trim();
+      if (!/^[0-9+\-*/().\s]+$/.test(expr)) {
+        throw new Error("Disallowed expression. Use only numbers and + - * / ( ) .");
+      }
+      // eslint-disable-next-line no-new-func
+      const v = Function(`"use strict"; return (${expr});`)();
+      if (typeof v !== "number" || Number.isNaN(v) || !Number.isFinite(v)) {
+        throw new Error("Invalid numeric result.");
+      }
+      return v;
+    }
+
+    const LOCAL_TOOLS = [
+      {
+        name: "retrieve",
+        description: "Search local docs and return the top matches.",
+        inputSchema: { type: "object", properties: { query: { type: "string" }, topK: { type: "number" } } }
+      },
+      {
+        name: "calc",
+        description: "Evaluate a basic arithmetic expression.",
+        inputSchema: { type: "object", properties: { expression: { type: "string" } } }
+      },
+      {
+        name: "get_time",
+        description: "Return current time as ISO string.",
+        inputSchema: { type: "object", properties: {} }
+      }
+    ];
+
+    async function runLocalTool(toolName, args) {
+      if (toolName === "retrieve") {
+        const q = (args?.query || $("question").value || "").trim();
+        const k = Number(args?.topK || $("topK").value || 3);
+        const results = await retrieve(q, k);
+        return {
+          type: "retrieval",
+          results,
+          text: renderResults(results),
+        };
+      }
+      if (toolName === "calc") {
+        const v = safeCalc(args?.expression || "");
+        return { type: "calc", text: String(v) };
+      }
+      if (toolName === "get_time") {
+        return { type: "time", text: new Date().toISOString() };
+      }
+      throw new Error("Unknown tool: " + toolName);
+    }
+
+    // -----------------------------
+    // MCP mock (MCP-style mode)
+    // -----------------------------
+    let mcpId = 0;
+    let mcpConnected = false;
+
+    const MCP_SERVER_TOOLS = [
+      {
+        name: "search_docs",
+        title: "Docs Search",
+        description: "Search local docs and return the top matches.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "Search query" },
+            topK: { type: "number", description: "Top K results" }
+          },
+          required: ["query"]
+        }
+      },
+      {
+        name: "calculator",
+        title: "Calculator",
+        description: "Evaluate a basic arithmetic expression.",
+        inputSchema: {
+          type: "object",
+          properties: { expression: { type: "string" } },
+          required: ["expression"]
+        }
+      }
+    ];
+
+    function mcpHandle(request) {
+      const { jsonrpc, id, method, params } = request;
+      if (jsonrpc !== "2.0") {
+        return { jsonrpc: "2.0", id, error: { code: -32600, message: "Invalid JSON-RPC version" } };
+      }
+      if (method === "tools/list") {
+        return { jsonrpc: "2.0", id, result: { tools: MCP_SERVER_TOOLS, nextCursor: null } };
+      }
+      if (method === "tools/call") {
+        const name = params?.name;
+        const args = params?.arguments || {};
+        try {
+          if (name === "search_docs") {
+            const q = (args.query || "").trim();
+            const k = Number(args.topK || $("topK").value || 3);
+            // Note: our local search function is the “server implementation” in this mock.
+            // In a real MCP setup, this would happen in another process.
+            return {
+              jsonrpc: "2.0",
+              id,
+              result: {
+                content: [{
+                  type: "text",
+                  text: "(server) running search_docs...\n" + "(server) query=" + q + "\n" + "(server) topK=" + k
+                }],
+                isError: false
+              }
+            };
+          }
+          if (name === "calculator") {
+            const v = safeCalc(args.expression || "");
+            return {
+              jsonrpc: "2.0",
+              id,
+              result: { content: [{ type: "text", text: String(v) }], isError: false }
+            };
+          }
+          return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: "Unknown tool." }], isError: true } };
+        } catch (e) {
+          return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: String(e) }], isError: true } };
+        }
+      }
+      return { jsonrpc: "2.0", id, error: { code: -32601, message: "Method not found" } };
+    }
+
+    async function mcpSend(method, params) {
+      const req = { jsonrpc: "2.0", id: ++mcpId, method, params };
+      appendTrace("→ MCP request\n" + prettyJson(req));
+      const res = mcpHandle(req);
+      appendTrace("← MCP response\n" + prettyJson(res));
+      return res;
+    }
+
+    async function ensureMcpConnected() {
+      if (mcpConnected) return;
+      await mcpSend("tools/list", { cursor: null });
+      mcpConnected = true;
+    }
+
+    // -----------------------------
+    // Prompts (all English)
+    // -----------------------------
+    const SYS_NO_RAG =
+      "You are a helpful assistant. Answer in English.";
+
+    const SYS_RAG =
+      "You are a grounded assistant. You MUST answer using ONLY the provided CONTEXT.\n" +
+      "If the answer is not in the context, say: \"I don't know based on the provided documents.\".\n" +
+      "When you use a document, cite it at the end like [doc:doc_id].";
+
+    const SYS_TOOL_PLANNER =
+      "You are an agent that can use tools.\n" +
+      "Pick the best next action.\n" +
+      "Output ONLY a single JSON object (no extra text):\n" +
+      "{\"tool\":\"<toolName or none>\",\"args\":{...}}\n" +
+      "Use tool=retrieve for questions about the documents.\n" +
+      "Use tool=calc for arithmetic.\n" +
+      "Use tool=get_time if time is needed.\n";
+
+    const SYS_FINAL =
+      "You are a grounded assistant.\n" +
+      "Use only the provided tool output / document excerpts as evidence.\n" +
+      "If you cannot answer from the evidence, say so.\n" +
+      "Cite used docs at the end like [doc:doc_id].";
+
+    // -----------------------------
+    // Main run
+    // -----------------------------
+    let running = false;
+
+    async function runDemo() {
+      if (running) return;
+      running = true;
+
+      try {
+        if (!engine) {
+          setStatus("Load a model first.");
+          running = false;
+          return;
+        }
+        if (!INDEX) {
+          setStatus("Build the index first (Build / Reindex).");
+          running = false;
+          return;
+        }
+
+        const mode = $("modeSelect").value;
+        const q = $("question").value.trim();
+        const k = Number($("topK").value);
+        const maxContextChars = Number($("maxContextChars").value);
+
+        $("topKLabel").textContent = String(k);
+
+        if (!q) {
+          setStatus("Enter a question.");
+          running = false;
+          return;
+        }
+
+        // Clear outputs
+        setAnswer("(generating...)");
+        setRetrieval("(not run)");
+        setTrace("");
+        setPrompt("No prompt yet", []);
+
+        if (mode === "no_rag") {
+          const messages = [
+            { role: "system", content: SYS_NO_RAG },
+            { role: "user", content: q },
+          ];
+          setPrompt("No‑RAG prompt", messages);
+          await chatTextStreaming(messages, { temperature: 0.7 });
+          setStatus("Done (No‑RAG).");
+          return;
+        }
+
+        if (mode === "rag") {
+          const results = await retrieve(q, k);
+          setRetrieval(renderResults(results));
+
+          const context = buildContext(results, maxContextChars);
+          const userMsg = `CONTEXT:\n${context}\n\nQUESTION:\n${q}`;
+
+          const messages = [
+            { role: "system", content: SYS_RAG },
+            { role: "user", content: userMsg },
+          ];
+          setPrompt("RAG prompt (context injected)", messages);
+          await chatTextStreaming(messages, { temperature: 0.2 });
+          setStatus("Done (RAG).");
+          return;
+        }
+
+        if (mode === "tool") {
+          // 1) Planner step (JSON tool call)
+          const plannerMessages = [
+            { role: "system", content: SYS_TOOL_PLANNER + "\nAvailable tools:\n" + prettyJson(LOCAL_TOOLS) },
+            { role: "user", content: q }
+          ];
+          setPrompt("Tool planner prompt", plannerMessages);
+
+          const toolCall = await chatJson(plannerMessages);
+          appendTrace("LLM tool_call (JSON)\n" + prettyJson(toolCall));
+
+          const toolName = String(toolCall?.tool || "none");
+          const args = toolCall?.args || {};
+
+          if (toolName === "none") {
+            const messages = [
+              { role: "system", content: SYS_NO_RAG },
+              { role: "user", content: q }
+            ];
+            setPrompt("Tool mode (no tool chosen) prompt", messages);
+            await chatTextStreaming(messages, { temperature: 0.7 });
+            setStatus("Done (Tool Use: none).");
+            return;
+          }
+
+          // 2) Execute tool
+          const toolResult = await runLocalTool(toolName, args);
+          appendTrace("Tool result\n" + prettyJson(toolResult));
+
+          if (toolResult.type === "retrieval") setRetrieval(toolResult.text);
+
+          // 3) Final answer grounded on tool output
+          const finalMessages = [
+            { role: "system", content: SYS_FINAL },
+            { role: "user", content: q },
+            { role: "assistant", content: "EVIDENCE (tool output):\n" + toolResult.text },
+            { role: "user", content: "Write the final answer using only the evidence above." }
+          ];
+          setPrompt("Tool final prompt", finalMessages);
+          await chatTextStreaming(finalMessages, { temperature: 0.2 });
+          setStatus("Done (Tool Use).");
+          return;
+        }
+
+        if (mode === "mcp") {
+          await ensureMcpConnected();
+
+          // 1) Ask LLM to choose an MCP tool (JSON)
+          const mcpToolList = MCP_SERVER_TOOLS.map(t => ({
+            name: t.name, description: t.description, inputSchema: t.inputSchema
+          }));
+
+          const plannerMessages = [
+            {
+              role: "system",
+              content:
+                "You can call MCP server tools.\n" +
+                "Output ONLY JSON (no extra text):\n" +
+                "{\"name\":\"<toolName or none>\",\"arguments\":{...}}\n\n" +
+                "Available MCP tools:\n" + prettyJson(mcpToolList)
+            },
+            { role: "user", content: q }
+          ];
+          setPrompt("MCP planner prompt", plannerMessages);
+
+          const call = await chatJson(plannerMessages);
+          appendTrace("LLM chose MCP tool (JSON)\n" + prettyJson(call));
+
+          const name = String(call?.name || "none");
+          const argumentsObj = call?.arguments || {};
+
+          if (name === "none") {
+            const messages = [
+              { role: "system", content: SYS_NO_RAG },
+              { role: "user", content: q }
+            ];
+            setPrompt("MCP mode (no tool chosen) prompt", messages);
+            await chatTextStreaming(messages, { temperature: 0.7 });
+            setStatus("Done (MCP: none).");
+            return;
+          }
+
+          // 2) MCP tools/call (JSON-RPC displayed)
+          const res = await mcpSend("tools/call", { name, arguments: { ...argumentsObj, topK: k } });
+
+          // In this mock, we also run the real retrieval locally to show something meaningful.
+          // Think of this as “the server actually did it”.
+          let evidence = "";
+          if (name === "search_docs") {
+            const rq = String(argumentsObj.query || q);
+            const results = await retrieve(rq, k);
+            evidence = renderResults(results);
+            setRetrieval(evidence);
+          } else if (name === "calculator") {
+            evidence = String(safeCalc(String(argumentsObj.expression || "0")));
+            setRetrieval("calculator result: " + evidence);
+          } else {
+            evidence = res?.result?.content?.[0]?.text || "";
+            setRetrieval(evidence);
+          }
+
+          // 3) Final answer grounded on “MCP tool output”
+          const finalMessages = [
+            { role: "system", content: SYS_FINAL },
+            { role: "user", content: q },
+            { role: "assistant", content: "EVIDENCE (MCP tool output):\n" + evidence },
+            { role: "user", content: "Write the final answer using only the evidence above." }
+          ];
+          setPrompt("MCP final prompt", finalMessages);
+
+          await chatTextStreaming(finalMessages, { temperature: 0.2 });
+          setStatus("Done (MCP).");
+          return;
+        }
+
+      } catch (e) {
+        setStatus("Error:\n" + String(e));
+        setAnswer("(error)");
+      } finally {
+        running = false;
+      }
+    }
+
+    // -----------------------------
+    // UI wiring
+    // -----------------------------
+    $("loadBtn").addEventListener("click", async () => {
+      try {
+        const modelId = $("modelSelect").value;
+        await createEngine(modelId);
+      } catch (e) {
+        setStatus("Load failed:\n" + String(e));
+      }
+    });
+
+    $("unloadBtn").addEventListener("click", unloadEngine);
+
+    $("runBtn").addEventListener("click", runDemo);
+
+    $("clearBtn").addEventListener("click", () => {
+      setAnswer("(The answer will appear here)");
+      setRetrieval("(Retrieval output will appear here)");
+      setTrace("(Tool calls and JSON‑RPC logs will appear here)");
+      setPrompt("No prompt yet", []);
+      setStatus("Cleared outputs.");
+    });
+
+    $("presetSelect").addEventListener("change", (ev) => {
+      const v = ev.target.value;
+      if (v) $("question").value = v;
+    });
+
+    $("topK").addEventListener("input", () => {
+      $("topKLabel").textContent = String($("topK").value);
+    });
+
+    $("docInputMode").addEventListener("change", () => {
+      const m = $("docInputMode").value;
+      if (m === "json") {
+        $("rawBox").classList.add("hidden");
+        $("jsonBox").classList.remove("hidden");
+      } else {
+        $("jsonBox").classList.add("hidden");
+        $("rawBox").classList.remove("hidden");
+      }
+    });
+
+    $("buildIndexBtn").addEventListener("click", async () => {
+      try {
+        setStatus("Building index...");
+        await buildIndex();
+        setStatus("Index built. You can run the demo now.");
+      } catch (e) {
+        setStatus("Index build failed:\n" + String(e));
+      }
+    });
+
+    $("resetDocsBtn").addEventListener("click", async () => {
+      try {
+        docs = structuredClone(DEFAULT_DOCS);
+        syncEditorsFromDocs();
+        setStatus("Reset sample docs. Now rebuild the index.");
+      } catch (e) {
+        setStatus("Reset failed:\n" + String(e));
+      }
+    });
+
+    $("clearDocsBtn").addEventListener("click", () => {
+      docs = [];
+      $("rawTextEditor").value = "";
+      $("docsJsonEditor").value = "[]";
+      INDEX = null;
+      indexStatsEl.textContent = "Index cleared (no documents).";
+      setIndexProgress(0);
+      setStatus("Cleared documents. Build index again after adding docs.");
+    });
+
+    $("dupBtn").addEventListener("click", async () => {
+      try {
+        const n = Number($("dupCount").value);
+        if (!Number.isFinite(n) || n < 2) throw new Error("Enter N >= 2.");
+        if (!docs.length) throw new Error("No docs to duplicate. Add docs first.");
+
+        // Duplicate current docs set N times (including original).
+        const base = docs.slice();
+        const out = [];
+        for (let i = 0; i < n; i++) {
+          for (const d of base) {
+            out.push({
+              ...d,
+              id: `${d.id}__dup_${i + 1}`,
+              title: `${d.title} [dup ${i + 1}]`
+            });
+          }
+          if (i % 10 === 0) await yieldToUI();
+        }
+
+        docs = out;
+        // Update the currently visible editor so the user understands what happened.
+        $("docsJsonEditor").value = JSON.stringify(docs, null, 2);
+        $("rawTextEditor").value = docs.map(d => `# ${d.title}\n[id: ${d.id}]\n\n${d.text}`).join("\n\n---\n\n");
+
+        setStatus(`Duplicated docs: base=${base.length}, factor=${n}, total=${docs.length}. Now rebuild the index.`);
+      } catch (e) {
+        setStatus("Duplicate failed:\n" + String(e));
+      }
+    });
+
+    $("fileInput").addEventListener("change", async (ev) => {
+      const files = Array.from(ev.target.files || []);
+      if (!files.length) return;
+
+      // In this demo, file import appends to the RAW editor (best for “messy docs” teaching).
+      // You can switch to JSON mode and manually convert later if needed.
+      const rawEl = $("rawTextEditor");
+      let raw = rawEl.value || "";
+
+      for (const f of files) {
+        const text = await f.text();
+        const name = f.name || "file";
+        const isJson = /\.json$/i.test(name.trim());
+
+        if (isJson) {
+          // If it is a JSON array of docs, we can append it as a block too (for simplicity).
+          // Advanced: you can parse it and merge docs properly.
+          raw += (raw.trim() ? "\n\n---\n\n" : "") + `# Imported JSON (${name})\n\n` + text;
+        } else {
+          raw += (raw.trim() ? "\n\n---\n\n" : "") + `# Imported file: ${name}\n\n` + text;
+        }
+        await yieldToUI();
+      }
+
+      rawEl.value = raw;
+      setStatus(`Imported ${files.length} file(s). Now click “Build / Reindex”.`);
+      ev.target.value = "";
+    });
+
+    promptViewModeEl.addEventListener("change", renderPromptInspector);
+    $("copyPromptBtn").addEventListener("click", copyPseudoPrompt);
+
+    // -----------------------------
+    // Init
+    // -----------------------------
+    populateModelList();
+    syncEditorsFromDocs();
+
+    // Default to Raw text mode for “messy docs”
+    $("docInputMode").value = "raw";
+    $("jsonBox").classList.add("hidden");
+    $("rawBox").classList.remove("hidden");
+
+    $("topKLabel").textContent = String($("topK").value);
+
+    setStatus("Ready. 1) Load a model, 2) Build / Reindex, 3) Run.");
+    setPrompt("No prompt yet", []);
+  </script>
+</body>
+</html>

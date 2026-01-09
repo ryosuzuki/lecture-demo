@@ -1,0 +1,1181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ReAct Prompting Playground (WebLLM, single-file)</title>
+    <style>
+      :root {
+        --bg: #0b0f17;
+        --panel: #101827;
+        --panel2: #0f172a;
+        --text: #e5e7eb;
+        --muted: #a1a1aa;
+        --border: #24314a;
+        --good: #22c55e;
+        --warn: #f59e0b;
+        --bad: #ef4444;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 600px at 20% 0%, #0f1b38, var(--bg));
+        color: var(--text);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+      }
+      a { color: #93c5fd; }
+      header {
+        padding: 16px 16px 0 16px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      header h1 {
+        margin: 0 0 8px 0;
+        font-size: 20px;
+        letter-spacing: 0.2px;
+      }
+      header p {
+        margin: 0 0 12px 0;
+        color: var(--muted);
+        line-height: 1.35;
+        max-width: 1100px;
+      }
+      .banner {
+        border: 1px solid var(--border);
+        background: rgba(16, 24, 39, 0.65);
+        border-radius: 12px;
+        padding: 10px 12px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+      .banner .left { display: flex; gap: 10px; align-items: center; }
+      .pill {
+        font-size: 12px;
+        padding: 2px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--muted);
+      }
+      .pill.good { border-color: rgba(34, 197, 94, 0.5); color: #bbf7d0; }
+      .pill.warn { border-color: rgba(245, 158, 11, 0.5); color: #fde68a; }
+      .pill.bad  { border-color: rgba(239, 68, 68, 0.5); color: #fecaca; }
+      main {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 16px 16px 16px;
+        display: grid;
+        grid-template-columns: 430px 1fr;
+        gap: 14px;
+      }
+      @media (max-width: 1000px) {
+        main { grid-template-columns: 1fr; }
+      }
+      .panel {
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(16,24,39,0.85), rgba(15,23,42,0.85));
+        border-radius: 14px;
+        padding: 12px;
+      }
+      h2 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #cbd5e1;
+        letter-spacing: 0.3px;
+      }
+      hr {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 12px 0;
+      }
+      label {
+        display: block;
+        margin: 10px 0;
+        font-size: 12px;
+        color: #cbd5e1;
+      }
+      select, textarea, input[type="number"] {
+        width: 100%;
+        margin-top: 6px;
+        padding: 10px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(2, 6, 23, 0.45);
+        color: var(--text);
+        outline: none;
+      }
+      textarea { resize: vertical; min-height: 110px; }
+      input[type="range"] { width: 100%; }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      button {
+        border: 1px solid var(--border);
+        background: rgba(2, 6, 23, 0.35);
+        color: var(--text);
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      progress {
+        width: 100%;
+        height: 14px;
+        border-radius: 999px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: rgba(2, 6, 23, 0.35);
+      }
+      progress::-webkit-progress-bar { background: rgba(2, 6, 23, 0.35); }
+      progress::-webkit-progress-value { background: linear-gradient(90deg, #22c55e, #60a5fa); }
+      .small {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.35;
+      }
+      details {
+        border: 1px solid var(--border);
+        background: rgba(2, 6, 23, 0.22);
+        border-radius: 12px;
+        padding: 10px 10px;
+        margin-top: 10px;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 700;
+        color: #d1d5db;
+        font-size: 12px;
+      }
+      .code, pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+          monospace;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .step {
+        border: 1px solid var(--border);
+        background: rgba(2, 6, 23, 0.24);
+        border-radius: 12px;
+        padding: 10px;
+      }
+      .step h3 {
+        margin: 0 0 8px 0;
+        font-size: 13px;
+        color: #e2e8f0;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      @media (max-width: 1100px) {
+        .grid2 { grid-template-columns: 1fr; }
+      }
+      .box {
+        border: 1px solid var(--border);
+        background: rgba(2, 6, 23, 0.22);
+        border-radius: 10px;
+        padding: 8px;
+      }
+      .box .title {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 6px;
+        font-weight: 700;
+        letter-spacing: 0.25px;
+      }
+      .final {
+        border: 1px solid rgba(96, 165, 250, 0.4);
+        background: rgba(2, 6, 23, 0.25);
+        border-radius: 12px;
+        padding: 10px;
+        min-height: 90px;
+      }
+      footer {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 16px 20px 16px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>ReAct Prompting Playground (WebLLM, single-file)</h1>
+      <p>
+        Compare <b>Direct prompting</b> vs a <b>ReAct-style agent prompt</b> (Thought → Action → Observation → … → Final),
+        and inspect what is sent to the model at each step.
+        Everything runs locally in your browser via WebLLM (WebGPU). No server calls, no API keys.
+      </p>
+
+      <div class="banner" id="envBanner">
+        <div class="left">
+          <span class="pill" id="webgpuPill">Checking WebGPU…</span>
+          <span class="pill" id="enginePill">Engine: not loaded</span>
+        </div>
+        <div class="small">
+          WebGPU check:
+          <a href="https://webgpureport.org/" target="_blank" rel="noreferrer">Open WebGPU Report</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- LEFT: CONTROLS -->
+      <section class="panel">
+        <h2>1) Model</h2>
+
+        <label>
+          Model ID
+          <select id="modelSelect"></select>
+        </label>
+
+        <label class="small">
+          <input type="checkbox" id="recommendedOnly" checked />
+          Show recommended (smaller / class-friendly) models only
+        </label>
+
+        <div class="row">
+          <button id="loadModelBtn">Load model</button>
+          <button id="unloadModelBtn" disabled>Unload</button>
+        </div>
+
+        <progress id="loadProgress" value="0" max="1"></progress>
+        <div id="modelStatus" class="small">Pick a model and click “Load model”.</div>
+
+        <hr />
+
+        <h2>2) Prompt</h2>
+        <label>
+          Sample prompts (10)
+          <select id="sampleSelect"></select>
+        </label>
+
+        <label>
+          Prompt (user)
+          <textarea id="promptInput" rows="7"></textarea>
+        </label>
+
+        <hr />
+
+        <h2>3) Mode & Run</h2>
+        <label>
+          Mode
+          <select id="modeSelect">
+            <option value="direct">Direct (single call)</option>
+            <option value="react" selected>ReAct Agent (tools + loop)</option>
+            <option value="compare">Compare: Direct → ReAct</option>
+          </select>
+        </label>
+
+        <label>
+          Temperature
+          <input id="temp" type="range" min="0" max="1.5" step="0.1" value="0.7" />
+          <div class="small">Current: <span id="tempValue">0.7</span></div>
+        </label>
+
+        <label>
+          Max ReAct steps (prevents infinite loops)
+          <input id="maxSteps" type="number" min="1" max="20" value="8" />
+        </label>
+
+        <div class="row">
+          <button id="runBtn" disabled>Run</button>
+          <button id="stopBtn" disabled>Stop</button>
+          <button id="clearBtn">Clear output</button>
+        </div>
+
+        <details>
+          <summary>Tools available to the ReAct agent (local only)</summary>
+          <ul id="toolList" class="small"></ul>
+        </details>
+
+        <details open>
+          <summary>Advanced: Prompt templates (editable)</summary>
+          <label>
+            Direct system prompt
+            <textarea id="directSystem" rows="3"></textarea>
+          </label>
+          <label>
+            ReAct system prompt (supports {{TOOLS}} placeholder)
+            <textarea id="reactSystem" rows="12"></textarea>
+          </label>
+          <div class="small">
+            Tip: The app will replace <code>{{TOOLS}}</code> with a tool cheat-sheet at runtime (so students can see
+            “prompt composition” clearly).
+          </div>
+        </details>
+
+        <details>
+          <summary>Behind the scenes: Orchestrator code (educational)</summary>
+          <pre id="orchestratorCode" class="code"></pre>
+        </details>
+      </section>
+
+      <!-- RIGHT: TRACE -->
+      <section class="panel">
+        <h2>Step-by-step trace</h2>
+        <div id="timeline" class="timeline"></div>
+
+        <hr />
+
+        <h2>Final answer</h2>
+        <pre id="finalAnswer" class="final"></pre>
+      </section>
+    </main>
+
+    <footer>
+      Notes:
+      <ul>
+        <li>
+          First model load downloads weights and caches them in the browser (progress shown). Later runs reuse cache.
+        </li>
+        <li>
+          ReAct here uses a <b>local tool sandbox</b> (Calculator / Lookup / SearchDocs / Base64Decode / SortNumbers).
+          No internet tool is provided by default (safer for classroom demos).
+        </li>
+        <li>
+          Some models may not perfectly follow the requested format; the trace helps students debug the prompt.
+        </li>
+      </ul>
+    </footer>
+
+    <script type="module">
+      import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+      // ----------------------------
+      // DOM helpers
+      // ----------------------------
+      const $ = (sel) => document.querySelector(sel);
+
+      const webgpuPill = $("#webgpuPill");
+      const enginePill = $("#enginePill");
+      const modelSelect = $("#modelSelect");
+      const recommendedOnly = $("#recommendedOnly");
+      const loadModelBtn = $("#loadModelBtn");
+      const unloadModelBtn = $("#unloadModelBtn");
+      const loadProgress = $("#loadProgress");
+      const modelStatus = $("#modelStatus");
+
+      const sampleSelect = $("#sampleSelect");
+      const promptInput = $("#promptInput");
+
+      const modeSelect = $("#modeSelect");
+      const tempInput = $("#temp");
+      const tempValue = $("#tempValue");
+      const maxStepsInput = $("#maxSteps");
+
+      const runBtn = $("#runBtn");
+      const stopBtn = $("#stopBtn");
+      const clearBtn = $("#clearBtn");
+
+      const toolListEl = $("#toolList");
+      const directSystemEl = $("#directSystem");
+      const reactSystemEl = $("#reactSystem");
+      const orchestratorCodeEl = $("#orchestratorCode");
+
+      const timelineEl = $("#timeline");
+      const finalAnswerEl = $("#finalAnswer");
+
+      // ----------------------------
+      // Environment checks
+      // ----------------------------
+      const hasWebGPU = !!navigator.gpu;
+      if (hasWebGPU) {
+        webgpuPill.textContent = "WebGPU detected";
+        webgpuPill.classList.add("good");
+      } else {
+        webgpuPill.textContent = "WebGPU NOT detected";
+        webgpuPill.classList.add("bad");
+      }
+
+      // ----------------------------
+      // Local "mini-wiki" and docs used by tools
+      // ----------------------------
+      const MINI_WIKI = {
+        "react": "ReAct is a prompting paradigm that interleaves reasoning and acting. A common trace format is Thought → Action → Observation → (repeat) → Final.",
+        "thought": "Thought: the agent’s short reasoning for the current step. In ReAct demos, Thought is written explicitly to help students see planning.",
+        "action": "Action: a tool invocation the agent chooses, e.g., Calculator[2*(3+4)] or Lookup[react].",
+        "observation": "Observation: the tool/environment result after an Action. It is fed back to the model as new context for the next step.",
+        "final": "Final: the final answer to the user, after enough observations are gathered.",
+        "webllm": "WebLLM runs open-source LLMs fully in the browser with WebGPU acceleration and exposes an OpenAI-style chat API.",
+        "createmlcengine": "CreateMLCEngine(modelId, { initProgressCallback }) creates an engine and loads a model. The first run downloads model weights and caches them.",
+        "streaming": "Streaming is enabled by passing stream: true to engine.chat.completions.create(...). The call returns an async generator of chunks.",
+        "agentic prompt": "An agentic prompt defines a loop (reason → act → observe), specifies tools, and requires a trace format so the model can decide actions instead of only answering."
+      };
+
+      const LOCAL_DOCS = [
+        "WEBLLM QUICK NOTES",
+        "- CreateMLCEngine(modelId, { initProgressCallback }) loads a model into an MLCEngine.",
+        "- Chat completion uses OpenAI-style messages: [{ role: 'system'|'user'|'assistant', content: '...' }].",
+        "- Streaming: engine.chat.completions.create({ messages, stream: true, stream_options: { include_usage: true } }) returns an async generator of chunks.",
+        "- Model list is available via webllm.prebuiltAppConfig.model_list (use model_id values).",
+        "",
+        "REACT QUICK NOTES",
+        "- ReAct loop: Thought → Action → Observation → Thought → ... → Final.",
+        "- You must NOT invent Observation; wait for the environment (tool) output.",
+        "- Tools are called by emitting: Action: ToolName[tool input]",
+      ].join("\n");
+
+      // ----------------------------
+      // Tools (local-only sandbox)
+      // ----------------------------
+      function safeEvalMath(exprRaw) {
+        const expr = String(exprRaw ?? "").trim();
+        if (!expr) throw new Error("Empty expression.");
+
+        // Tokenize
+        const tokens = [];
+        let i = 0;
+        while (i < expr.length) {
+          const ch = expr[i];
+          if (/\s/.test(ch)) { i++; continue; }
+
+          if (/[0-9.]/.test(ch)) {
+            let j = i;
+            while (j < expr.length && /[0-9.]/.test(expr[j])) j++;
+            const numStr = expr.slice(i, j);
+            const val = Number(numStr);
+            if (!Number.isFinite(val)) throw new Error("Invalid number: " + numStr);
+            tokens.push({ type: "num", value: val });
+            i = j;
+            continue;
+          }
+
+          if ("+-*/^()".includes(ch)) {
+            tokens.push({ type: "op", value: ch });
+            i++;
+            continue;
+          }
+
+          throw new Error("Invalid character: " + ch);
+        }
+
+        // Shunting-yard to RPN
+        const output = [];
+        const stack = [];
+
+        const prec = (op) => {
+          if (op === "u-") return 5;
+          if (op === "^") return 4;
+          if (op === "*" || op === "/") return 3;
+          if (op === "+" || op === "-") return 2;
+          return 0;
+        };
+        const rightAssoc = (op) => op === "^" || op === "u-";
+
+        let prev = null;
+        for (const t of tokens) {
+          if (t.type === "num") {
+            output.push(t);
+            prev = t;
+            continue;
+          }
+
+          let op = t.value;
+
+          if (op === "-" && (!prev || (prev.type === "op" && prev.value !== ")"))) {
+            // unary minus
+            op = "u-";
+          }
+
+          if (op === "(") {
+            stack.push({ type: "op", value: op });
+            prev = { type: "op", value: op };
+            continue;
+          }
+          if (op === ")") {
+            while (stack.length && stack[stack.length - 1].value !== "(") {
+              output.push(stack.pop());
+            }
+            if (!stack.length) throw new Error("Mismatched parentheses.");
+            stack.pop(); // pop "("
+            prev = { type: "op", value: op };
+            continue;
+          }
+
+          while (stack.length) {
+            const top = stack[stack.length - 1].value;
+            if (top === "(") break;
+            const p1 = prec(op), p2 = prec(top);
+            if ((!rightAssoc(op) && p1 <= p2) || (rightAssoc(op) && p1 < p2)) {
+              output.push(stack.pop());
+            } else {
+              break;
+            }
+          }
+          stack.push({ type: "op", value: op });
+          prev = { type: "op", value: op };
+        }
+
+        while (stack.length) {
+          const top = stack.pop();
+          if (top.value === "(" || top.value === ")") throw new Error("Mismatched parentheses.");
+          output.push(top);
+        }
+
+        // Evaluate RPN
+        const st = [];
+        for (const t of output) {
+          if (t.type === "num") {
+            st.push(t.value);
+            continue;
+          }
+          const op = t.value;
+          if (op === "u-") {
+            if (st.length < 1) throw new Error("Invalid unary minus usage.");
+            const a = st.pop();
+            st.push(-a);
+            continue;
+          }
+          if (st.length < 2) throw new Error("Invalid expression.");
+          const b = st.pop();
+          const a = st.pop();
+          let r;
+          if (op === "+") r = a + b;
+          else if (op === "-") r = a - b;
+          else if (op === "*") r = a * b;
+          else if (op === "/") r = a / b;
+          else if (op === "^") r = Math.pow(a, b);
+          else throw new Error("Unknown operator: " + op);
+          st.push(r);
+        }
+        if (st.length !== 1) throw new Error("Invalid expression.");
+        const result = st[0];
+        if (!Number.isFinite(result)) throw new Error("Result is not finite.");
+        return result;
+      }
+
+      function base64ToUtf8(b64) {
+        const clean = String(b64 ?? "").trim();
+        const bin = atob(clean);
+        const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+        return new TextDecoder().decode(bytes);
+      }
+
+      const TOOLS = {
+        Calculator: {
+          usage: "Calculator[2*(3+4) - 5^2]",
+          description: "Evaluate arithmetic with + - * / ^ and parentheses.",
+          run: (input) => String(safeEvalMath(input)),
+        },
+        Lookup: {
+          usage: "Lookup[react] or Lookup[webllm]",
+          description: "Look up short facts from a built-in mini-wiki dictionary.",
+          run: (input) => {
+            const key = String(input ?? "").trim().toLowerCase();
+            if (!key) return "Lookup expects a key. Try: " + Object.keys(MINI_WIKI).slice(0, 8).join(", ") + " ...";
+            const hit = MINI_WIKI[key];
+            if (!hit) return `No entry for "${key}". Available keys include: ` + Object.keys(MINI_WIKI).join(", ");
+            return hit;
+          },
+        },
+        SearchDocs: {
+          usage: "SearchDocs[stream] or SearchDocs[CreateMLCEngine]",
+          description: "Keyword search over a small local docs excerpt (WebLLM + ReAct notes).",
+          run: (input) => {
+            const q = String(input ?? "").trim().toLowerCase();
+            const lines = LOCAL_DOCS.split("\n");
+            if (!q) return "SearchDocs expects a query string.";
+            const hits = [];
+            for (let idx = 0; idx < lines.length; idx++) {
+              const line = lines[idx];
+              if (line.toLowerCase().includes(q)) hits.push({ idx, line });
+              if (hits.length >= 6) break;
+            }
+            if (!hits.length) return `No matches for "${q}". Try a different keyword.`;
+            return hits.map((h) => `L${h.idx + 1}: ${h.line}`).join("\n");
+          },
+        },
+        Base64Decode: {
+          usage: "Base64Decode[SGVsbG8sIFdlYkxMTSBhbmQgUmVBY3Qh]",
+          description: "Decode a base64 string into UTF-8 text.",
+          run: (input) => {
+            try { return base64ToUtf8(input); }
+            catch (e) { return "ERROR: invalid base64. " + (e?.message ?? String(e)); }
+          },
+        },
+        SortNumbers: {
+          usage: "SortNumbers[19, 3, 42, 8]",
+          description: "Sort comma/space-separated numbers ascending (returns a list).",
+          run: (input) => {
+            const raw = String(input ?? "");
+            const nums = raw
+              .split(/[\s,]+/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((s) => Number(s))
+              .filter((n) => Number.isFinite(n));
+            if (!nums.length) return "No valid numbers found.";
+            nums.sort((a, b) => a - b);
+            return nums.join(", ");
+          },
+        },
+      };
+
+      // Render tool list (UI)
+      toolListEl.innerHTML = Object.entries(TOOLS)
+        .map(([name, t]) => `<li><b>${name}</b>: ${t.description}<br/><span class="code">${t.usage}</span></li>`)
+        .join("");
+
+      function toolCheatSheetForPrompt() {
+        return Object.entries(TOOLS)
+          .map(([name, t]) => `- ${t.usage}  // ${t.description}`)
+          .join("\n");
+      }
+
+      // ----------------------------
+      // Sample prompts (10)
+      // ----------------------------
+      const SAMPLES = [
+        {
+          title: "1) Math (forces tool): big arithmetic",
+          prompt: "Compute (12345 * 6789) - 101112. You MUST use the Calculator tool at least once. Then give the final number."
+        },
+        {
+          title: "2) ReAct definition (Lookup)",
+          prompt: "What does ReAct mean? Use Lookup[react], then explain Thought/Action/Observation/Final in your own words. Use at least one tool call."
+        },
+        {
+          title: "3) WebLLM streaming (SearchDocs)",
+          prompt: "In our local notes, what parameter enables streaming chat completion in WebLLM? Use SearchDocs[stream] and answer with a short code-ish explanation."
+        },
+        {
+          title: "4) Base64 decode (tool)",
+          prompt: "Decode this base64 string using Base64Decode: SGVsbG8sIFdlYkxMTSBhbmQgUmVBY3Qh  Then explain what it says."
+        },
+        {
+          title: "5) Sorting + median (SortNumbers)",
+          prompt: "Sort these numbers and report the median: 19, 3, 42, 42, 8, 15, 7. You MUST use SortNumbers at least once."
+        },
+        {
+          title: "6) Lesson plan (no tool required)",
+          prompt: "Create a 20-minute in-class activity that contrasts Direct prompting vs ReAct prompting. Include: learning goals, procedure, and what students should observe in the trace."
+        },
+        {
+          title: "7) Prompt rewrite (teach agentic prompting)",
+          prompt: "Rewrite this plain prompt into a ReAct prompt with tool access:\n\nPlain prompt: 'Find the product of 37 and 91 and explain the steps.'\n\nReturn the improved ReAct-style system prompt + user prompt."
+        },
+        {
+          title: "8) Debugging: streaming loop (SearchDocs optional)",
+          prompt: "A student wrote: `engine.chat.completions.create({messages})` and expected streaming, but it returns a full response. Explain the bug and how to fix it. If helpful, use SearchDocs[stream]."
+        },
+        {
+          title: "9) Unit conversion (Calculator)",
+          prompt: "A train travels 120 km in 1 hour 45 minutes. What is the average speed in km/h? You MUST use Calculator at least once."
+        },
+        {
+          title: "10) Mini 'RAG' (Lookup + SearchDocs)",
+          prompt: "Using only our local tools, explain: (1) how to load a model in WebLLM, and (2) how to enable streaming responses. Use at least two tool calls (Lookup + SearchDocs)."
+        }
+      ];
+
+      sampleSelect.innerHTML = SAMPLES.map((s, i) => `<option value="${i}">${s.title}</option>`).join("");
+      sampleSelect.value = "0";
+      promptInput.value = SAMPLES[0].prompt;
+
+      sampleSelect.addEventListener("change", () => {
+        const s = SAMPLES[Number(sampleSelect.value)];
+        promptInput.value = s?.prompt ?? "";
+      });
+
+      // ----------------------------
+      // Default prompt templates (editable)
+      // ----------------------------
+      directSystemEl.value =
+        "You are a helpful assistant.\nAnswer in clear, concise English.\nIf you are unsure, say what you are assuming.";
+
+      reactSystemEl.value =
+`You are an educational ReAct agent running inside a tool sandbox.
+Your goal is to make the reasoning-and-acting process visible for students.
+
+You MUST follow this format:
+
+Thought: <1-2 lines of reasoning>
+Action: ToolName[tool input]
+(then STOP and wait for an Observation)
+
+OR, if you have enough information:
+
+Thought: <1-2 lines>
+Final: <final answer to the user>
+
+Rules:
+- You may ONLY use the tools listed below.
+- NEVER fabricate Observations. If you took an Action, you must wait for the environment to provide Observation.
+- If the user says "you MUST use <Tool>", you MUST call that tool at least once before Final.
+- Keep Thought short. The goal is trace readability, not long essays.
+
+TOOLS (cheat sheet):
+{{TOOLS}}
+
+Now solve the user's request.`;
+
+      // ----------------------------
+      // Model list UI
+      // ----------------------------
+      const allModelIds = (webllm.prebuiltAppConfig?.model_list ?? [])
+        .map((m) => m?.model_id)
+        .filter(Boolean);
+
+      const recommendedRegex = /(0\.5B|1B|2B|mini|small|Smol|Tiny|Phi-3-mini|Llama-3\.2-1B)/i;
+      const recommendedModelIds = allModelIds.filter((id) => recommendedRegex.test(id)).sort((a, b) => a.localeCompare(b));
+      const sortedAllModelIds = [...allModelIds].sort((a, b) => a.localeCompare(b));
+
+      function fillModelSelect() {
+        const useRecommended = recommendedOnly.checked && recommendedModelIds.length > 0;
+        const list = useRecommended ? recommendedModelIds : sortedAllModelIds;
+
+        modelSelect.innerHTML = list.map((id) => `<option value="${id}">${id}</option>`).join("");
+
+        const preferred = [
+          "Llama-3.2-1B-Instruct-q4f32_1-MLC",
+          "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+          "Phi-3-mini-4k-instruct-q4f16_1-MLC",
+        ];
+        const found = preferred.find((p) => list.includes(p));
+        modelSelect.value = found ?? list[0] ?? "";
+      }
+
+      fillModelSelect();
+      recommendedOnly.addEventListener("change", fillModelSelect);
+
+      // ----------------------------
+      // Orchestrator code snippet (educational)
+      // ----------------------------
+      function updateOrchestratorCode() {
+        const mode = modeSelect.value;
+        if (mode === "direct") {
+          orchestratorCodeEl.textContent =
+`// DIRECT (single call)
+const messages = [
+  { role: "system", content: DIRECT_SYSTEM_PROMPT },
+  { role: "user", content: USER_PROMPT },
+];
+
+const chunks = await engine.chat.completions.create({
+  messages,
+  stream: true,
+});
+
+let text = "";
+for await (const chunk of chunks) {
+  text += chunk.choices[0]?.delta?.content || "";
+}
+return text;`;
+        } else {
+          orchestratorCodeEl.textContent =
+`// REACT (agent loop + local tools)
+let messages = [
+  { role: "system", content: REACT_SYSTEM_PROMPT_WITH_TOOLS },
+  { role: "user", content: USER_PROMPT },
+];
+
+for (let step = 1; step <= MAX_STEPS; step++) {
+  const text = await streamOnce(messages);
+
+  // 1) If the model is done -> stop
+  if (text.includes("Final:")) return extractFinal(text);
+
+  // 2) Otherwise parse "Action: Tool[input]"
+  const action = parseAction(text);
+  if (!action) return text; // model didn't follow format
+
+  // 3) Run tool locally and feed back as Observation
+  const observation = runTool(action.tool, action.input);
+
+  messages.push({ role: "assistant", content: text });
+  messages.push({ role: "user", content: "Observation: " + observation + "\\n\\nContinue." });
+}`;
+        }
+      }
+      modeSelect.addEventListener("change", updateOrchestratorCode);
+      updateOrchestratorCode();
+
+      // ----------------------------
+      // State
+      // ----------------------------
+      const state = {
+        engine: null,
+        modelId: null,
+        isRunning: false,
+        stopRequested: false,
+      };
+
+      function setEnginePill(text, kind = "warn") {
+        enginePill.textContent = text;
+        enginePill.classList.remove("good", "warn", "bad");
+        enginePill.classList.add(kind);
+      }
+
+      function setControlsEnabled(enabled) {
+        loadModelBtn.disabled = !enabled;
+        modelSelect.disabled = !enabled;
+        recommendedOnly.disabled = !enabled;
+
+        runBtn.disabled = !enabled || !state.engine;
+        unloadModelBtn.disabled = !enabled || !state.engine;
+
+        stopBtn.disabled = enabled; // stop is enabled only when running
+      }
+
+      // ----------------------------
+      // Model load / unload
+      // ----------------------------
+      async function loadModel(modelId) {
+        if (!hasWebGPU) {
+          modelStatus.textContent = "WebGPU is not available in this browser. Try Chrome/Edge with WebGPU enabled.";
+          return;
+        }
+
+        setControlsEnabled(false);
+        modelStatus.textContent = `Loading model: ${modelId} …`;
+        loadProgress.value = 0;
+        setEnginePill("Engine: loading…", "warn");
+
+        // Best-effort unload any previous engine
+        if (state.engine?.unload) {
+          try { await state.engine.unload(); } catch {}
+        }
+        state.engine = null;
+        state.modelId = null;
+
+        const initProgressCallback = (info) => {
+          // WebLLM commonly passes an object like { progress, text } (shape may vary)
+          const p = typeof info === "number" ? info : (info?.progress ?? 0);
+          const msg = typeof info === "object" ? (info?.text ?? "") : "";
+          loadProgress.value = Math.max(0, Math.min(1, p));
+          modelStatus.textContent = `Loading: ${(p * 100).toFixed(1)}% ${msg ? "— " + msg : ""}`;
+        };
+
+        try {
+          state.engine = await webllm.CreateMLCEngine(modelId, { initProgressCallback });
+          state.modelId = modelId;
+
+          setEnginePill("Engine: ready", "good");
+          modelStatus.textContent = `✅ Model loaded: ${modelId}`;
+          unloadModelBtn.disabled = false;
+          runBtn.disabled = false;
+
+          // Optional runtime info
+          try {
+            const vendor = await state.engine.getGPUVendor?.();
+            if (vendor) modelStatus.textContent += ` | GPU Vendor: ${vendor}`;
+          } catch {}
+        } catch (e) {
+          setEnginePill("Engine: error", "bad");
+          modelStatus.textContent = `❌ Failed to load model. ${e?.message ?? String(e)}`;
+        } finally {
+          setControlsEnabled(true);
+        }
+      }
+
+      async function unloadModel() {
+        setControlsEnabled(false);
+        try {
+          if (state.engine?.unload) {
+            await state.engine.unload();
+          }
+        } catch {}
+        state.engine = null;
+        state.modelId = null;
+        setEnginePill("Engine: not loaded", "warn");
+        modelStatus.textContent = "Model unloaded.";
+        loadProgress.value = 0;
+        runBtn.disabled = true;
+        unloadModelBtn.disabled = true;
+        setControlsEnabled(true);
+      }
+
+      loadModelBtn.addEventListener("click", async () => {
+        const id = modelSelect.value;
+        if (!id) return;
+        await loadModel(id);
+      });
+
+      unloadModelBtn.addEventListener("click", unloadModel);
+
+      // ----------------------------
+      // Clear output
+      // ----------------------------
+      function clearOutput() {
+        timelineEl.innerHTML = "";
+        finalAnswerEl.textContent = "";
+      }
+      clearBtn.addEventListener("click", clearOutput);
+
+      // ----------------------------
+      // Stop
+      // ----------------------------
+      stopBtn.addEventListener("click", () => {
+        state.stopRequested = true;
+        // Best-effort interrupt (may vary by version/model)
+        try { state.engine?.interruptGenerate?.(); } catch {}
+      });
+
+      // ----------------------------
+      // ReAct parsing helpers
+      // ----------------------------
+      function extractFinal(text) {
+        const m = text.match(/(?:^|\n)Final:\s*([\s\S]*)/);
+        return (m?.[1] ?? text).trim();
+      }
+
+      function parseAction(text) {
+        const m = text.match(/(?:^|\n)Action:\s*([A-Za-z0-9_]+)\[([\s\S]*?)\]/);
+        if (!m) return null;
+        return { tool: m[1], input: (m[2] ?? "").trim() };
+      }
+
+      function runTool(toolName, input) {
+        const tool = TOOLS[toolName];
+        if (!tool) return `ERROR: Unknown tool "${toolName}". Available: ${Object.keys(TOOLS).join(", ")}`;
+        try {
+          return tool.run(input);
+        } catch (e) {
+          return `ERROR in ${toolName}: ${e?.message ?? String(e)}`;
+        }
+      }
+
+      // ----------------------------
+      // Prompt builders
+      // ----------------------------
+      function buildDirectMessages(userPrompt) {
+        return [
+          { role: "system", content: directSystemEl.value.trim() },
+          { role: "user", content: userPrompt.trim() },
+        ];
+      }
+
+      function buildReActMessages(userPrompt) {
+        const sysTemplate = reactSystemEl.value;
+        const sys = sysTemplate.replaceAll("{{TOOLS}}", toolCheatSheetForPrompt());
+        return [
+          { role: "system", content: sys.trim() },
+          { role: "user", content: userPrompt.trim() },
+        ];
+      }
+
+      // ----------------------------
+      // Step UI
+      // ----------------------------
+      function addStepCard({ title, messages, enableToolBoxes }) {
+        const step = document.createElement("div");
+        step.className = "step";
+
+        const h3 = document.createElement("h3");
+        h3.textContent = title;
+        step.appendChild(h3);
+
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.textContent = "Messages sent to the model (OpenAI-style JSON)";
+        details.appendChild(summary);
+
+        const msgPre = document.createElement("pre");
+        msgPre.className = "code";
+        msgPre.textContent = JSON.stringify(messages, null, 2);
+        details.appendChild(msgPre);
+        step.appendChild(details);
+
+        const outBox = document.createElement("div");
+        outBox.className = "box";
+        outBox.innerHTML = `<div class="title">Model output (streaming)</div><pre class="code" id="out"></pre>`;
+        const outPre = outBox.querySelector("pre");
+        step.appendChild(outBox);
+
+        let actionPre = null;
+        let obsPre = null;
+
+        if (enableToolBoxes) {
+          const grid = document.createElement("div");
+          grid.className = "grid2";
+
+          const actionBox = document.createElement("div");
+          actionBox.className = "box";
+          actionBox.innerHTML = `<div class="title">Parsed Action</div><pre class="code"></pre>`;
+          actionPre = actionBox.querySelector("pre");
+
+          const obsBox = document.createElement("div");
+          obsBox.className = "box";
+          obsBox.innerHTML = `<div class="title">Tool Observation</div><pre class="code"></pre>`;
+          obsPre = obsBox.querySelector("pre");
+
+          grid.appendChild(actionBox);
+          grid.appendChild(obsBox);
+          step.appendChild(grid);
+        }
+
+        timelineEl.appendChild(step);
+
+        return { outPre, actionPre, obsPre };
+      }
+
+      // ----------------------------
+      // Streaming helper (single model call)
+      // ----------------------------
+      async function streamOnce(messages, temperature, outPre) {
+        const chunks = await state.engine.chat.completions.create({
+          messages,
+          temperature,
+          stream: true,
+          stream_options: { include_usage: true },
+        });
+
+        let full = "";
+        for await (const chunk of chunks) {
+          const delta = chunk?.choices?.[0]?.delta?.content || "";
+          if (delta) {
+            full += delta;
+            outPre.textContent = full;
+          }
+          if (state.stopRequested) {
+            try { state.engine?.interruptGenerate?.(); } catch {}
+            break;
+          }
+        }
+        return full;
+      }
+
+      // ----------------------------
+      // Run modes
+      // ----------------------------
+      async function runDirect(userPrompt, temperature) {
+        const messages = buildDirectMessages(userPrompt);
+        const card = addStepCard({ title: "Direct: single model call", messages, enableToolBoxes: false });
+        const text = await streamOnce(messages, temperature, card.outPre);
+        finalAnswerEl.textContent = text.trim();
+      }
+
+      async function runReAct(userPrompt, temperature, maxSteps) {
+        let messages = buildReActMessages(userPrompt);
+
+        // best-effort reset (helps when re-running many demos)
+        try { await state.engine?.resetChat?.(); } catch {}
+
+        for (let step = 1; step <= maxSteps; step++) {
+          const card = addStepCard({
+            title: `ReAct step ${step}: model call`,
+            messages,
+            enableToolBoxes: true
+          });
+
+          const text = await streamOnce(messages, temperature, card.outPre);
+
+          if (state.stopRequested) {
+            finalAnswerEl.textContent = "(Stopped by user)";
+            return;
+          }
+
+          // If Final exists -> done
+          if (text.includes("Final:")) {
+            finalAnswerEl.textContent = extractFinal(text);
+            return;
+          }
+
+          // Otherwise parse Action
+          const action = parseAction(text);
+          if (!action) {
+            card.actionPre.textContent = "No Action parsed (model did not follow the requested format).";
+            finalAnswerEl.textContent = text.trim();
+            return;
+          }
+
+          card.actionPre.textContent = `${action.tool}[${action.input}]`;
+
+          const obs = runTool(action.tool, action.input);
+          card.obsPre.textContent = obs;
+
+          // Append assistant output + observation
+          messages = [
+            ...messages,
+            { role: "assistant", content: text },
+            { role: "user", content: `Observation: ${obs}\n\nContinue.` },
+          ];
+        }
+
+        finalAnswerEl.textContent = `Reached max steps (${maxSteps}). The agent stopped to avoid infinite loops.`;
+      }
+
+      async function runCompare(userPrompt, temperature, maxSteps) {
+        // Section marker: Direct
+        const marker1 = document.createElement("div");
+        marker1.className = "step";
+        marker1.innerHTML = `<h3>COMPARE — Part 1/2: Direct</h3><div class="small">One model call, no tools.</div>`;
+        timelineEl.appendChild(marker1);
+
+        await runDirect(userPrompt, temperature);
+
+        // Section marker: ReAct
+        const marker2 = document.createElement("div");
+        marker2.className = "step";
+        marker2.innerHTML = `<h3>COMPARE — Part 2/2: ReAct Agent</h3><div class="small">Tool loop with Thought/Action/Observation.</div>`;
+        timelineEl.appendChild(marker2);
+
+        await runReAct(userPrompt, temperature, maxSteps);
+      }
+
+      // ----------------------------
+      // Run button
+      // ----------------------------
+      tempInput.addEventListener("input", () => {
+        tempValue.textContent = tempInput.value;
+      });
+
+      runBtn.addEventListener("click", async () => {
+        const userPrompt = promptInput.value.trim();
+        if (!userPrompt) return;
+
+        if (!state.engine) {
+          modelStatus.textContent = "Load a model first.";
+          return;
+        }
+
+        clearOutput();
+        state.stopRequested = false;
+        state.isRunning = true;
+
+        runBtn.disabled = true;
+        stopBtn.disabled = false;
+
+        const temperature = Number(tempInput.value);
+        const maxSteps = Math.max(1, Math.min(20, Number(maxStepsInput.value || 8)));
+
+        try {
+          const mode = modeSelect.value;
+          if (mode === "direct") await runDirect(userPrompt, temperature);
+          else if (mode === "react") await runReAct(userPrompt, temperature, maxSteps);
+          else await runCompare(userPrompt, temperature, maxSteps);
+        } catch (e) {
+          finalAnswerEl.textContent = "ERROR: " + (e?.message ?? String(e));
+        } finally {
+          state.isRunning = false;
+          runBtn.disabled = false;
+          stopBtn.disabled = true;
+        }
+      });
+
+      // Initial engine status
+      setEnginePill("Engine: not loaded", hasWebGPU ? "warn" : "bad");
+    </script>
+  </body>
+</html>
