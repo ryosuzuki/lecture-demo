@@ -289,8 +289,8 @@
 
         <label>
           Temperature
-          <input id="temp" type="range" min="0" max="1.5" step="0.1" value="0.7" />
-          <div class="small">Current: <span id="tempValue">0.7</span></div>
+          <input id="temp" type="range" min="0" max="1.5" step="0.1" value="0.3" />
+          <div class="small">Current: <span id="tempValue">0.3</span></div>
         </label>
 
         <label>
@@ -684,28 +684,37 @@
         "You are a helpful assistant.\nAnswer in clear, concise English.\nIf you are unsure, say what you are assuming.";
 
       reactSystemEl.value =
-`You are an educational ReAct agent running inside a tool sandbox.
-Your goal is to make the reasoning-and-acting process visible for students.
+`You are a ReAct agent with access to tools. You MUST use this EXACT format (no markdown, no bold):
 
-You MUST follow this format:
+Thought: I need to look up X.
+Action: ToolName[input here]
 
-Thought: <1-2 lines of reasoning>
-Action: ToolName[tool input]
-(then STOP and wait for an Observation)
+Then STOP. Wait for an Observation from the environment.
 
-OR, if you have enough information:
+When you have the final answer:
 
-Thought: <1-2 lines>
-Final: <final answer to the user>
+Thought: I now know the answer.
+Final: The answer is Y.
 
-Rules:
-- You may ONLY use the tools listed below.
-- NEVER fabricate Observations. If you took an Action, you must wait for the environment to provide Observation.
-- If the user says "you MUST use <Tool>", you MUST call that tool at least once before Final.
-- Keep Thought short. The goal is trace readability, not long essays.
+IMPORTANT RULES:
+- Output ONLY "Thought:" and "Action:" (or "Final:"). Nothing else.
+- Do NOT write "Observation:" yourself. The system provides it.
+- Do NOT use **bold** or any markdown formatting.
+- Do NOT skip tools — you MUST call a tool before giving Final.
+- One Thought + one Action per turn. Then STOP.
 
-TOOLS (cheat sheet):
+TOOLS:
 {{TOOLS}}
+
+EXAMPLE:
+User: What is the capital of France?
+Thought: I need to search for the capital of France.
+Action: Search[capital of France]
+
+(Then the system would provide: Observation: Paris is the capital of France...)
+
+Thought: I now know the answer.
+Final: The capital of France is Paris.
 
 Now solve the user's request.`;
 
@@ -914,15 +923,31 @@ for (let step = 1; step <= MAX_STEPS; step++) {
       // ----------------------------
       // ReAct parsing helpers
       // ----------------------------
+      // Normalize markdown bold markers that small models love to add
+      function stripBold(text) {
+        return text.replace(/\*\*(Thought|Action|Final|Observation)\s*:\*\*/g, "$1:");
+      }
+
       function extractFinal(text) {
-        const m = text.match(/(?:^|\n)Final:\s*([\s\S]*)/);
+        const clean = stripBold(text);
+        const m = clean.match(/(?:^|\n)\s*Final:\s*([\s\S]*)/);
         return (m?.[1] ?? text).trim();
       }
 
       function parseAction(text) {
-        const m = text.match(/(?:^|\n)Action:\s*([A-Za-z0-9_]+)\[([\s\S]*?)\]/);
+        const clean = stripBold(text);
+        const m = clean.match(/(?:^|\n)\s*Action:\s*([A-Za-z0-9_]+)\s*\[([\s\S]*?)\]/);
         if (!m) return null;
         return { tool: m[1], input: (m[2] ?? "").trim() };
+      }
+
+      // Truncate text after first Action: Tool[...] to prevent hallucinated Observations
+      function truncateAfterAction(text) {
+        const clean = stripBold(text);
+        const m = clean.match(/Action:\s*[A-Za-z0-9_]+\s*\[[^\]]*\]/);
+        if (!m) return text;
+        const end = m.index + m[0].length;
+        return clean.slice(0, end);
       }
 
       async function runTool(toolName, input) {
@@ -1013,13 +1038,19 @@ for (let step = 1; step <= MAX_STEPS; step++) {
       // ----------------------------
       // Streaming helper (single model call)
       // ----------------------------
-      async function streamOnce(messages, temperature, outPre) {
-        const chunks = await state.engine.chat.completions.create({
+      async function streamOnce(messages, temperature, outPre, { stopAfterAction = false } = {}) {
+        const opts = {
           messages,
           temperature,
           stream: true,
           stream_options: { include_usage: true },
-        });
+        };
+        // Try to add stop sequences for ReAct mode (stop when model starts Observation)
+        if (stopAfterAction) {
+          opts.stop = ["Observation:", "\nObservation"];
+        }
+
+        const chunks = await state.engine.chat.completions.create(opts);
 
         let full = "";
         for await (const chunk of chunks) {
@@ -1027,6 +1058,11 @@ for (let step = 1; step <= MAX_STEPS; step++) {
           if (delta) {
             full += delta;
             outPre.textContent = full;
+          }
+          // Early stop: if we see a complete Action: Tool[...] followed by Observation-like text
+          if (stopAfterAction && full.match(/Action:\s*[A-Za-z0-9_]+\s*\[[^\]]*\][\s\S]*?(Observation|Final)/)) {
+            try { state.engine?.interruptGenerate?.(); } catch {}
+            break;
           }
           if (state.stopRequested) {
             try { state.engine?.interruptGenerate?.(); } catch {}
@@ -1059,21 +1095,25 @@ for (let step = 1; step <= MAX_STEPS; step++) {
             enableToolBoxes: true
           });
 
-          const text = await streamOnce(messages, temperature, card.outPre);
+          const rawText = await streamOnce(messages, temperature, card.outPre, { stopAfterAction: true });
 
           if (state.stopRequested) {
             finalAnswerEl.textContent = "(Stopped by user)";
             return;
           }
 
+          // Normalize markdown bold
+          const text = stripBold(rawText);
+
           // If Final exists -> done
-          if (text.includes("Final:")) {
+          if (/(?:^|\n)\s*Final:/m.test(text)) {
             finalAnswerEl.textContent = extractFinal(text);
             return;
           }
 
-          // Otherwise parse Action
-          const action = parseAction(text);
+          // Otherwise parse Action (truncate after first action to drop hallucinated Observations)
+          const truncated = truncateAfterAction(text);
+          const action = parseAction(truncated);
           if (!action) {
             card.actionPre.textContent = "No Action parsed (model did not follow the requested format).";
             finalAnswerEl.textContent = text.trim();
@@ -1081,15 +1121,17 @@ for (let step = 1; step <= MAX_STEPS; step++) {
           }
 
           card.actionPre.textContent = `${action.tool}[${action.input}]`;
+          // Show truncated text to keep display clean
+          card.outPre.textContent = truncated;
 
           card.obsPre.textContent = "⏳ Running tool...";
           const obs = await runTool(action.tool, action.input);
           card.obsPre.textContent = obs;
 
-          // Append assistant output + observation
+          // Append assistant output (truncated) + real observation
           messages = [
             ...messages,
-            { role: "assistant", content: text },
+            { role: "assistant", content: truncated },
             { role: "user", content: `Observation: ${obs}\n\nContinue.` },
           ];
         }
