@@ -260,7 +260,7 @@
         </div>
 
         <progress id="loadProgress" value="0" max="1"></progress>
-        <div id="modelStatus" class="small">Pick a model and click “Load model”.</div>
+        <div id="modelStatus" class="small">Pick a model and click "Load model".</div>
 
         <hr />
 
@@ -321,7 +321,7 @@
           </label>
           <div class="small">
             Tip: The app will replace <code>{{TOOLS}}</code> with a tool cheat-sheet at runtime (so students can see
-            “prompt composition” clearly).
+            "prompt composition" clearly).
           </div>
         </details>
 
@@ -350,8 +350,8 @@
           First model load downloads weights and caches them in the browser (progress shown). Later runs reuse cache.
         </li>
         <li>
-          ReAct here uses a <b>local tool sandbox</b> (Calculator / Lookup / SearchDocs / Base64Decode / SortNumbers).
-          No internet tool is provided by default (safer for classroom demos).
+          ReAct here uses <b>real Wikipedia search</b> (Search), a Calculator, and SortNumbers.
+          Search queries Wikipedia's API live for real-world facts.
         </li>
         <li>
           Some models may not perfectly follow the requested format; the trace helps students debug the prompt.
@@ -409,32 +409,48 @@
       }
 
       // ----------------------------
-      // Local "mini-wiki" and docs used by tools
+      // Wikipedia Search (real API)
       // ----------------------------
-      const MINI_WIKI = {
-        "react": "ReAct is a prompting paradigm that interleaves reasoning and acting. A common trace format is Thought → Action → Observation → (repeat) → Final.",
-        "thought": "Thought: the agent’s short reasoning for the current step. In ReAct demos, Thought is written explicitly to help students see planning.",
-        "action": "Action: a tool invocation the agent chooses, e.g., Calculator[2*(3+4)] or Lookup[react].",
-        "observation": "Observation: the tool/environment result after an Action. It is fed back to the model as new context for the next step.",
-        "final": "Final: the final answer to the user, after enough observations are gathered.",
-        "webllm": "WebLLM runs open-source LLMs fully in the browser with WebGPU acceleration and exposes an OpenAI-style chat API.",
-        "createmlcengine": "CreateMLCEngine(modelId, { initProgressCallback }) creates an engine and loads a model. The first run downloads model weights and caches them.",
-        "streaming": "Streaming is enabled by passing stream: true to engine.chat.completions.create(...). The call returns an async generator of chunks.",
-        "agentic prompt": "An agentic prompt defines a loop (reason → act → observe), specifies tools, and requires a trace format so the model can decide actions instead of only answering."
-      };
+      async function searchWikipedia(query) {
+        const q = String(query ?? "").trim();
+        if (!q) return "Search expects a query string.";
 
-      const LOCAL_DOCS = [
-        "WEBLLM QUICK NOTES",
-        "- CreateMLCEngine(modelId, { initProgressCallback }) loads a model into an MLCEngine.",
-        "- Chat completion uses OpenAI-style messages: [{ role: 'system'|'user'|'assistant', content: '...' }].",
-        "- Streaming: engine.chat.completions.create({ messages, stream: true, stream_options: { include_usage: true } }) returns an async generator of chunks.",
-        "- Model list is available via webllm.prebuiltAppConfig.model_list (use model_id values).",
-        "",
-        "REACT QUICK NOTES",
-        "- ReAct loop: Thought → Action → Observation → Thought → ... → Final.",
-        "- You must NOT invent Observation; wait for the environment (tool) output.",
-        "- Tools are called by emitting: Action: ToolName[tool input]",
-      ].join("\n");
+        // First try the summary API with a direct title guess
+        try {
+          const titleGuess = q.replace(/\s+/g, "_");
+          const sumResp = await fetch(
+            `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(titleGuess)}`
+          );
+          if (sumResp.ok) {
+            const data = await sumResp.json();
+            if (data.extract) return data.extract.slice(0, 500);
+          }
+        } catch {}
+
+        // Fallback: search API → get top result → fetch its summary
+        try {
+          const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&format=json&srlimit=1&utf8=1&origin=*`;
+          const searchResp = await fetch(searchUrl);
+          const searchData = await searchResp.json();
+          const results = searchData?.query?.search ?? [];
+          if (results.length > 0) {
+            const title = results[0].title.replace(/\s+/g, "_");
+            const sumResp2 = await fetch(
+              `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
+            );
+            if (sumResp2.ok) {
+              const sumData = await sumResp2.json();
+              if (sumData.extract) return sumData.extract.slice(0, 500);
+            }
+            // Last fallback: return the search snippet
+            const snippet = results[0].snippet.replace(/<[^>]+>/g, "");
+            return `${results[0].title}: ${snippet}`;
+          }
+          return "No results found.";
+        } catch (e) {
+          return `Search error: ${e?.message ?? String(e)}`;
+        }
+      }
 
       // ----------------------------
       // Tools (local-only sandbox)
@@ -565,54 +581,17 @@
         return result;
       }
 
-      function base64ToUtf8(b64) {
-        const clean = String(b64 ?? "").trim();
-        const bin = atob(clean);
-        const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-        return new TextDecoder().decode(bytes);
-      }
-
       const TOOLS = {
+        Search: {
+          usage: "Search[topic or question]",
+          description: "Search Wikipedia for real-world facts. Returns a summary from Wikipedia.",
+          run: async (input) => await searchWikipedia(input),
+          async: true,
+        },
         Calculator: {
           usage: "Calculator[2*(3+4) - 5^2]",
           description: "Evaluate arithmetic with + - * / ^ and parentheses.",
           run: (input) => String(safeEvalMath(input)),
-        },
-        Lookup: {
-          usage: "Lookup[react] or Lookup[webllm]",
-          description: "Look up short facts from a built-in mini-wiki dictionary.",
-          run: (input) => {
-            const key = String(input ?? "").trim().toLowerCase();
-            if (!key) return "Lookup expects a key. Try: " + Object.keys(MINI_WIKI).slice(0, 8).join(", ") + " ...";
-            const hit = MINI_WIKI[key];
-            if (!hit) return `No entry for "${key}". Available keys include: ` + Object.keys(MINI_WIKI).join(", ");
-            return hit;
-          },
-        },
-        SearchDocs: {
-          usage: "SearchDocs[stream] or SearchDocs[CreateMLCEngine]",
-          description: "Keyword search over a small local docs excerpt (WebLLM + ReAct notes).",
-          run: (input) => {
-            const q = String(input ?? "").trim().toLowerCase();
-            const lines = LOCAL_DOCS.split("\n");
-            if (!q) return "SearchDocs expects a query string.";
-            const hits = [];
-            for (let idx = 0; idx < lines.length; idx++) {
-              const line = lines[idx];
-              if (line.toLowerCase().includes(q)) hits.push({ idx, line });
-              if (hits.length >= 6) break;
-            }
-            if (!hits.length) return `No matches for "${q}". Try a different keyword.`;
-            return hits.map((h) => `L${h.idx + 1}: ${h.line}`).join("\n");
-          },
-        },
-        Base64Decode: {
-          usage: "Base64Decode[SGVsbG8sIFdlYkxMTSBhbmQgUmVBY3Qh]",
-          description: "Decode a base64 string into UTF-8 text.",
-          run: (input) => {
-            try { return base64ToUtf8(input); }
-            catch (e) { return "ERROR: invalid base64. " + (e?.message ?? String(e)); }
-          },
         },
         SortNumbers: {
           usage: "SortNumbers[19, 3, 42, 8]",
@@ -648,44 +627,44 @@
       // ----------------------------
       const SAMPLES = [
         {
-          title: "1) Math (forces tool): big arithmetic",
+          title: "1) Multi-hop: band + lead singer",
+          prompt: "Who was the lead singer of the band that recorded the album 'Nevermind'? Use the Search tool to find the answer step by step."
+        },
+        {
+          title: "2) Multi-hop: country + population",
+          prompt: "What is the population of the country where the Eiffel Tower is located? Use Search to find each fact."
+        },
+        {
+          title: "3) Math (Calculator)",
           prompt: "Compute (12345 * 6789) - 101112. You MUST use the Calculator tool at least once. Then give the final number."
         },
         {
-          title: "2) ReAct definition (Lookup)",
-          prompt: "What does ReAct mean? Use Lookup[react], then explain Thought/Action/Observation/Final in your own words. Use at least one tool call."
-        },
-        {
-          title: "3) WebLLM streaming (SearchDocs)",
-          prompt: "In our local notes, what parameter enables streaming chat completion in WebLLM? Use SearchDocs[stream] and answer with a short code-ish explanation."
-        },
-        {
-          title: "4) Base64 decode (tool)",
-          prompt: "Decode this base64 string using Base64Decode: SGVsbG8sIFdlYkxMTSBhbmQgUmVBY3Qh  Then explain what it says."
+          title: "4) Search + Calculate",
+          prompt: "What is the area of Japan in square miles? Search for the area in square kilometers, then use Calculator to convert (1 sq km = 0.386102 sq miles)."
         },
         {
           title: "5) Sorting + median (SortNumbers)",
           prompt: "Sort these numbers and report the median: 19, 3, 42, 42, 8, 15, 7. You MUST use SortNumbers at least once."
         },
         {
-          title: "6) Lesson plan (no tool required)",
-          prompt: "Create a 20-minute in-class activity that contrasts Direct prompting vs ReAct prompting. Include: learning goals, procedure, and what students should observe in the trace."
+          title: "6) Multi-hop: director of Best Picture",
+          prompt: "Who directed the movie 'Oppenheimer'? Use Search to find out."
         },
         {
-          title: "7) Prompt rewrite (teach agentic prompting)",
-          prompt: "Rewrite this plain prompt into a ReAct prompt with tool access:\n\nPlain prompt: 'Find the product of 37 and 91 and explain the steps.'\n\nReturn the improved ReAct-style system prompt + user prompt."
-        },
-        {
-          title: "8) Debugging: streaming loop (SearchDocs optional)",
-          prompt: "A student wrote: `engine.chat.completions.create({messages})` and expected streaming, but it returns a full response. Explain the bug and how to fix it. If helpful, use SearchDocs[stream]."
-        },
-        {
-          title: "9) Unit conversion (Calculator)",
+          title: "7) Unit conversion (Calculator)",
           prompt: "A train travels 120 km in 1 hour 45 minutes. What is the average speed in km/h? You MUST use Calculator at least once."
         },
         {
-          title: "10) Mini 'RAG' (Lookup + SearchDocs)",
-          prompt: "Using only our local tools, explain: (1) how to load a model in WebLLM, and (2) how to enable streaming responses. Use at least two tool calls (Lookup + SearchDocs)."
+          title: "8) Search: scientific fact",
+          prompt: "What is the speed of light in meters per second? Use Search to verify, then use Calculator to convert it to miles per second (1 mile = 1609.34 meters)."
+        },
+        {
+          title: "9) Multi-hop: capital + elevation",
+          prompt: "What is the elevation of the capital of France? Use Search to find the capital first, then search for its elevation."
+        },
+        {
+          title: "10) Compare: Direct vs ReAct",
+          prompt: "What year was the University of Colorado Boulder founded, and how old is it? Use Search and Calculator."
         }
       ];
 
@@ -800,8 +779,8 @@ for (let step = 1; step <= MAX_STEPS; step++) {
   const action = parseAction(text);
   if (!action) return text; // model didn't follow format
 
-  // 3) Run tool locally and feed back as Observation
-  const observation = runTool(action.tool, action.input);
+  // 3) Run tool and feed back as Observation
+  const observation = await runTool(action.tool, action.input);
 
   messages.push({ role: "assistant", content: text });
   messages.push({ role: "user", content: "Observation: " + observation + "\\n\\nContinue." });
@@ -864,7 +843,7 @@ for (let step = 1; step <= MAX_STEPS; step++) {
           const p = typeof info === "number" ? info : (info?.progress ?? 0);
           const msg = typeof info === "object" ? (info?.text ?? "") : "";
           loadProgress.value = Math.max(0, Math.min(1, p));
-          modelStatus.textContent = `Loading: ${(p * 100).toFixed(1)}% ${msg ? "— " + msg : ""}`;
+          modelStatus.textContent = `Loading: ${(p * 100).toFixed(1)}% ${msg ? "- " + msg : ""}`;
         };
 
         try {
@@ -946,11 +925,12 @@ for (let step = 1; step <= MAX_STEPS; step++) {
         return { tool: m[1], input: (m[2] ?? "").trim() };
       }
 
-      function runTool(toolName, input) {
+      async function runTool(toolName, input) {
         const tool = TOOLS[toolName];
         if (!tool) return `ERROR: Unknown tool "${toolName}". Available: ${Object.keys(TOOLS).join(", ")}`;
         try {
-          return tool.run(input);
+          const result = tool.async ? await tool.run(input) : tool.run(input);
+          return result;
         } catch (e) {
           return `ERROR in ${toolName}: ${e?.message ?? String(e)}`;
         }
@@ -1102,7 +1082,8 @@ for (let step = 1; step <= MAX_STEPS; step++) {
 
           card.actionPre.textContent = `${action.tool}[${action.input}]`;
 
-          const obs = runTool(action.tool, action.input);
+          card.obsPre.textContent = "⏳ Running tool...";
+          const obs = await runTool(action.tool, action.input);
           card.obsPre.textContent = obs;
 
           // Append assistant output + observation
@@ -1120,7 +1101,7 @@ for (let step = 1; step <= MAX_STEPS; step++) {
         // Section marker: Direct
         const marker1 = document.createElement("div");
         marker1.className = "step";
-        marker1.innerHTML = `<h3>COMPARE — Part 1/2: Direct</h3><div class="small">One model call, no tools.</div>`;
+        marker1.innerHTML = `<h3>COMPARE - Part 1/2: Direct</h3><div class="small">One model call, no tools.</div>`;
         timelineEl.appendChild(marker1);
 
         await runDirect(userPrompt, temperature);
@@ -1128,7 +1109,7 @@ for (let step = 1; step <= MAX_STEPS; step++) {
         // Section marker: ReAct
         const marker2 = document.createElement("div");
         marker2.className = "step";
-        marker2.innerHTML = `<h3>COMPARE — Part 2/2: ReAct Agent</h3><div class="small">Tool loop with Thought/Action/Observation.</div>`;
+        marker2.innerHTML = `<h3>COMPARE - Part 2/2: ReAct Agent</h3><div class="small">Tool loop with Thought/Action/Observation.</div>`;
         timelineEl.appendChild(marker2);
 
         await runReAct(userPrompt, temperature, maxSteps);
