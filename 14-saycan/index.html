@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SayCan: LLM-Guided Robot Planning</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .container { display: flex; height: 100vh; }
+        .scene-container { flex: 1; position: relative; }
+        #canvas-container { width: 100%; height: 100%; }
+        .sidebar {
+            width: 420px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header { padding: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        .header h1 { font-size: 1.4rem; font-weight: 600; color: #00d4ff; margin-bottom: 4px; }
+        .header p { font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); }
+        .input-section { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        .input-section label { display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255, 255, 255, 0.5); margin-bottom: 10px; }
+        .input-wrapper { display: flex; gap: 10px; }
+        .input-wrapper input {
+            flex: 1;
+            padding: 14px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .input-wrapper input:focus { border-color: #00d4ff; }
+        .input-wrapper input::placeholder { color: rgba(255, 255, 255, 0.3); }
+        .input-wrapper button {
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .input-wrapper button:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); }
+        .input-wrapper button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .examples { padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .example-btn {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .example-btn:hover { background: rgba(0, 212, 255, 0.2); border-color: rgba(0, 212, 255, 0.3); color: #00d4ff; }
+        .results { flex: 1; overflow-y: auto; padding: 20px; }
+        .section { margin-bottom: 24px; }
+        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .section-title::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #00d4ff; }
+        .affordance-list { display: flex; flex-direction: column; gap: 8px; }
+        .affordance-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border: 1px solid transparent; transition: all 0.3s; }
+        .affordance-item.highlight { border-color: #00d4ff; background: rgba(0, 212, 255, 0.1); }
+        .affordance-item.executing { border-color: #00ff88; background: rgba(0, 255, 136, 0.1); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .skill-name { font-weight: 600; font-size: 0.9rem; min-width: 100px; }
+        .score-bar { flex: 1; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; }
+        .score-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 4px; transition: width 0.5s ease-out; }
+        .score-value { font-size: 0.85rem; font-weight: 600; color: #00d4ff; min-width: 45px; text-align: right; }
+        .plan-steps { display: flex; flex-direction: column; gap: 8px; }
+        .plan-step { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border-left: 3px solid transparent; transition: all 0.3s; }
+        .plan-step.pending { border-left-color: rgba(255, 255, 255, 0.2); }
+        .plan-step.current { border-left-color: #00d4ff; background: rgba(0, 212, 255, 0.1); }
+        .plan-step.completed { border-left-color: #00ff88; background: rgba(0, 255, 136, 0.05); }
+        .step-number { width: 24px; height: 24px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; }
+        .step-number.done { background: #00ff88; color: #000; }
+        .step-number.current { background: #00d4ff; color: #000; }
+        .step-text { flex: 1; font-size: 0.9rem; }
+        .empty-state { text-align: center; padding: 40px 20px; color: rgba(255, 255, 255, 0.4); }
+        .empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.5; }
+        .legend { padding: 16px 20px; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; color: rgba(255, 255, 255, 0.5); }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 3px; }
+        .controls { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 10px; }
+        .control-btn { padding: 10px 16px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: #fff; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+        .control-btn:hover { background: rgba(0, 212, 255, 0.3); border-color: #00d4ff; }
+        .status-badge { position: absolute; top: 20px; left: 20px; padding: 8px 16px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); border-radius: 20px; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #00ff88; }
+        .status-dot.thinking { animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="scene-container">
+            <div id="canvas-container"></div>
+            <div class="status-badge">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text">Ready</span>
+            </div>
+            <div class="controls">
+                <button class="control-btn" onclick="resetScene()">Reset Scene</button>
+                <button class="control-btn" onclick="toggleCamera()">Toggle View</button>
+            </div>
+        </div>
+        <div class="sidebar">
+            <div class="header">
+                <h1>🤖 SayCan Demo</h1>
+                <p>LLM-Guided Robot Planning</p>
+            </div>
+            <div class="input-section">
+                <label>Instruction</label>
+                <div class="input-wrapper">
+                    <input type="text" id="instruction-input" placeholder="e.g., Bring me a coke" onkeypress="if(event.key==='Enter')executeInstruction()">
+                    <button id="execute-btn" onclick="executeInstruction()">Execute</button>
+                </div>
+            </div>
+            <div class="examples">
+                <button class="example-btn" onclick="setInstruction('Bring me a coke')">"Bring me a coke"</button>
+                <button class="example-btn" onclick="setInstruction('Put the apple on the table')">"Put the apple on the table"</button>
+                <button class="example-btn" onclick="setInstruction('Move the book to the shelf')">"Move the book to the shelf"</button>
+            </div>
+            <div class="results" id="results">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                    <p>Enter an instruction to see<br>how the LLM plans and executes</p>
+                </div>
+            </div>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-color" style="background: #00d4ff;"></div><span>Robot arm</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #ff6b6b;"></div><span>Pickup objects</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #4ecdc4;"></div><span>Drop-off locations</span></div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, robot, arm;
+        let objects = [];
+        let isPerspectiveTop = false;
+        
+        function init() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+            camera.position.set(8, 10, 12);
+            camera.lookAt(0, 0, 0);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            const floorGeometry = new THREE.PlaneGeometry(20, 20);
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x2d3436, roughness: 0.8 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x333333);
+            scene.add(gridHelper);
+            createEnvironment();
+            createRobot();
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+        
+        function createEnvironment() {
+            const counterGeo = new THREE.BoxGeometry(6, 1, 1.5);
+            const counterMat = new THREE.MeshStandardMaterial({ color: 0x636e72 });
+            const counter = new THREE.Mesh(counterGeo, counterMat);
+            counter.position.set(-3, 0.5, -4);
+            counter.castShadow = true;
+            counter.receiveShadow = true;
+            scene.add(counter);
+            const tableGeo = new THREE.BoxGeometry(3, 0.1, 2);
+            const tableMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+            const table = new THREE.Mesh(tableGeo, tableMat);
+            table.position.set(3, 0.8, 2);
+            table.castShadow = true;
+            table.receiveShadow = true;
+            scene.add(table);
+            const legGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.75);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x5d3513 });
+            const legPositions = [[2.5, 0.375, 1], [3.5, 0.375, 1], [2.5, 0.375, 3], [3.5, 0.375, 3]];
+            legPositions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeo, legMat);
+                leg.position.set(...pos);
+                leg.castShadow = true;
+                scene.add(leg);
+            });
+            const shelfGeo = new THREE.BoxGeometry(2, 0.1, 0.5);
+            const shelfMat = new THREE.MeshStandardMaterial({ color: 0x5d3513 });
+            const shelf = new THREE.Mesh(shelfGeo, shelfMat);
+            shelf.position.set(4, 2.5, -3);
+            shelf.castShadow = true;
+            shelf.receiveShadow = true;
+            scene.add(shelf);
+            const supportGeo = new THREE.BoxGeometry(0.1, 2.5, 0.3);
+            const support1 = new THREE.Mesh(supportGeo, shelfMat);
+            support1.position.set(3.1, 1.25, -3);
+            scene.add(support1);
+            const support2 = new THREE.Mesh(supportGeo, shelfMat);
+            support2.position.set(4.9, 1.25, -3);
+            scene.add(support2);
+            createObject('coke', 0xff6b6b, -5, 1.2, -4, 0.4);
+            createObject('apple', 0x2ecc71, -4, 1.2, -4, 0.35);
+            createObject('book', 0x3498db, -3.5, 1.2, -4, 0.3);
+            createObject('cup', 0xf39c12, 3, 1, 2, 0.25);
+        }
+        
+        function createObject(name, color, x, y, z, size) {
+            const geo = new THREE.BoxGeometry(size * 1.5, size, size);
+            const mat = new THREE.MeshStandardMaterial({ color: color });
+            const obj = new THREE.Mesh(geo, mat);
+            obj.position.set(x, y, z);
+            obj.castShadow = true;
+            obj.userData = { name: name, originalPos: { x, y, z }, isHeld: false };
+            scene.add(obj);
+            objects.push(obj);
+            return obj;
+        }
+        
+        function createRobot() {
+            const baseGeo = new THREE.CylinderGeometry(0.5, 0.6, 0.3);
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
+            robot = new THREE.Mesh(baseGeo, baseMat);
+            robot.position.set(0, 0.15, 0);
+            robot.castShadow = true;
+            scene.add(robot);
+            const torsoGeo = new THREE.CylinderGeometry(0.3, 0.4, 1);
+            const torsoMat = new THREE.MeshStandardMaterial({ color: 0x34495e });
+            const torso = new THREE.Mesh(torsoGeo, torsoMat);
+            torso.position.set(0, 0.8, 0);
+            torso.castShadow = true;
+            robot.add(torso);
+            const armPivot = new THREE.Group();
+            armPivot.position.set(0, 1.3, 0);
+            robot.add(armPivot);
+            const armMat = new THREE.MeshStandardMaterial({ color: 0x00d4ff });
+            const upperArmGeo = new THREE.BoxGeometry(0.15, 0.8, 0.15);
+            const upperArm = new THREE.Mesh(upperArmGeo, armMat);
+            upperArm.position.set(0, 0.4, 0);
+            upperArm.castShadow = true;
+            armPivot.add(upperArm);
+            const lowerArmGeo = new THREE.BoxGeometry(0.12, 0.7, 0.12);
+            const lowerArm = new THREE.Mesh(lowerArmGeo, armMat);
+            lowerArm.position.set(0, 1.0, 0);
+            lowerArm.castShadow = true;
+            armPivot.add(lowerArm);
+            const gripperGeo = new THREE.BoxGeometry(0.2, 0.15, 0.1);
+            const gripper = new THREE.Mesh(gripperGeo, armMat);
+            gripper.position.set(0, 1.4, 0);
+            gripper.castShadow = true;
+            armPivot.add(gripper);
+            robot.userData.armPivot = armPivot;
+            robot.userData.gripper = gripper;
+            arm = armPivot;
+        }
+        
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        
+        function toggleCamera() {
+            isPerspectiveTop = !isPerspectiveTop;
+            if (isPerspectiveTop) { camera.position.set(0, 15, 0); camera.lookAt(0, 0, 0); }
+            else { camera.position.set(8, 10, 12); camera.lookAt(0, 0, 0); }
+        }
+        
+        function resetScene() {
+            objects.forEach(obj => {
+                if (obj.userData.originalPos) {
+                    obj.position.set(obj.userData.originalPos.x, obj.userData.originalPos.y, obj.userData.originalPos.z);
+                    obj.userData.isHeld = false;
+                }
+            });
+            if (arm) arm.rotation.set(0, 0, 0);
+            robot.position.set(0, 0.15, 0);
+            document.getElementById('results').innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg><p>Enter an instruction to see<br>how the LLM plans and executes</p></div>';
+            updateStatus('Ready', false);
+        }
+        
+        function setInstruction(text) { document.getElementById('instruction-input').value = text; }
+        
+        function updateStatus(text, thinking) {
+            document.getElementById('status-text').textContent = text;
+            const dot = document.getElementById('status-dot');
+            dot.className = 'status-dot' + (thinking ? ' thinking' : '');
+        }
+        
+        const taskLibrary = {
+            'bring me a coke': {
+                affordances: [
+                    { skill: 'pick(coke)', score: 0.92 }, { skill: 'pick(apple)', score: 0.15 }, { skill: 'pick(book)', score: 0.08 },
+                    { skill: 'pick(cup)', score: 0.12 }, { skill: 'place(table)', score: 0.88 }, { skill: 'place(counter)', score: 0.21 },
+                    { skill: 'place(shelf)', score: 0.05 }, { skill: 'navigate(table)', score: 0.85 }, { skill: 'navigate(counter)', score: 0.30 }
+                ],
+                plan: [
+                    { step: 'navigate', target: 'counter', description: 'Navigate to counter' },
+                    { step: 'pick', target: 'coke', description: 'Pick up the coke can' },
+                    { step: 'navigate', target: 'table', description: 'Navigate to table' },
+                    { step: 'place', target: 'table', description: 'Place coke on table' }
+                ]
+            },
+            'put the apple on the table': {
+                affordances: [
+                    { skill: 'pick(apple)', score: 0.94 }, { skill: 'pick(coke)', score: 0.18 }, { skill: 'pick(book)', score: 0.10 },
+                    { skill: 'place(table)', score: 0.91 }, { skill: 'place(counter)', score: 0.25 }, { skill: 'place(shelf)', score: 0.08 },
+                    { skill: 'navigate(counter)', score: 0.45 }, { skill: 'navigate(table)', score: 0.88 }
+                ],
+                plan: [
+                    { step: 'navigate', target: 'counter', description: 'Navigate to counter' },
+                    { step: 'pick', target: 'apple', description: 'Pick up the apple' },
+                    { step: 'navigate', target: 'table', description: 'Navigate to table' },
+                    { step: 'place', target: 'table', description: 'Place apple on table' }
+                ]
+            },
+            'move the book to the shelf': {
+                affordances: [
+                    { skill: 'pick(book)', score: 0.89 }, { skill: 'pick(apple)', score: 0.12 }, { skill: 'pick(coke)', score: 0.10 },
+                    { skill: 'place(shelf)', score: 0.95 }, { skill: 'place(table)', score: 0.20 }, { skill: 'place(counter)', score: 0.15 },
+                    { skill: 'navigate(counter)', score: 0.42 }, { skill: 'navigate(shelf)', score: 0.90 }
+                ],
+                plan: [
+                    { step: 'navigate', target: 'counter', description: 'Navigate to counter' },
+                    { step: 'pick', target: 'book', description: 'Pick up the book' },
+                    { step: 'navigate', target: 'shelf', description: 'Navigate to shelf' },
+                    { step: 'place', target: 'shelf', description: 'Place book on shelf' }
+                ]
+            }
+        };
+        
+        function getLLMResponse(instruction) {
+            const normalized = instruction.toLowerCase().trim();
+            for (const [key, data] of Object.entries(taskLibrary)) {
+                if (normalized.includes(key) || key.includes(normalized)) return data;
+            }
+            return {
+                affordances: [
+                    { skill: 'pick(coke)', score: 0.75 }, { skill: 'pick(apple)', score: 0.70 },
+                    { skill: 'place(table)', score: 0.80 }, { skill: 'navigate(table)', score: 0.75 }
+                ],
+                plan: [
+                    { step: 'navigate', target: 'counter', description: 'Navigate to counter' },
+                    { step: 'pick', target: 'object', description: 'Pick up object' },
+                    { step: 'navigate', target: 'table', description: 'Navigate to table' },
+                    { step: 'place', target: 'table', description: 'Place object on table' }
+                ]
+            };
+        }
+        
+        function executeInstruction() {
+            const input = document.getElementById('instruction-input');
+            const instruction = input.value.trim();
+            if (!instruction) return;
+            const btn = document.getElementById('execute-btn');
+            btn.disabled = true;
+            updateStatus('LLM Analyzing...', true);
+            const response = getLLMResponse(instruction);
+            displayResults(instruction, response);
+            executePlan(response.plan);
+        }
+        
+        function displayResults(instruction, response) {
+            const container = document.getElementById('results');
+            const sorted = [...response.affordances].sort((a, b) => b.score - a.score);
+            let html = '<div class="section"><div class="section-title">Affordance Scoring</div><div class="affordance-list">';
+            sorted.forEach((aff, i) => {
+                const highlight = i < 4 ? 'highlight' : '';
+                html += '<div class="affordance-item ' + highlight + '" id="aff-' + i + '"><span class="skill-name">' + aff.skill + '</span><div class="score-bar"><div class="score-fill" style="width: 0%"></div></div><span class="score-value">' + (aff.score * 100).toFixed(0) + '%</span></div>';
+            });
+            html += '</div></div><div class="section"><div class="section-title">Execution Plan</div><div class="plan-steps">';
+            response.plan.forEach((step, i) => {
+                html += '<div class="plan-step pending" id="step-' + i + '"><span class="step-number">' + (i + 1) + '</span><span class="step-text">' + step.description + '</span></div>';
+            });
+            html += '</div></div>';
+            container.innerHTML = html;
+            setTimeout(() => {
+                sorted.forEach((aff, i) => {
+                    const el = document.querySelector('#aff-' + i + ' .score-fill');
+                    if (el) el.style.width = (aff.score * 100) + '%';
+                });
+            }, 100);
+        }
+        
+        function executePlan(plan) {
+            updateStatus('Executing Plan...', true);
+            let currentStep = 0;
+            function runNextStep() {
+                if (currentStep >= plan.length) {
+                    updateStatus('Complete!', false);
+                    document.getElementById('execute-btn').disabled = false;
+                    return;
+                }
+                plan.forEach((_, i) => {
+                    const el = document.getElementById('step-' + i);
+                    if (el) {
+                        let cls = 'plan-step';
+                        if (i < currentStep) cls += ' completed';
+                        else if (i === currentStep) cls += ' current';
+                        else cls += ' pending';
+                        el.className = cls;
+                        const num = el.querySelector('.step-number');
+                        if (num) {
+                            if (i < currentStep) num.className = 'step-number done';
+                            else if (i === currentStep) num.className = 'step-number current';
+                        }
+                    }
+                });
+                const step = plan[currentStep];
+                executeStep(step).then(() => { currentStep++; setTimeout(runNextStep, 500); });
+            }
+            runNextStep();
+        }
+        
+        function executeStep(step) {
+            return new Promise((resolve) => {
+                const duration = 1500;
+                if (step.step === 'navigate') {
+                    updateStatus('Navigating to ' + step.target + '...', true);
+                    const targetPos = getTargetPosition(step.target);
+                    if (targetPos) animateRobotMove(targetPos, duration);
+                } else if (step.step === 'pick') {
+                    updateStatus('Picking up ' + step.target + '...', true);
+                    const obj = objects.find(o => o.userData.name === step.target);
+                    if (obj) animatePick(obj, duration);
+                } else if (step.step === 'place') {
+                    updateStatus('Placing on ' + step.target + '...', true);
+                    const heldObj = objects.find(o => o.userData.isHeld);
+                    if (heldObj) {
+                        const targetPos = getTargetPosition(step.target);
+                        if (targetPos) animatePlace(heldObj, targetPos, duration);
+                    }
+                }
+                setTimeout(resolve, duration);
+            });
+        }
+        
+        function getTargetPosition(target) {
+            const positions = { 'counter': { x: -4, z: -4, y: 1.2 }, 'table': { x: 3, z: 2, y: 1.0 }, 'shelf': { x: 4, z: -3, y: 2.7 } };
+            return positions[target] || { x: 0, z: 0, y: 1 };
+        }
+        
+        function animateRobotMove(target, duration) {
+            const startX = robot.position.x;
+            const startZ = robot.position.z;
+            const startTime = Date.now();
+            function update() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                robot.position.x = startX + (target.x - startX) * eased;
+                robot.position.z = startZ + (target.z - startZ) * eased;
+                const angle = Math.atan2(target.x - robot.position.x, target.z - robot.position.z);
+                arm.rotation.y = angle;
+                if (progress < 1) requestAnimationFrame(update);
+            }
+            update();
+        }
+        
+        function animatePick(obj, duration) {
+            const startPos = obj.position.clone();
+            const targetPos = new THREE.Vector3(robot.position.x, 2.5, robot.position.z);
+            const startTime = Date.now();
+            function update() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                obj.position.lerpVectors(startPos, targetPos, eased);
+                if (progress < 1) requestAnimationFrame(update);
+                else { obj.userData.isHeld = true; }
+            }
+            update();
+        }
+        
+        function animatePlace(obj, targetPos, duration) {
+            const startPos = obj.position.clone();
+            const endPos = new THREE.Vector3(targetPos.x, targetPos.y, targetPos.z);
+            const startTime = Date.now();
+            function update() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                obj.position.lerpVectors(startPos, endPos, eased);
+                if (progress < 1) requestAnimationFrame(update);
+                else {
+                    obj.userData.isHeld = false;
+                    obj.userData.originalPos = { x: endPos.x, y: endPos.y, z: endPos.z };
+                }
+            }
+            update();
+        }
+        
+        init();
+    </script>
+</body>
+</html>
