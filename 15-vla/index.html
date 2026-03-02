@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VLA Architecture Explorer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+        .container { display: flex; height: 100vh; }
+        .diagram-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; position: relative; }
+        .info-panel {
+            width: 40%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .panel-header { padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .panel-header h1 { font-size: 1.4rem; color: #a78bfa; margin-bottom: 4px; }
+        .panel-header p { font-size: 0.85rem; color: rgba(255,255,255,0.5); }
+        .panel-content { padding: 24px; flex: 1; overflow-y: auto; }
+        
+        /* Model selector */
+        .model-tabs { display: flex; gap: 8px; margin-bottom: 20px; padding: 0 24px; }
+        .model-tab {
+            flex: 1; padding: 10px 8px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px;
+            background: transparent; color: rgba(255,255,255,0.5); font-size: 0.8rem; cursor: pointer;
+            text-align: center; transition: all 0.3s;
+        }
+        .model-tab.active { border-color: #a78bfa; color: #a78bfa; background: rgba(167,139,250,0.1); }
+        .model-tab:hover { border-color: rgba(167,139,250,0.5); }
+        
+        /* Architecture diagram */
+        .arch-diagram { position: relative; width: 100%; max-width: 700px; }
+        .arch-title { text-align: center; font-size: 1.2rem; font-weight: 600; margin-bottom: 30px; color: #a78bfa; }
+        .arch-subtitle { text-align: center; font-size: 0.85rem; color: rgba(255,255,255,0.5); margin-bottom: 20px; }
+        
+        /* Flow: Input -> Components -> Output */
+        .flow { display: flex; flex-direction: column; gap: 16px; align-items: center; width: 100%; }
+        .flow-row { display: flex; gap: 16px; align-items: center; justify-content: center; width: 100%; }
+        .flow-arrow { color: rgba(255,255,255,0.3); font-size: 1.5rem; }
+        .flow-arrow-down { text-align: center; color: rgba(255,255,255,0.3); font-size: 1.2rem; padding: 4px 0; }
+        
+        .component {
+            padding: 16px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            min-width: 140px;
+            position: relative;
+            border: 2px solid transparent;
+        }
+        .component:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+        .component.selected { border-color: #fff; transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+        .component .label { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+        .component .sublabel { font-size: 0.7rem; opacity: 0.7; }
+        
+        /* Component colors */
+        .comp-input { background: linear-gradient(135deg, #1e3a5f, #2d5a87); }
+        .comp-vision { background: linear-gradient(135deg, #1a4731, #2d7a50); }
+        .comp-language { background: linear-gradient(135deg, #4a1942, #7a2d6a); }
+        .comp-action { background: linear-gradient(135deg, #5a3a1a, #8a5a2d); }
+        .comp-output { background: linear-gradient(135deg, #3a1a1a, #6a2d2d); }
+        .comp-fusion { background: linear-gradient(135deg, #2a2a5a, #4a4a8a); }
+        .comp-flow { background: linear-gradient(135deg, #1a3a3a, #2d6a6a); }
+        
+        /* Info display */
+        .info-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 12px; }
+        .info-tag { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; margin-bottom: 16px; }
+        .info-desc { font-size: 0.9rem; line-height: 1.7; color: rgba(255,255,255,0.8); margin-bottom: 16px; }
+        .info-details { font-size: 0.85rem; line-height: 1.6; color: rgba(255,255,255,0.6); }
+        .info-details h3 { color: #a78bfa; font-size: 0.9rem; margin: 12px 0 6px; }
+        .info-details ul { padding-left: 20px; }
+        .info-details li { margin-bottom: 4px; }
+        .info-details code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-size: 0.8rem; }
+        
+        .comparison-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.8rem; }
+        .comparison-table th { padding: 8px; text-align: left; color: #a78bfa; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .comparison-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); }
+        
+        .empty-hint { text-align: center; padding: 60px 20px; color: rgba(255,255,255,0.3); }
+        .empty-hint svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.4; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="diagram-area">
+            <div class="arch-diagram" id="diagram"></div>
+        </div>
+        <div class="info-panel">
+            <div class="panel-header">
+                <h1>🧠 VLA Architecture Explorer</h1>
+                <p>Click any component to learn more</p>
+            </div>
+            <div class="model-tabs">
+                <button class="model-tab active" onclick="switchModel('rt2')">RT-2</button>
+                <button class="model-tab" onclick="switchModel('pi0')">pi-zero</button>
+                <button class="model-tab" onclick="switchModel('openvla')">OpenVLA</button>
+                <button class="model-tab" onclick="switchModel('compare')">Compare</button>
+            </div>
+            <div class="panel-content" id="info-content">
+                <div class="empty-hint">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
+                    </svg>
+                    <p>Click a component in the diagram<br>to see detailed information</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentModel = 'rt2';
+        let selectedComponent = null;
+        
+        const models = {
+            rt2: {
+                name: 'RT-2 (Google DeepMind, 2023)',
+                subtitle: 'First Vision-Language-Action model',
+                components: [
+                    { id: 'camera', label: 'Camera Image', sublabel: '300x300 RGB', cls: 'comp-input', row: 0 },
+                    { id: 'text', label: 'Text Instruction', sublabel: '"Pick up the cup"', cls: 'comp-input', row: 0 },
+                    { id: 'vit', label: 'Vision Encoder', sublabel: 'ViT (Vision Transformer)', cls: 'comp-vision', row: 1 },
+                    { id: 'tokenizer', label: 'Text Tokenizer', sublabel: 'SentencePiece', cls: 'comp-language', row: 1 },
+                    { id: 'vlm', label: 'VLM Backbone', sublabel: 'PaLI-X (55B params)', cls: 'comp-fusion', row: 2 },
+                    { id: 'action_tokens', label: 'Action Tokenizer', sublabel: '256 bins per dimension', cls: 'comp-action', row: 3 },
+                    { id: 'output', label: 'Robot Action', sublabel: '[x, y, z, rx, ry, rz, gripper]', cls: 'comp-output', row: 4 },
+                ]
+            },
+            pi0: {
+                name: 'pi-zero (Physical Intelligence, 2024)',
+                subtitle: 'Flow matching for continuous control',
+                components: [
+                    { id: 'camera', label: 'Camera Images', sublabel: 'Multi-view RGB', cls: 'comp-input', row: 0 },
+                    { id: 'text', label: 'Text Instruction', sublabel: 'Natural language', cls: 'comp-input', row: 0 },
+                    { id: 'propri', label: 'Proprioception', sublabel: 'Joint states', cls: 'comp-input', row: 0 },
+                    { id: 'vit', label: 'Vision Encoder', sublabel: 'SigLIP (PaliGemma)', cls: 'comp-vision', row: 1 },
+                    { id: 'vlm', label: 'VLM Backbone', sublabel: 'PaliGemma 2B', cls: 'comp-fusion', row: 2 },
+                    { id: 'flow', label: 'Flow Matching Head', sublabel: 'Action Expert (denoising)', cls: 'comp-flow', row: 3 },
+                    { id: 'output', label: 'Continuous Actions', sublabel: '50Hz motor commands', cls: 'comp-output', row: 4 },
+                ]
+            },
+            openvla: {
+                name: 'OpenVLA (Stanford/Berkeley, 2024)',
+                subtitle: 'Open-source 7B VLA',
+                components: [
+                    { id: 'camera', label: 'Camera Image', sublabel: '224x224 RGB', cls: 'comp-input', row: 0 },
+                    { id: 'text', label: 'Text Instruction', sublabel: 'Natural language', cls: 'comp-input', row: 0 },
+                    { id: 'vit', label: 'Vision Encoder', sublabel: 'SigLIP ViT-SO', cls: 'comp-vision', row: 1 },
+                    { id: 'projector', label: 'MLP Projector', sublabel: 'Vision-Language bridge', cls: 'comp-fusion', row: 1 },
+                    { id: 'vlm', label: 'LLM Backbone', sublabel: 'Llama 2 7B', cls: 'comp-language', row: 2 },
+                    { id: 'action_tokens', label: 'Action Tokens', sublabel: '256 bins (discrete)', cls: 'comp-action', row: 3 },
+                    { id: 'output', label: 'Robot Action', sublabel: '7-DoF end-effector', cls: 'comp-output', row: 4 },
+                ]
+            }
+        };
+        
+        const componentInfo = {
+            camera: {
+                title: 'Camera Input',
+                tag: 'Input', tagColor: '#2d5a87',
+                desc: 'Raw RGB images from the robot\'s camera(s). This is how the robot "sees" the world.',
+                details: `<h3>Why it matters</h3>
+                <ul>
+                    <li>Visual grounding: Maps language to physical objects</li>
+                    <li>RT-2: Single 300x300 image</li>
+                    <li>pi-zero: Multi-view (multiple cameras for depth/coverage)</li>
+                    <li>Key challenge: Real-world images are noisy, occluded, varied lighting</li>
+                </ul>
+                <h3>Human analogy</h3>
+                <p>This is the robot's <b>eyes</b>. Without vision, the robot can reason but can't see what to act on.</p>`
+            },
+            text: {
+                title: 'Text Instruction',
+                tag: 'Input', tagColor: '#2d5a87',
+                desc: 'Natural language instruction from the user, like "Pick up the red cup" or "Move the apple to the table".',
+                details: `<h3>Why it matters</h3>
+                <ul>
+                    <li>Natural language interface: No programming needed</li>
+                    <li>Generalizable: Same model handles many tasks via different instructions</li>
+                    <li>Grounding challenge: "the red thing" must map to a specific object in the image</li>
+                </ul>
+                <h3>Evolution</h3>
+                <ul>
+                    <li>Before VLA: Fixed command vocabulary</li>
+                    <li>SayCan: LLM selects from predefined skills</li>
+                    <li>VLA: Free-form language directly drives actions</li>
+                </ul>`
+            },
+            propri: {
+                title: 'Proprioception (Joint States)',
+                tag: 'Input', tagColor: '#2d5a87',
+                desc: 'The robot\'s internal state: joint angles, velocities, gripper position. Like knowing where your arm is without looking.',
+                details: `<h3>Why pi-zero uses it</h3>
+                <ul>
+                    <li>Enables precise control (camera alone can't tell joint angles)</li>
+                    <li>Important for contact-rich tasks (folding, insertion)</li>
+                    <li>RT-2 relies on vision only; pi-zero adds proprioception for better precision</li>
+                </ul>
+                <h3>Human analogy</h3>
+                <p>Close your eyes and touch your nose. You can do it because of <b>proprioception</b> - knowing where your body parts are without seeing them.</p>`
+            },
+            vit: {
+                title: 'Vision Encoder (ViT)',
+                tag: 'Perception', tagColor: '#2d7a50',
+                desc: 'A Vision Transformer that converts raw pixels into meaningful visual features (embeddings).',
+                details: `<h3>How it works</h3>
+                <ul>
+                    <li>Splits image into patches (e.g., 16x16 pixels each)</li>
+                    <li>Each patch becomes a token (like words in text)</li>
+                    <li>Self-attention finds relationships between patches</li>
+                    <li>Output: A sequence of visual tokens the LLM can understand</li>
+                </ul>
+                <h3>Variants</h3>
+                <ul>
+                    <li>RT-2: ViT from PaLI-X (large, 22B ViT)</li>
+                    <li>pi-zero: SigLIP from PaliGemma (efficient, contrastive-trained)</li>
+                    <li>OpenVLA: SigLIP ViT-SO (open-source)</li>
+                </ul>
+                <h3>Key insight</h3>
+                <p>Pre-trained on billions of image-text pairs from the internet. The robot "inherits" visual understanding from web data.</p>`
+            },
+            tokenizer: {
+                title: 'Text Tokenizer',
+                tag: 'Processing', tagColor: '#7a2d6a',
+                desc: 'Converts text into tokens that the language model can process. Standard NLP tokenization.',
+                details: `<h3>How it works</h3>
+                <ul>
+                    <li>SentencePiece / BPE tokenization</li>
+                    <li>"Pick up the red cup" becomes token IDs</li>
+                    <li>Same tokenizer used in the base language model</li>
+                </ul>`
+            },
+            projector: {
+                title: 'MLP Projector',
+                tag: 'Bridge', tagColor: '#4a4a8a',
+                desc: 'A small neural network that maps visual features into the language model\'s embedding space.',
+                details: `<h3>Why it\'s needed</h3>
+                <ul>
+                    <li>Vision encoder and LLM operate in different "spaces"</li>
+                    <li>Projector translates visual tokens into language-compatible tokens</li>
+                    <li>Simple but crucial: 2-layer MLP with GELU activation</li>
+                    <li>Same idea as LLaVA\'s visual projection</li>
+                </ul>`
+            },
+            vlm: {
+                title: 'VLM / LLM Backbone',
+                tag: 'Core Model', tagColor: '#4a4a8a',
+                desc: 'The "brain" - a large pre-trained model that jointly reasons about vision and language to decide what to do.',
+                details: `<h3>What it does</h3>
+                <ul>
+                    <li>Receives visual tokens + text tokens together</li>
+                    <li>Cross-attention between vision and language</li>
+                    <li>Generates the next tokens (which can be action tokens)</li>
+                </ul>
+                <h3>Model sizes</h3>
+                <ul>
+                    <li>RT-2: PaLI-X 55B parameters (huge)</li>
+                    <li>pi-zero: PaliGemma 2B (efficient)</li>
+                    <li>OpenVLA: Llama 2 7B (open-source)</li>
+                </ul>
+                <h3>Key innovation</h3>
+                <p>Robot actions are treated as just another "language" to generate. The same architecture that writes essays now controls a robot arm.</p>`
+            },
+            action_tokens: {
+                title: 'Action Tokenizer (Discrete)',
+                tag: 'Action', tagColor: '#8a5a2d',
+                desc: 'Converts continuous robot actions into discrete tokens, so the language model can generate them like text.',
+                details: `<h3>How it works</h3>
+                <ul>
+                    <li>Each action dimension (x, y, z, rotation, gripper) is discretized into 256 bins</li>
+                    <li>Continuous value 0.734 becomes token #188</li>
+                    <li>The LLM generates these tokens autoregressively (one at a time)</li>
+                </ul>
+                <h3>Limitation</h3>
+                <p>Discretization loses precision. A 256-bin space can only represent ~0.4% resolution per dimension. This is why pi-zero uses flow matching instead.</p>`
+            },
+            flow: {
+                title: 'Flow Matching Action Head',
+                tag: 'Action (pi-zero)', tagColor: '#2d6a6a',
+                desc: 'Instead of discrete tokens, pi-zero uses flow matching to generate continuous, smooth action trajectories.',
+                details: `<h3>How it works</h3>
+                <ul>
+                    <li>Start with random noise (Gaussian)</li>
+                    <li>Iteratively "denoise" toward the correct action</li>
+                    <li>Similar to diffusion models for images, but for robot actions</li>
+                    <li>Outputs continuous values at 50Hz (50 actions per second)</li>
+                </ul>
+                <h3>Why it\'s better</h3>
+                <ul>
+                    <li>No discretization loss (full precision)</li>
+                    <li>Can model multimodal distributions (multiple valid actions)</li>
+                    <li>Smoother trajectories = safer robot motion</li>
+                </ul>
+                <h3>Key insight</h3>
+                <p>Flow matching = "diffusion for actions". Instead of generating pixels, generate motor commands. Same math, different output space.</p>`
+            },
+            output: {
+                title: 'Robot Action Output',
+                tag: 'Output', tagColor: '#6a2d2d',
+                desc: 'The final motor commands sent to the robot: position, rotation, and gripper state.',
+                details: `<h3>Typical format</h3>
+                <ul>
+                    <li><code>[x, y, z]</code> - End-effector position (where the hand goes)</li>
+                    <li><code>[rx, ry, rz]</code> - Rotation (how the hand is oriented)</li>
+                    <li><code>[gripper]</code> - Open (0) or closed (1)</li>
+                    <li>= 7 dimensions of freedom (7-DoF)</li>
+                </ul>
+                <h3>Frequency</h3>
+                <ul>
+                    <li>RT-2: ~3 Hz (slow, due to large model)</li>
+                    <li>pi-zero: 50 Hz (real-time control)</li>
+                    <li>Speed matters: Faster = smoother motion, better reactivity</li>
+                </ul>`
+            },
+        };
+        
+        function switchModel(model) {
+            if (model === 'compare') {
+                showComparison();
+                document.querySelectorAll('.model-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.model-tab')[3].classList.add('active');
+                return;
+            }
+            currentModel = model;
+            selectedComponent = null;
+            document.querySelectorAll('.model-tab').forEach(t => t.classList.remove('active'));
+            const idx = { rt2: 0, pi0: 1, openvla: 2 }[model];
+            document.querySelectorAll('.model-tab')[idx].classList.add('active');
+            renderDiagram();
+            document.getElementById('info-content').innerHTML = '<div class="empty-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg><p>Click a component in the diagram<br>to see detailed information</p></div>';
+        }
+        
+        function renderDiagram() {
+            const m = models[currentModel];
+            const diagram = document.getElementById('diagram');
+            
+            // Group by row
+            const rows = {};
+            m.components.forEach(c => {
+                if (!rows[c.row]) rows[c.row] = [];
+                rows[c.row].push(c);
+            });
+            
+            let html = '<div class="arch-title">' + m.name + '</div>';
+            html += '<div class="arch-subtitle">' + m.subtitle + '</div>';
+            html += '<div class="flow">';
+            
+            const rowKeys = Object.keys(rows).sort((a,b) => a - b);
+            rowKeys.forEach((rowKey, ri) => {
+                html += '<div class="flow-row">';
+                rows[rowKey].forEach((c, ci) => {
+                    if (ci > 0) html += '<span class="flow-arrow">+</span>';
+                    const sel = selectedComponent === c.id ? ' selected' : '';
+                    html += '<div class="component ' + c.cls + sel + '" onclick="selectComponent(\'' + c.id + '\')">';
+                    html += '<div class="label">' + c.label + '</div>';
+                    html += '<div class="sublabel">' + c.sublabel + '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                if (ri < rowKeys.length - 1) {
+                    html += '<div class="flow-arrow-down">&#x25BC;</div>';
+                }
+            });
+            
+            html += '</div>';
+            diagram.innerHTML = html;
+        }
+        
+        function selectComponent(id) {
+            selectedComponent = id;
+            renderDiagram();
+            
+            const info = componentInfo[id];
+            if (!info) return;
+            
+            let html = '<div class="info-title">' + info.title + '</div>';
+            html += '<span class="info-tag" style="background:' + info.tagColor + '">' + info.tag + '</span>';
+            html += '<div class="info-desc">' + info.desc + '</div>';
+            html += '<div class="info-details">' + info.details + '</div>';
+            
+            document.getElementById('info-content').innerHTML = html;
+        }
+        
+        function showComparison() {
+            const diagram = document.getElementById('diagram');
+            diagram.innerHTML = '<div class="arch-title">VLA Model Comparison</div><div class="arch-subtitle">Evolution from RT-2 to pi-zero</div>';
+            
+            document.getElementById('info-content').innerHTML = `
+                <div class="info-title">VLA Model Comparison</div>
+                <table class="comparison-table">
+                    <tr><th></th><th>RT-2</th><th>pi-zero</th><th>OpenVLA</th></tr>
+                    <tr><td><b>Year</b></td><td>2023</td><td>2024</td><td>2024</td></tr>
+                    <tr><td><b>Org</b></td><td>DeepMind</td><td>Physical Intelligence</td><td>Stanford/Berkeley</td></tr>
+                    <tr><td><b>Parameters</b></td><td>55B</td><td>~3B</td><td>7B</td></tr>
+                    <tr><td><b>Vision</b></td><td>ViT (PaLI-X)</td><td>SigLIP (PaliGemma)</td><td>SigLIP ViT-SO</td></tr>
+                    <tr><td><b>LLM</b></td><td>PaLI-X</td><td>PaliGemma 2B</td><td>Llama 2 7B</td></tr>
+                    <tr><td><b>Action type</b></td><td>Discrete tokens (256 bins)</td><td>Continuous (flow matching)</td><td>Discrete tokens (256 bins)</td></tr>
+                    <tr><td><b>Control freq</b></td><td>~3 Hz</td><td>50 Hz</td><td>~5 Hz</td></tr>
+                    <tr><td><b>Embodiments</b></td><td>1 (Everyday Robot)</td><td>7 robots</td><td>Multiple (Open X)</td></tr>
+                    <tr><td><b>Open source</b></td><td>No</td><td>No</td><td>Yes</td></tr>
+                    <tr><td><b>Key innovation</b></td><td>Actions as text tokens</td><td>Flow matching for actions</td><td>Open-source VLA</td></tr>
+                    <tr><td><b>Zero-shot</b></td><td>Yes (novel objects)</td><td>Yes (novel tasks)</td><td>Limited</td></tr>
+                </table>
+                <div class="info-details" style="margin-top:20px">
+                    <h3>Key Takeaway</h3>
+                    <p>The field is moving from <b>discrete action tokens</b> (RT-2, OpenVLA) toward <b>continuous flow-based generation</b> (pi-zero). This enables faster, smoother, more precise robot control.</p>
+                    <h3>The Pattern</h3>
+                    <p>VLA = Vision Encoder + Language Model + Action Head. Same pattern, different implementations. Bigger data + better architecture = better generalization.</p>
+                </div>
+            `;
+        }
+        
+        // Init
+        renderDiagram();
+    </script>
+</body>
+</html>
