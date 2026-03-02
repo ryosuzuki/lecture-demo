@@ -31,7 +31,7 @@
         .input-section { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
         .input-section label { display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255, 255, 255, 0.5); margin-bottom: 10px; }
         .input-wrapper { display: flex; gap: 10px; }
-        .input-wrapper input {
+        .input-wrapper input, .input-wrapper select {
             flex: 1;
             padding: 14px 16px;
             border: 2px solid rgba(255, 255, 255, 0.1);
@@ -42,8 +42,9 @@
             outline: none;
             transition: border-color 0.3s;
         }
-        .input-wrapper input:focus { border-color: #00d4ff; }
+        .input-wrapper input:focus, .input-wrapper select:focus { border-color: #00d4ff; }
         .input-wrapper input::placeholder { color: rgba(255, 255, 255, 0.3); }
+        .input-wrapper select option { background: #1a1a2e; color: #fff; }
         .input-wrapper button {
             padding: 14px 24px;
             background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
@@ -57,6 +58,17 @@
         }
         .input-wrapper button:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); }
         .input-wrapper button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .mode-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+        .mode-tab {
+            flex: 1; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;
+            background: transparent; color: rgba(255,255,255,0.5); font-size: 0.8rem; cursor: pointer; text-align: center;
+        }
+        .mode-tab.active { border-color: #00d4ff; color: #00d4ff; background: rgba(0,212,255,0.1); }
+        .api-key-section, .webllm-section { display: none; margin-bottom: 12px; }
+        .api-key-section.active, .webllm-section.active { display: block; }
+        .progress-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 3px; transition: width 0.3s; width: 0%; }
+        .progress-text { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 4px; }
         .examples { padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 8px; }
         .example-btn {
             padding: 6px 12px;
@@ -102,7 +114,10 @@
         .status-badge { position: absolute; top: 20px; left: 20px; padding: 8px 16px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); border-radius: 20px; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #00ff88; }
         .status-dot.thinking { animation: blink 1s infinite; }
+        .status-dot.loading { background: #f39c12; animation: blink 1s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .raw-response { margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px; font-family: monospace; font-size: 0.75rem; color: rgba(255,255,255,0.6); max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+        .raw-toggle { font-size: 0.75rem; color: rgba(255,255,255,0.4); cursor: pointer; text-decoration: underline; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -124,10 +139,31 @@
                 <p>LLM-Guided Robot Planning</p>
             </div>
             <div class="input-section">
-                <label>OpenAI API Key</label>
-                <div class="input-wrapper" style="margin-bottom: 12px;">
-                    <input type="password" id="api-key-input" placeholder="sk-..." style="font-size: 0.85rem;">
+                <label>LLM Backend</label>
+                <div class="mode-tabs">
+                    <button class="mode-tab active" id="tab-webllm" onclick="switchMode('webllm')">WebLLM (Local)</button>
+                    <button class="mode-tab" id="tab-api" onclick="switchMode('api')">OpenAI API</button>
                 </div>
+                
+                <div class="webllm-section active" id="webllm-section">
+                    <div class="input-wrapper">
+                        <select id="model-select">
+                            <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (recommended)</option>
+                            <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi 3.5 Mini</option>
+                            <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 1.5B</option>
+                        </select>
+                        <button id="load-model-btn" onclick="loadWebLLM()">Load</button>
+                    </div>
+                    <div class="progress-bar" id="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                    <div class="progress-text" id="progress-text">Click "Load" to download model to browser</div>
+                </div>
+                
+                <div class="api-key-section" id="api-section">
+                    <div class="input-wrapper">
+                        <input type="password" id="api-key-input" placeholder="sk-..." style="font-size: 0.85rem;">
+                    </div>
+                </div>
+                
                 <label>Instruction</label>
                 <div class="input-wrapper">
                     <input type="text" id="instruction-input" placeholder="e.g., Bring me a coke" onkeypress="if(event.key==='Enter')executeInstruction()">
@@ -138,6 +174,8 @@
                 <button class="example-btn" onclick="setInstruction('Bring me a coke')">"Bring me a coke"</button>
                 <button class="example-btn" onclick="setInstruction('Put the apple on the table')">"Put the apple on the table"</button>
                 <button class="example-btn" onclick="setInstruction('Move the book to the shelf')">"Move the book to the shelf"</button>
+                <button class="example-btn" onclick="setInstruction('Clean the table')">"Clean the table"</button>
+                <button class="example-btn" onclick="setInstruction('Organize all items on the shelf')">"Organize all items"</button>
             </div>
             <div class="results" id="results">
                 <div class="empty-state">
@@ -155,11 +193,156 @@
         </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script>
+    <script type="module">
+        import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+        
+        // ==================== STATE ====================
         let scene, camera, renderer, robot, arm;
         let objects = [];
         let isPerspectiveTop = false;
+        let llmEngine = null;
+        let currentMode = 'webllm'; // 'webllm' or 'api'
         
+        // ==================== SYSTEM PROMPT ====================
+        const SAYCAN_PROMPT = `You are a SayCan robot planner in a kitchen. You MUST respond with ONLY a JSON object, no other text.
+
+Environment:
+- Objects on counter: coke (red can), apple (green), book (blue)
+- Objects on table: cup (yellow)
+- Locations: counter, table, shelf
+- Skills: pick(object), place(location), navigate(location)
+
+SayCan concept: Score = P(useful for task) x P(physically feasible)
+High affordance = relevant to instruction AND physically possible.
+
+JSON format (respond with ONLY this, no markdown, no explanation):
+{"affordances":[{"skill":"pick(coke)","score":0.92},{"skill":"pick(apple)","score":0.15},{"skill":"pick(book)","score":0.08},{"skill":"pick(cup)","score":0.12},{"skill":"place(table)","score":0.88},{"skill":"place(counter)","score":0.21},{"skill":"place(shelf)","score":0.05},{"skill":"navigate(table)","score":0.85},{"skill":"navigate(counter)","score":0.30},{"skill":"navigate(shelf)","score":0.10}],"plan":[{"step":"navigate","target":"counter","description":"Navigate to counter"},{"step":"pick","target":"coke","description":"Pick up the coke can"},{"step":"navigate","target":"table","description":"Navigate to table"},{"step":"place","target":"table","description":"Place coke on table"}]}
+
+Rules:
+- pick target: coke|apple|book|cup
+- place target: counter|table|shelf  
+- navigate target: counter|table|shelf
+- Always include ALL 10 affordance skills with varying scores
+- Vary scores based on the instruction (high for relevant, low for irrelevant)`;
+
+        // ==================== MODE SWITCHING ====================
+        window.switchMode = function(mode) {
+            currentMode = mode;
+            document.getElementById('tab-webllm').className = 'mode-tab' + (mode === 'webllm' ? ' active' : '');
+            document.getElementById('tab-api').className = 'mode-tab' + (mode === 'api' ? ' active' : '');
+            document.getElementById('webllm-section').className = 'webllm-section' + (mode === 'webllm' ? ' active' : '');
+            document.getElementById('api-section').className = 'api-key-section' + (mode === 'api' ? ' active' : '');
+        };
+        
+        // ==================== WEBLLM ====================
+        window.loadWebLLM = async function() {
+            const modelId = document.getElementById('model-select').value;
+            const btn = document.getElementById('load-model-btn');
+            const progressText = document.getElementById('progress-text');
+            const progressFill = document.getElementById('progress-fill');
+            
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            updateStatus('Loading model...', false, true);
+            
+            try {
+                llmEngine = await webllm.CreateMLCEngine(modelId, {
+                    initProgressCallback: (report) => {
+                        progressText.textContent = report.text || 'Loading...';
+                        if (report.progress !== undefined) {
+                            progressFill.style.width = (report.progress * 100) + '%';
+                        }
+                    }
+                });
+                
+                progressText.textContent = 'Model loaded! Ready to use.';
+                progressFill.style.width = '100%';
+                btn.textContent = 'Loaded';
+                updateStatus('Model ready', false);
+            } catch (err) {
+                progressText.textContent = 'Error: ' + err.message;
+                btn.disabled = false;
+                btn.textContent = 'Retry';
+                updateStatus('Load failed', false);
+            }
+        };
+        
+        // ==================== LLM CALL ====================
+        async function callLLM(instruction) {
+            const messages = [
+                { role: 'system', content: SAYCAN_PROMPT },
+                { role: 'user', content: 'Instruction: "' + instruction + '"\nRespond with ONLY the JSON object:' }
+            ];
+            
+            let rawText = '';
+            
+            if (currentMode === 'webllm') {
+                if (!llmEngine) throw new Error('Please load a model first (click "Load")');
+                const response = await llmEngine.chat.completions.create({
+                    messages: messages,
+                    temperature: 0.3,
+                    max_tokens: 600
+                });
+                rawText = response.choices[0].message.content;
+            } else {
+                const apiKey = document.getElementById('api-key-input').value.trim();
+                if (!apiKey) throw new Error('Please enter your OpenAI API key');
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+                    body: JSON.stringify({
+                        model: 'gpt-4o-mini',
+                        messages: messages,
+                        temperature: 0.3,
+                        response_format: { type: 'json_object' }
+                    })
+                });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error?.message || 'API error: ' + response.status);
+                }
+                const data = await response.json();
+                rawText = data.choices[0].message.content;
+            }
+            
+            // Parse JSON from response (handle markdown code blocks)
+            let jsonStr = rawText.trim();
+            const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (jsonMatch) jsonStr = jsonMatch[1].trim();
+            // Also try to find JSON object directly
+            const objMatch = jsonStr.match(/\{[\s\S]*\}/);
+            if (objMatch) jsonStr = objMatch[0];
+            
+            try {
+                const parsed = JSON.parse(jsonStr);
+                return { parsed, rawText };
+            } catch (e) {
+                console.error('Failed to parse LLM response:', rawText);
+                throw new Error('LLM returned invalid JSON. Raw: ' + rawText.substring(0, 200));
+            }
+        }
+        
+        // ==================== EXECUTE ====================
+        window.executeInstruction = async function() {
+            const input = document.getElementById('instruction-input');
+            const instruction = input.value.trim();
+            if (!instruction) return;
+            
+            const btn = document.getElementById('execute-btn');
+            btn.disabled = true;
+            updateStatus('LLM Analyzing...', true);
+            
+            try {
+                const { parsed: response, rawText } = await callLLM(instruction);
+                displayResults(instruction, response, rawText);
+                executePlan(response.plan);
+            } catch (err) {
+                updateStatus('Error: ' + err.message, false);
+                btn.disabled = false;
+            }
+        };
+        
+        // ==================== 3D SCENE ====================
         function init() {
             const container = document.getElementById('canvas-container');
             const width = container.clientWidth;
@@ -201,39 +384,33 @@
             const counterMat = new THREE.MeshStandardMaterial({ color: 0x636e72 });
             const counter = new THREE.Mesh(counterGeo, counterMat);
             counter.position.set(-3, 0.5, -4);
-            counter.castShadow = true;
-            counter.receiveShadow = true;
+            counter.castShadow = true; counter.receiveShadow = true;
             scene.add(counter);
             const tableGeo = new THREE.BoxGeometry(3, 0.1, 2);
             const tableMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
             const table = new THREE.Mesh(tableGeo, tableMat);
             table.position.set(3, 0.8, 2);
-            table.castShadow = true;
-            table.receiveShadow = true;
+            table.castShadow = true; table.receiveShadow = true;
             scene.add(table);
             const legGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.75);
             const legMat = new THREE.MeshStandardMaterial({ color: 0x5d3513 });
-            const legPositions = [[2.5, 0.375, 1], [3.5, 0.375, 1], [2.5, 0.375, 3], [3.5, 0.375, 3]];
-            legPositions.forEach(pos => {
+            [[2.5,0.375,1],[3.5,0.375,1],[2.5,0.375,3],[3.5,0.375,3]].forEach(pos => {
                 const leg = new THREE.Mesh(legGeo, legMat);
-                leg.position.set(...pos);
-                leg.castShadow = true;
+                leg.position.set(...pos); leg.castShadow = true;
                 scene.add(leg);
             });
             const shelfGeo = new THREE.BoxGeometry(2, 0.1, 0.5);
             const shelfMat = new THREE.MeshStandardMaterial({ color: 0x5d3513 });
             const shelf = new THREE.Mesh(shelfGeo, shelfMat);
             shelf.position.set(4, 2.5, -3);
-            shelf.castShadow = true;
-            shelf.receiveShadow = true;
+            shelf.castShadow = true; shelf.receiveShadow = true;
             scene.add(shelf);
             const supportGeo = new THREE.BoxGeometry(0.1, 2.5, 0.3);
-            const support1 = new THREE.Mesh(supportGeo, shelfMat);
-            support1.position.set(3.1, 1.25, -3);
-            scene.add(support1);
-            const support2 = new THREE.Mesh(supportGeo, shelfMat);
-            support2.position.set(4.9, 1.25, -3);
-            scene.add(support2);
+            [3.1, 4.9].forEach(x => {
+                const s = new THREE.Mesh(supportGeo, shelfMat);
+                s.position.set(x, 1.25, -3);
+                scene.add(s);
+            });
             createObject('coke', 0xff6b6b, -5, 1.2, -4, 0.4);
             createObject('apple', 0x2ecc71, -4, 1.2, -4, 0.35);
             createObject('book', 0x3498db, -3.5, 1.2, -4, 0.3);
@@ -242,47 +419,37 @@
         
         function createObject(name, color, x, y, z, size) {
             const geo = new THREE.BoxGeometry(size * 1.5, size, size);
-            const mat = new THREE.MeshStandardMaterial({ color: color });
+            const mat = new THREE.MeshStandardMaterial({ color });
             const obj = new THREE.Mesh(geo, mat);
             obj.position.set(x, y, z);
             obj.castShadow = true;
-            obj.userData = { name: name, originalPos: { x, y, z }, isHeld: false };
+            obj.userData = { name, originalPos: { x, y, z }, isHeld: false };
             scene.add(obj);
             objects.push(obj);
             return obj;
         }
         
         function createRobot() {
-            const baseGeo = new THREE.CylinderGeometry(0.5, 0.6, 0.3);
             const baseMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
-            robot = new THREE.Mesh(baseGeo, baseMat);
+            robot = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.3), baseMat);
             robot.position.set(0, 0.15, 0);
             robot.castShadow = true;
             scene.add(robot);
-            const torsoGeo = new THREE.CylinderGeometry(0.3, 0.4, 1);
-            const torsoMat = new THREE.MeshStandardMaterial({ color: 0x34495e });
-            const torso = new THREE.Mesh(torsoGeo, torsoMat);
-            torso.position.set(0, 0.8, 0);
-            torso.castShadow = true;
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 1), new THREE.MeshStandardMaterial({ color: 0x34495e }));
+            torso.position.set(0, 0.8, 0); torso.castShadow = true;
             robot.add(torso);
             const armPivot = new THREE.Group();
             armPivot.position.set(0, 1.3, 0);
             robot.add(armPivot);
             const armMat = new THREE.MeshStandardMaterial({ color: 0x00d4ff });
-            const upperArmGeo = new THREE.BoxGeometry(0.15, 0.8, 0.15);
-            const upperArm = new THREE.Mesh(upperArmGeo, armMat);
-            upperArm.position.set(0, 0.4, 0);
-            upperArm.castShadow = true;
+            const upperArm = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.15), armMat);
+            upperArm.position.set(0, 0.4, 0); upperArm.castShadow = true;
             armPivot.add(upperArm);
-            const lowerArmGeo = new THREE.BoxGeometry(0.12, 0.7, 0.12);
-            const lowerArm = new THREE.Mesh(lowerArmGeo, armMat);
-            lowerArm.position.set(0, 1.0, 0);
-            lowerArm.castShadow = true;
+            const lowerArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), armMat);
+            lowerArm.position.set(0, 1.0, 0); lowerArm.castShadow = true;
             armPivot.add(lowerArm);
-            const gripperGeo = new THREE.BoxGeometry(0.2, 0.15, 0.1);
-            const gripper = new THREE.Mesh(gripperGeo, armMat);
-            gripper.position.set(0, 1.4, 0);
-            gripper.castShadow = true;
+            const gripper = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.1), armMat);
+            gripper.position.set(0, 1.4, 0); gripper.castShadow = true;
             armPivot.add(gripper);
             robot.userData.armPivot = armPivot;
             robot.userData.gripper = gripper;
@@ -290,26 +457,21 @@
         }
         
         function onWindowResize() {
-            const container = document.getElementById('canvas-container');
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            camera.aspect = width / height;
+            const c = document.getElementById('canvas-container');
+            camera.aspect = c.clientWidth / c.clientHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
+            renderer.setSize(c.clientWidth, c.clientHeight);
         }
         
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-        }
+        function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
         
-        function toggleCamera() {
+        window.toggleCamera = function() {
             isPerspectiveTop = !isPerspectiveTop;
-            if (isPerspectiveTop) { camera.position.set(0, 15, 0); camera.lookAt(0, 0, 0); }
-            else { camera.position.set(8, 10, 12); camera.lookAt(0, 0, 0); }
-        }
+            if (isPerspectiveTop) { camera.position.set(0, 15, 0); } else { camera.position.set(8, 10, 12); }
+            camera.lookAt(0, 0, 0);
+        };
         
-        function resetScene() {
+        window.resetScene = function() {
             objects.forEach(obj => {
                 if (obj.userData.originalPos) {
                     obj.position.set(obj.userData.originalPos.x, obj.userData.originalPos.y, obj.userData.originalPos.z);
@@ -320,113 +482,18 @@
             robot.position.set(0, 0.15, 0);
             document.getElementById('results').innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg><p>Enter an instruction to see<br>how the LLM plans and executes</p></div>';
             updateStatus('Ready', false);
-        }
+        };
         
-        function setInstruction(text) { document.getElementById('instruction-input').value = text; }
+        window.setInstruction = function(text) { document.getElementById('instruction-input').value = text; };
         
-        function updateStatus(text, thinking) {
+        function updateStatus(text, thinking, loading) {
             document.getElementById('status-text').textContent = text;
             const dot = document.getElementById('status-dot');
-            dot.className = 'status-dot' + (thinking ? ' thinking' : '');
+            dot.className = 'status-dot' + (thinking ? ' thinking' : '') + (loading ? ' loading' : '');
         }
         
-        const SAYCAN_SYSTEM_PROMPT = `You are a SayCan-style robot planner. You control a robot in a kitchen environment.
-
-Available objects on the counter: coke (red can), apple (green), book (blue), cup (yellow, on table)
-Available locations: counter, table, shelf
-Available skills: pick(object), place(location), navigate(location)
-
-Given a user instruction, you must:
-1. Score ALL possible skill-object/location combinations as affordances (0.0 to 1.0)
-   - High scores for relevant actions, low for irrelevant
-   - This simulates the "affordance function" in SayCan
-2. Create an execution plan using only the available skills
-
-The key insight of SayCan: combine LLM language understanding (what should I do?) with affordance grounding (what can I do?). The final score = P(useful | instruction) x P(success | state).
-
-Respond with ONLY valid JSON in this exact format:
-{
-  "affordances": [
-    {"skill": "pick(coke)", "score": 0.92},
-    {"skill": "pick(apple)", "score": 0.15},
-    {"skill": "pick(book)", "score": 0.08},
-    {"skill": "pick(cup)", "score": 0.12},
-    {"skill": "place(table)", "score": 0.88},
-    {"skill": "place(counter)", "score": 0.21},
-    {"skill": "place(shelf)", "score": 0.05},
-    {"skill": "navigate(table)", "score": 0.85},
-    {"skill": "navigate(counter)", "score": 0.30},
-    {"skill": "navigate(shelf)", "score": 0.10}
-  ],
-  "plan": [
-    {"step": "navigate", "target": "counter", "description": "Navigate to counter"},
-    {"step": "pick", "target": "coke", "description": "Pick up the coke can"},
-    {"step": "navigate", "target": "table", "description": "Navigate to table"},
-    {"step": "place", "target": "table", "description": "Place coke on table"}
-  ]
-}
-
-Rules for "target" values:
-- For "pick": must be one of: coke, apple, book, cup
-- For "place": must be one of: counter, table, shelf
-- For "navigate": must be one of: counter, table, shelf
-- Always include ALL 10 affordance skills (vary scores based on instruction)`;
-
-        async function getLLMResponse(instruction, apiKey) {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + apiKey
-                },
-                body: JSON.stringify({
-                    model: 'gpt-4o-mini',
-                    messages: [
-                        { role: 'system', content: SAYCAN_SYSTEM_PROMPT },
-                        { role: 'user', content: 'Instruction: "' + instruction + '"' }
-                    ],
-                    temperature: 0.3,
-                    response_format: { type: 'json_object' }
-                })
-            });
-            
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.error?.message || 'API request failed: ' + response.status);
-            }
-            
-            const data = await response.json();
-            const content = data.choices[0].message.content;
-            return JSON.parse(content);
-        }
-        
-        async function executeInstruction() {
-            const input = document.getElementById('instruction-input');
-            const instruction = input.value.trim();
-            if (!instruction) return;
-            
-            const apiKey = document.getElementById('api-key-input').value.trim();
-            if (!apiKey) {
-                alert('Please enter your OpenAI API key first.');
-                document.getElementById('api-key-input').focus();
-                return;
-            }
-            
-            const btn = document.getElementById('execute-btn');
-            btn.disabled = true;
-            updateStatus('LLM Analyzing...', true);
-            
-            try {
-                const response = await getLLMResponse(instruction, apiKey);
-                displayResults(instruction, response);
-                executePlan(response.plan);
-            } catch (err) {
-                updateStatus('Error: ' + err.message, false);
-                btn.disabled = false;
-            }
-        }
-        
-        function displayResults(instruction, response) {
+        // ==================== DISPLAY ====================
+        function displayResults(instruction, response, rawText) {
             const container = document.getElementById('results');
             const sorted = [...response.affordances].sort((a, b) => b.score - a.score);
             let html = '<div class="section"><div class="section-title">Affordance Scoring</div><div class="affordance-list">';
@@ -439,6 +506,9 @@ Rules for "target" values:
                 html += '<div class="plan-step pending" id="step-' + i + '"><span class="step-number">' + (i + 1) + '</span><span class="step-text">' + step.description + '</span></div>';
             });
             html += '</div></div>';
+            // Raw LLM response toggle
+            html += '<div class="raw-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'">Show raw LLM response</div>';
+            html += '<div class="raw-response" style="display:none">' + rawText.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
             container.innerHTML = html;
             setTimeout(() => {
                 sorted.forEach((aff, i) => {
@@ -507,17 +577,14 @@ Rules for "target" values:
         }
         
         function animateRobotMove(target, duration) {
-            const startX = robot.position.x;
-            const startZ = robot.position.z;
+            const startX = robot.position.x, startZ = robot.position.z;
             const startTime = Date.now();
             function update() {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
+                const progress = Math.min((Date.now() - startTime) / duration, 1);
                 const eased = 1 - Math.pow(1 - progress, 3);
                 robot.position.x = startX + (target.x - startX) * eased;
                 robot.position.z = startZ + (target.z - startZ) * eased;
-                const angle = Math.atan2(target.x - robot.position.x, target.z - robot.position.z);
-                arm.rotation.y = angle;
+                arm.rotation.y = Math.atan2(target.x - robot.position.x, target.z - robot.position.z);
                 if (progress < 1) requestAnimationFrame(update);
             }
             update();
@@ -528,12 +595,10 @@ Rules for "target" values:
             const targetPos = new THREE.Vector3(robot.position.x, 2.5, robot.position.z);
             const startTime = Date.now();
             function update() {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const eased = 1 - Math.pow(1 - progress, 3);
-                obj.position.lerpVectors(startPos, targetPos, eased);
+                const progress = Math.min((Date.now() - startTime) / duration, 1);
+                obj.position.lerpVectors(startPos, targetPos, 1 - Math.pow(1 - progress, 3));
                 if (progress < 1) requestAnimationFrame(update);
-                else { obj.userData.isHeld = true; }
+                else obj.userData.isHeld = true;
             }
             update();
         }
@@ -543,15 +608,10 @@ Rules for "target" values:
             const endPos = new THREE.Vector3(targetPos.x, targetPos.y, targetPos.z);
             const startTime = Date.now();
             function update() {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const eased = 1 - Math.pow(1 - progress, 3);
-                obj.position.lerpVectors(startPos, endPos, eased);
+                const progress = Math.min((Date.now() - startTime) / duration, 1);
+                obj.position.lerpVectors(startPos, endPos, 1 - Math.pow(1 - progress, 3));
                 if (progress < 1) requestAnimationFrame(update);
-                else {
-                    obj.userData.isHeld = false;
-                    obj.userData.originalPos = { x: endPos.x, y: endPos.y, z: endPos.z };
-                }
+                else { obj.userData.isHeld = false; obj.userData.originalPos = { x: endPos.x, y: endPos.y, z: endPos.z }; }
             }
             update();
         }
