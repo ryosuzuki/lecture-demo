@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MuJoCo WASM: Sim-to-Real Gap Demo</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.5;
+      background: #f5f5f5;
+    }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    h2 { font-size: 16px; margin: 18px 0 8px; }
+    h3 { font-size: 14px; margin: 14px 0 6px; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      border: 1px solid rgba(128,128,128,0.35);
+      border-radius: 14px;
+      padding: 16px;
+      background: white;
+    }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    label { font-size: 13px; opacity: 0.9; }
+    select, input[type="range"] {
+      padding: 6px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(128,128,128,0.4);
+      background: transparent;
+    }
+    input[type="range"] { padding: 0; width: 100px; }
+    button {
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(128,128,128,0.45);
+      background: rgba(128,128,128,0.12);
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.05); }
+    .muted { font-size: 12px; opacity: 0.75; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(128,128,128,0.35);
+      background: rgba(128,128,128,0.10);
+      font-size: 12px;
+    }
+    .status-ok { background: rgba(80, 200, 120, 0.2); border-color: rgba(80, 200, 120, 0.4); }
+    .status-loading { background: rgba(255, 180, 80, 0.2); border-color: rgba(255, 180, 80, 0.4); }
+    #canvas-container {
+      width: 100%;
+      height: 400px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #1a1a2e;
+    }
+    .param-group { display: grid; gap: 12px; margin-top: 12px; }
+    .param-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 50px;
+      gap: 8px;
+      align-items: center;
+    }
+    .param-row label { font-size: 12px; }
+    .param-row span { font-size: 12px; font-family: ui-monospace, monospace; text-align: right; }
+    .info-box {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(100, 150, 255, 0.1);
+      border: 1px solid rgba(100, 150, 255, 0.3);
+      font-size: 12px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 12px;
+      margin-top: 12px;
+    }
+    .sim-params, .real-params {
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+    .sim-params {
+      background: rgba(255, 200, 100, 0.1);
+      border: 1px solid rgba(255, 200, 100, 0.3);
+    }
+    .real-params {
+      background: rgba(100, 200, 150, 0.1);
+      border: 1px solid rgba(100, 200, 150, 0.3);
+    }
+  </style>
+</head>
+
+<body>
+  <h1>MuJoCo WASM: Sim-to-Real Gap Demo</h1>
+  
+  <div class="grid">
+    <div class="card">
+      <div class="row">
+        <label for="modelSelect">Model:</label>
+        <select id="modelSelect">
+          <option value="humanoid">Humanoid</option>
+          <option value="ant">Ant</option>
+          <option value="arm">Robot Arm</option>
+        </select>
+        <button id="resetBtn">Reset</button>
+        <span class="pill status-loading" id="statusPill">Loading...</span>
+      </div>
+      <div id="canvas-container"></div>
+      <div class="stats-grid">
+        <div>Step: <span class="pill" id="stepPill">0</span></div>
+        <div>Time: <span class="pill" id="timePill">0.00s</span></div>
+        <div>FPS: <span class="pill" id="fpsPill">-</span></div>
+        <div>Bodies: <span class="pill" id="bodiesPill">-</span></div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>Physics Parameters</h2>
+      <div class="muted">Adjust to see how parameters affect robot behavior.</div>
+      
+      <div class="param-group">
+        <div class="param-row">
+          <label>Gravity</label>
+          <input type="range" id="gravitySlider" min="0" max="20" step="0.5" value="9.81">
+          <span id="gravityValue">9.81</span>
+        </div>
+        <div class="param-row">
+          <label>Friction</label>
+          <input type="range" id="frictionSlider" min="0" max="2" step="0.1" value="1">
+          <span id="frictionValue">1.0</span>
+        </div>
+        <div class="param-row">
+          <label>Noise</label>
+          <input type="range" id="noiseSlider" min="0" max="1" step="0.05" value="0">
+          <span id="noiseValue">0.00</span>
+        </div>
+        <div class="param-row">
+          <label>Speed</label>
+          <input type="range" id="speedSlider" min="0.1" max="3" step="0.1" value="1">
+          <span id="speedValue">1.0</span>
+        </div>
+      </div>
+      
+      <div class="sim-params">
+        <h3>Simulation (Ideal)</h3>
+        <div class="muted">Perfect physics without real-world imperfections.</div>
+      </div>
+      
+      <div class="real-params">
+        <h3>Reality (Noisy)</h3>
+        <div class="muted">Add noise to simulate sensor/actuator imperfections.</div>
+      </div>
+      
+      <div class="info-box">
+        <strong>Sim-to-Real Gap:</strong> Robots that work in simulation often fail in reality because:
+        <ul style="margin: 6px 0 0 16px;">
+          <li>Physics models are simplified</li>
+          <li>Sensors have noise</li>
+          <li>Actuators are imprecise</li>
+        </ul>
+        Try increasing <strong>Noise</strong> to see instability!
+      </div>
+    </div>
+  </div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const MODELS = {
+  humanoid: `<mujoco model="humanoid">
+  <compiler angle="degree" autolimits="true"/>
+  <option timestep="0.005" integrator="RK4"/>
+  <worldbody>
+    <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
+    <geom type="plane" size="10 10 0.1" rgba=".9 .9 .9 1" friction="1 0.005 0.0001"/>
+    <body name="torso" pos="0 0 1.4">
+      <freejoint/>
+      <geom type="capsule" size="0.07" fromto="0 0 -0.3 0 0 0.3" rgba="0.7 0.2 0.2 1"/>
+      <body name="head" pos="0 0 0.4"><geom type="sphere" size="0.1" rgba="0.9 0.8 0.7 1"/></body>
+      <body name="left_arm" pos="-0.2 0 0.2">
+        <joint name="left_shoulder" type="hinge" axis="0 1 0" range="-120 120"/>
+        <geom type="capsule" size="0.04" fromto="0 0 0 0 0 -0.25" rgba="0.3 0.3 0.7 1"/>
+        <body name="left_forearm" pos="0 0 -0.25">
+          <joint name="left_elbow" type="hinge" axis="0 1 0" range="-150 0"/>
+          <geom type="capsule" size="0.03" fromto="0 0 0 0 0 -0.2" rgba="0.3 0.3 0.7 1"/>
+        </body>
+      </body>
+      <body name="right_arm" pos="0.2 0 0.2">
+        <joint name="right_shoulder" type="hinge" axis="0 1 0" range="-120 120"/>
+        <geom type="capsule" size="0.04" fromto="0 0 0 0 0 -0.25" rgba="0.3 0.3 0.7 1"/>
+        <body name="right_forearm" pos="0 0 -0.25">
+          <joint name="right_elbow" type="hinge" axis="0 1 0" range="-150 0"/>
+          <geom type="capsule" size="0.03" fromto="0 0 0 0 0 -0.2" rgba="0.3 0.3 0.7 1"/>
+        </body>
+      </body>
+      <body name="left_leg" pos="-0.1 0 -0.35">
+        <joint name="left_hip" type="hinge" axis="1 0 0" range="-120 30"/>
+        <geom type="capsule" size="0.05" fromto="0 0 0 0 0 -0.3" rgba="0.2 0.2 0.5 1"/>
+        <body name="left_shin" pos="0 0 -0.3">
+          <joint name="left_knee" type="hinge" axis="1 0 0" range="-150 0"/>
+          <geom type="capsule" size="0.04" fromto="0 0 0 0 0 -0.3" rgba="0.2 0.2 0.5 1"/>
+        </body>
+      </body>
+      <body name="right_leg" pos="0.1 0 -0.35">
+        <joint name="right_hip" type="hinge" axis="1 0 0" range="-120 30"/>
+        <geom type="capsule" size="0.05" fromto="0 0 0 0 0 -0.3" rgba="0.2 0.2 0.5 1"/>
+        <body name="right_shin" pos="0 0 -0.3">
+          <joint name="right_knee" type="hinge" axis="1 0 0" range="-150 0"/>
+          <geom type="capsule" size="0.04" fromto="0 0 0 0 0 -0.3" rgba="0.2 0.2 0.5 1"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor joint="left_shoulder" ctrllimited="true" ctrlrange="-1 1" gear="100"/>
+    <motor joint="left_elbow" ctrllimited="true" ctrlrange="-1 1" gear="50"/>
+    <motor joint="right_shoulder" ctrllimited="true" ctrlrange="-1 1" gear="100"/>
+    <motor joint="right_elbow" ctrllimited="true" ctrlrange="-1 1" gear="50"/>
+    <motor joint="left_hip" ctrllimited="true" ctrlrange="-1 1" gear="150"/>
+    <motor joint="left_knee" ctrllimited="true" ctrlrange="-1 1" gear="100"/>
+    <motor joint="right_hip" ctrllimited="true" ctrlrange="-1 1" gear="150"/>
+    <motor joint="right_knee" ctrllimited="true" ctrlrange="-1 1" gear="100"/>
+  </actuator>
+</mujoco>`,
+
+  ant: `<mujoco model="ant">
+  <compiler angle="degree" autolimits="true"/>
+  <option timestep="0.005" integrator="RK4"/>
+  <worldbody>
+    <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
+    <geom type="plane" size="10 10 0.1" rgba=".9 .9 .9 1"/>
+    <body name="torso" pos="0 0 0.6">
+      <freejoint/>
+      <geom type="sphere" size="0.2" rgba="0.8 0.2 0.2 1"/>
+      <body name="leg1" pos="0.2 0.2 0">
+        <joint name="leg1" type="hinge" axis="0 0 1" range="-30 30"/>
+        <geom type="capsule" size="0.03" fromto="0 0 0 0.2 0 -0.2" rgba="0.2 0.2 0.6 1"/>
+      </body>
+      <body name="leg2" pos="-0.2 0.2 0">
+        <joint name="leg2" type="hinge" axis="0 0 1" range="-30 30"/>
+        <geom type="capsule" size="0.03" fromto="0 0 0 -0.2 0 -0.2" rgba="0.2 0.2 0.6 1"/>
+      </body>
+      <body name="leg3" pos="-0.2 -0.2 0">
+        <joint name="leg3" type="hinge" axis="0 0 1" range="-30 30"/>
+        <geom type="capsule" size="0.03" fromto="0 0 0 -0.2 0 0.2" rgba="0.2 0.2 0.6 1"/>
+      </body>
+      <body name="leg4" pos="0.2 -0.2 0">
+        <joint name="leg4" type="hinge" axis="0 0 1" range="-30 30"/>
+        <geom type="capsule" size="0.03" fromto="0 0 0 0.2 0 0.2" rgba="0.2 0.2 0.6 1"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor joint="leg1" ctrllimited="true" ctrlrange="-3 3" gear="50"/>
+    <motor joint="leg2" ctrllimited="true" ctrlrange="-3 3" gear="50"/>
+    <motor joint="leg3" ctrllimited="true" ctrlrange="-3 3" gear="50"/>
+    <motor joint="leg4" ctrllimited="true" ctrlrange="-3 3" gear="50"/>
+  </actuator>
+</mujoco>`,
+
+  arm: `<mujoco model="robot_arm">
+  <compiler angle="degree" autolimits="true"/>
+  <option timestep="0.005" integrator="RK4"/>
+  <worldbody>
+    <light diffuse=".5 .5 .5" pos="0 0 4" dir="0 0 -1"/>
+    <geom type="plane" size="5 5 0.1" rgba=".8 .8 .8 1" friction="1 0.005 0.0001"/>
+    <body name="base" pos="0 0 0.15">
+      <freejoint/>
+      <geom type="cylinder" size="0.15 0.1" rgba="0.3 0.3 0.3 1"/>
+      <body name="link1" pos="0 0 0.2">
+        <joint name="joint1" type="hinge" axis="0 0 1" range="-180 180"/>
+        <geom type="cylinder" size="0.08 0.15" pos="0 0 0.075" rgba="0.6 0.2 0.2 1"/>
+        <body name="link2" pos="0 0 0.2">
+          <joint name="joint2" type="hinge" axis="0 1 0" range="-90 90"/>
+          <geom type="capsule" size="0.05" fromto="0 0 0 0 0.2 0" rgba="0.2 0.6 0.2 1"/>
+          <body name="link3" pos="0 0.2 0">
+            <joint name="joint3" type="hinge" axis="0 1 0" range="-120 0"/>
+            <geom type="capsule" size="0.04" fromto="0 0 0 0 0.15 0" rgba="0.2 0.2 0.6 1"/>
+            <body name="effector" pos="0 0.15 0">
+              <geom type="sphere" size="0.05" rgba="0.8 0.6 0.2 1"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor joint="joint1" ctrllimited="true" ctrlrange="-2 2" gear="100"/>
+    <motor joint="joint2" ctrllimited="true" ctrlrange="-2 2" gear="100"/>
+    <motor joint="joint3" ctrllimited="true" ctrlrange="-2 2" gear="80"/>
+  </actuator>
+</mujoco>`
+};
+
+let mujoco = null;
+let model = null;
+let data = null;
+let scene, camera, renderer, controls;
+let bodyMeshes = [];
+let isRunning = false;
+let simTime = 0;
+let stepCount = 0;
+let lastFrameTime = performance.now();
+let fps = 0;
+
+let params = {
+  gravity: 9.81,
+  friction: 1.0,
+  noise: 0.0,
+  speed: 1.0
+};
+
+const $ = (id) => document.getElementById(id);
+
+async function init() {
+  try {
+    const loadMujoCo = await import('https://cdn.jsdelivr.net/npm/mujoco-js@0.0.7/+esm');
+    mujoco = await loadMujoCo.default();
+    
+    $('statusPill').textContent = 'Ready';
+    $('statusPill').className = 'pill status-ok';
+    
+    initThreeJS();
+    loadModel($('modelSelect').value);
+    setupEventListeners();
+    animate();
+  } catch (err) {
+    console.error('Failed to load MuJoCo:', err);
+    $('statusPill').textContent = 'Error';
+  }
+}
+
+function initThreeJS() {
+  const container = $('canvas-container');
+  
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1a2e);
+  
+  camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
+  camera.position.set(2, 2, 3);
+  
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  container.appendChild(renderer.domElement);
+  
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.target.set(0, 0.5, 0);
+  
+  scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+  
+  const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
+  light1.position.set(5, 10, 5);
+  scene.add(light1);
+  
+  const light2 = new THREE.DirectionalLight(0xffffff, 0.4);
+  light2.position.set(-5, 5, -5);
+  scene.add(light2);
+  
+  scene.add(new THREE.GridHelper(10, 20, 0x444466, 0x333355));
+  
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(10, 10),
+    new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.8 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = 0.01;
+  scene.add(ground);
+  
+  window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  });
+}
+
+function loadModel(modelName) {
+  bodyMeshes.forEach(m => scene.remove(m));
+  bodyMeshes = [];
+  simTime = 0;
+  stepCount = 0;
+  
+  try {
+    mujoco.FS.mkdir('/working');
+    mujoco.FS.mount(mujoco.MEMFS, { root: '.' }, '/working');
+    mujoco.FS.writeFile('/working/' + modelName + '.xml', MODELS[modelName]);
+    
+    model = mujoco.MjModel.loadFromXML('/working/' + modelName + '.xml');
+    data = new mujoco.MjData(model);
+    
+    model.opt.gravity = [0, 0, -params.gravity];
+    
+    createMeshesFromModel(modelName);
+    
+    $('bodiesPill').textContent = model.nbody;
+    $('stepPill').textContent = '0';
+    $('timePill').textContent = '0.00s';
+    
+    isRunning = true;
+  } catch (err) {
+    console.error('Failed to load model:', err);
+    $('statusPill').textContent = 'Error';
+  }
+}
+
+function createMeshesFromModel(modelName) {
+  if (modelName === 'humanoid') createHumanoidVisuals();
+  else if (modelName === 'ant') createAntVisuals();
+  else if (modelName === 'arm') createArmVisuals();
+}
+
+function createHumanoidVisuals() {
+  const addMesh = (geom, color, bodyId) => {
+    const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color }));
+    mesh.userData.bodyId = bodyId;
+    scene.add(mesh);
+    bodyMeshes.push(mesh);
+  };
+  
+  addMesh(new THREE.CapsuleGeometry(0.07, 0.5, 8, 16), 0xaa4444, 1);
+  addMesh(new THREE.SphereGeometry(0.1, 16, 16), 0xddccbb, 2);
+  addMesh(new THREE.CapsuleGeometry(0.04, 0.2, 8, 16), 0x4444aa, 3);
+  addMesh(new THREE.CapsuleGeometry(0.03, 0.15, 8, 16), 0x4444aa, 4);
+  addMesh(new THREE.CapsuleGeometry(0.04, 0.2, 8, 16), 0x4444aa, 5);
+  addMesh(new THREE.CapsuleGeometry(0.03, 0.15, 8, 16), 0x4444aa, 6);
+  addMesh(new THREE.CapsuleGeometry(0.05, 0.25, 8, 16), 0x333388, 7);
+  addMesh(new THREE.CapsuleGeometry(0.04, 0.25, 8, 16), 0x333388, 8);
+  addMesh(new THREE.CapsuleGeometry(0.05, 0.25, 8, 16), 0x333388, 9);
+  addMesh(new THREE.CapsuleGeometry(0.04, 0.25, 8, 16), 0x333388, 10);
+}
+
+function createAntVisuals() {
+  const addMesh = (geom, color, bodyId) => {
+    const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color }));
+    mesh.userData.bodyId = bodyId;
+    scene.add(mesh);
+    bodyMeshes.push(mesh);
+  };
+  
+  addMesh(new THREE.SphereGeometry(0.2, 16, 16), 0xaa3333, 1);
+  
+  const legPositions = [
+    { x: 0.2, z: 0.2, angle: Math.PI / 4 },
+    { x: -0.2, z: 0.2, angle: 3 * Math.PI / 4 },
+    { x: -0.2, z: -0.2, angle: 5 * Math.PI / 4 },
+    { x: 0.2, z: -0.2, angle: 7 * Math.PI / 4 }
+  ];
+  
+  legPositions.forEach((pos, i) => {
+    const leg = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.03, 0.2, 4, 8),
+      new THREE.MeshStandardMaterial({ color: 0x3333aa })
+    );
+    leg.rotation.z = pos.angle;
+    leg.position.set(pos.x * 0.5, 0.5, pos.z * 0.5);
+    leg.userData.bodyId = 2 + i;
+    scene.add(leg);
+    bodyMeshes.push(leg);
+  });
+}
+
+function createArmVisuals() {
+  const addMesh = (geom, color, bodyId) => {
+    const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color }));
+    mesh.userData.bodyId = bodyId;
+    scene.add(mesh);
+    bodyMeshes.push(mesh);
+  };
+  
+  addMesh(new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16), 0x444444, 1);
+  addMesh(new THREE.CylinderGeometry(0.08, 0.08, 0.35, 16), 0xaa4444, 2);
+  addMesh(new THREE.CylinderGeometry(0.05, 0.05, 0.2, 16), 0x44aa44, 3);
+  addMesh(new THREE.SphereGeometry(0.05, 16, 16), 0xccaa33, 4);
+}
+
+function updateMeshes() {
+  if (!data || !model) return;
+  
+  const xpos = data.xpos;
+  const xquat = data.xquat;
+  
+  bodyMeshes.forEach(mesh => {
+    const bodyId = mesh.userData.bodyId;
+    if (bodyId !== undefined && bodyId < model.nbody) {
+      const idx = bodyId * 3;
+      const qidx = bodyId * 4;
+      
+      mesh.position.set(xpos[idx], xpos[idx + 1], xpos[idx + 2]);
+      
+      if (model.nq > 0) {
+        const q = new THREE.Quaternion(
+          xquat[qidx + 1],
+          xquat[qidx + 2],
+          xquat[qidx + 3],
+          xquat[qidx]
+        );
+        mesh.quaternion.copy(q);
+      }
+    }
+  });
+}
+
+function applyController(t) {
+  if (!data || !model) return;
+  
+  const modelName = $('modelSelect').value;
+  const nctrl = model.nu;
+  
+  for (let i = 0; i < nctrl; i++) {
+    let ctrlValue = 0;
+    
+    if (modelName === 'humanoid') {
+      ctrlValue = Math.sin(t * 2 + i * 0.5) * 0.3;
+    } else if (modelName === 'ant') {
+      ctrlValue = Math.sin(t * 3 + i * Math.PI / 2) * 1.0;
+    } else if (modelName === 'arm') {
+      ctrlValue = Math.sin(t * 1.5 + i * 1.0) * 0.5;
+    }
+    
+    if (params.noise > 0) {
+      ctrlValue += (Math.random() - 0.5) * params.noise * 2;
+    }
+    
+    data.ctrl[i] = ctrlValue;
+  }
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  
+  const now = performance.now();
+  const delta = (now - lastFrameTime) / 1000;
+  lastFrameTime = now;
+  
+  fps = Math.round(1 / delta);
+  
+  if (isRunning && model && data) {
+    const stepsPerFrame = Math.round(5 * params.speed);
+    
+    for (let i = 0; i < stepsPerFrame; i++) {
+      simTime += model.opt.timestep;
+      stepCount++;
+      
+      applyController(simTime);
+      mujoco.mj_step(model, data);
+    }
+    
+    updateMeshes();
+    
+    $('stepPill').textContent = stepCount;
+    $('timePill').textContent = simTime.toFixed(2) + 's';
+  }
+  
+  $('fpsPill').textContent = fps;
+  
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+function setupEventListeners() {
+  $('modelSelect').addEventListener('change', (e) => loadModel(e.target.value));
+  $('resetBtn').addEventListener('click', () => loadModel($('modelSelect').value));
+  
+  $('gravitySlider').addEventListener('input', (e) => {
+    params.gravity = parseFloat(e.target.value);
+    $('gravityValue').textContent = params.gravity.toFixed(2);
+    if (model) model.opt.gravity = [0, 0, -params.gravity];
+  });
+  
+  $('frictionSlider').addEventListener('input', (e) => {
+    params.friction = parseFloat(e.target.value);
+    $('frictionValue').textContent = params.friction.toFixed(1);
+  });
+  
+  $('noiseSlider').addEventListener('input', (e) => {
+    params.noise = parseFloat(e.target.value);
+    $('noiseValue').textContent = params.noise.toFixed(2);
+  });
+  
+  $('speedSlider').addEventListener('input', (e) => {
+    params.speed = parseFloat(e.target.value);
+    $('speedValue').textContent = params.speed.toFixed(1);
+  });
+}
+
+init();
+</script>
+</body>
+</html>

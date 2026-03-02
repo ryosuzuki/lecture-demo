@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code as Policies — Interactive Demo</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent: #00d4ff;
+      --accent-dim: rgba(0, 212, 255, 0.3);
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888a0;
+      --success: #00ff88;
+      --warning: #ffaa00;
+      --error: #ff4466;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0a0a0f 0%, #151520 50%, #0d0d15 100%);
+      min-height: 100vh;
+      color: var(--text-primary);
+    }
+    .container { display: grid; grid-template-columns: 1fr 420px; min-height: 100vh; }
+    #canvas-container { position: relative; background: linear-gradient(180deg, #0f0f18 0%, #1a1a28 100%); }
+    .scene-label { position: absolute; top: 20px; left: 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-secondary); background: rgba(0,0,0,0.5); padding: 6px 12px; border-radius: 6px; }
+    .sidebar { background: rgba(20,20,35,0.7); backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    .sidebar-header { padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .logo { font-size: 20px; font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: var(--text-secondary); }
+    .mode-tabs { display: flex; gap: 8px; margin-top: 16px; }
+    .mode-tab { flex: 1; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+    .mode-tab.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .sidebar-content { flex: 1; overflow-y: auto; padding: 20px; }
+    .section { margin-bottom: 20px; }
+    .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-secondary); margin-bottom: 12px; }
+    .example-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+    .example-btn { padding: 8px 14px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; background: rgba(255,255,255,0.03); color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+    .example-btn:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    #instructionInput { width: 100%; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; background: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 14px; resize: none; }
+    #instructionInput:focus { outline: none; border-color: var(--accent); }
+    .run-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; background: linear-gradient(135deg, var(--accent) 0%, #0099cc 100%); color: #000; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 12px; }
+    .run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .code-panel { background: rgba(0,0,0,0.4); border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
+    .code-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .code-title { font-size: 12px; color: var(--text-secondary); }
+    .execution-status { font-size: 11px; padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,0.05); color: var(--text-secondary); }
+    .execution-status.running { background: rgba(255,170,0,0.2); color: var(--warning); }
+    .execution-status.done { background: rgba(0,255,136,0.2); color: var(--success); }
+    .code-content { padding: 16px; font-family: 'Fira Code', monospace; font-size: 13px; line-height: 1.6; max-height: 300px; overflow-y: auto; }
+    .code-content pre { margin: 0; }
+    .status-panel { padding: 16px; background: rgba(0,0,0,0.3); border-radius: 10px; margin-top: 16px; }
+    .status-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .status-row:last-child { border-bottom: none; }
+    .status-label { font-size: 12px; color: var(--text-secondary); }
+    .status-value { font-size: 12px; font-family: monospace; color: var(--accent); }
+    .llm-status { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 16px; font-size: 12px; }
+    .llm-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--error); }
+    .llm-dot.ready { background: var(--success); }
+    .llm-dot.loading { background: var(--warning); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .comparison-panel { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(10,10,20,0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.08); padding: 20px 30px; }
+    .comparison-content { display: flex; align-items: center; justify-content: center; gap: 30px; }
+    .comparison-item { display: flex; align-items: center; gap: 12px; }
+    .comparison-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .comparison-icon.saycan { background: rgba(255,170,0,0.15); border: 1px solid rgba(255,170,0,0.3); }
+    .comparison-icon.cap { background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.3); }
+    .comparison-text { font-size: 12px; }
+    .comparison-text strong { display: block; margin-bottom: 2px; }
+    .comparison-arrow { color: var(--text-secondary); font-size: 20px; }
+    .api-key-input { width: 100%; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 13px; margin-top: 8px; font-family: monospace; }
+    .hidden { display: none !important; }
+    .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10,10,20,0.8); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .loading-spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="canvas-container">
+      <div class="scene-label">Robot Workspace</div>
+      <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
+      <div class="comparison-panel">
+        <div class="comparison-content">
+          <div class="comparison-item"><div class="comparison-icon saycan">📋</div><div class="comparison-text"><strong style="color:#ffaa00">SayCan</strong>Fixed skills + scoring</div></div>
+          <div class="comparison-arrow">→</div>
+          <div class="comparison-item"><div class="comparison-icon cap">⚡</div><div class="comparison-text"><strong style="color:var(--accent)">Code as Policies</strong>Generated code</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">⚡ Code as Policies</div>
+        <div class="subtitle">LLM → Executable Python Code</div>
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="webllm">WebLLM (Local)</button>
+          <button class="mode-tab" data-mode="openai">OpenAI API</button>
+        </div>
+      </div>
+      <div class="sidebar-content">
+        <div class="llm-status" id="llmStatus"><div class="llm-dot" id="llmDot"></div><span id="llmStatusText">Initializing...</span></div>
+        <div class="section hidden" id="openaiSection"><div class="section-title">OpenAI API Key</div><input type="password" class="api-key-input" id="apiKeyInput" placeholder="sk-..."></div>
+        <div class="section"><div class="section-title">Try These Instructions</div>
+          <div class="example-btns">
+            <button class="example-btn" data-instruction="Stack all red blocks on the blue plate">Stack red blocks</button>
+            <button class="example-btn" data-instruction="Move the nearest object to the bowl">Nearest to bowl</button>
+            <button class="example-btn" data-instruction="If there's a red block, pick it up; otherwise pick the blue one">If red → pick</button>
+            <button class="example-btn" data-instruction="Sort all objects by color onto different plates">Sort by color</button>
+          </div>
+        </div>
+        <div class="section"><div class="section-title">Your Instruction</div>
+          <div class="input-group"><textarea id="instructionInput" rows="3" placeholder="e.g., Stack all blocks on the plate"></textarea>
+            <button class="run-btn" id="runBtn">Generate & Execute Code</button>
+          </div>
+        </div>
+        <div class="section"><div class="section-title">Generated Code</div>
+          <div class="code-panel"><div class="code-header"><span class="code-title">robot_controller.py</span><span class="execution-status" id="execStatus">Ready</span></div>
+            <div class="code-content" id="codeContent"><pre><code class="language-python"># Code will appear here after generation</code></pre></div>
+          </div>
+        </div>
+        <div class="status-panel">
+          <div class="status-row"><span class="status-label">Current Action</span><span class="status-value" id="currentAction">-</span></div>
+          <div class="status-row"><span class="status-label">Objects Detected</span><span class="status-value" id="objectsDetected">6</span></div>
+          <div class="status-row"><span class="status-label">Code Lines</span><span class="status-value" id="codeLines">0</span></div>
+          <div class="status-row"><span class="status-label">Execution Line</span><span class="status-value" id="execLine">-</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+  <script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+let scene, camera, renderer, controls, robotArm, gripper, objects = [];
+const robotState = { holding: null, armTarget: new THREE.Vector3(0, 0.5, 0), gripperOpen: true };
+const SCENE_OBJECTS = [
+  {name:'red_block_1',type:'block',color:0xff4444,pos:[-0.6,0.1,0.3],s:[0.12,0.12,0.12]},
+  {name:'red_block_2',type:'block',color:0xff4444,pos:[-0.5,0.1,0.4],s:[0.1,0.1,0.1]},
+  {name:'blue_block',type:'block',color:0x4466ff,pos:[-0.4,0.1,0.25],s:[0.14,0.14,0.14]},
+  {name:'green_block',type:'block',color:0x44ff66,pos:[-0.55,0.1,0.15],s:[0.11,0.11,0.11]},
+  {name:'yellow_block',type:'block',color:0xffdd44,pos:[-0.35,0.1,0.35],s:[0.13,0.13,0.13]},
+  {name:'blue_plate',type:'plate',color:0x2255aa,pos:[0.3,0.02,0],s:[0.4,0.04,0.3]},
+  {name:'red_plate',type:'plate',color:0xaa2222,pos:[0.3,0.02,0.4],s:[0.35,0.04,0.28]},
+  {name:'green_plate',type:'plate',color:0x22aa22,pos:[0.3,0.02,-0.4],s:[0.35,0.04,0.28]},
+  {name:'bowl',type:'bowl',color:0x888888,pos:[0,0.08,-0.3],s:[0.15,0.08,0.15]},
+  {name:'cup',type:'cup',color:0xffffff,pos:[-0.2,0.1,0],s:[0.06,0.12,0.06]}
+];
+const ORIGINAL = {};
+
+function init(){
+  const c = document.getElementById('canvas-container');
+  scene = new THREE.Scene(); scene.background = new THREE.Color(0x0f0f18);
+  camera = new THREE.PerspectiveCamera(45,c.clientWidth/(c.clientHeight-100),0.1,100); camera.position.set(2.5,2,2);
+  renderer = new THREE.WebGLRenderer({antialias:true}); renderer.setSize(c.clientWidth,c.clientHeight-100); renderer.setPixelRatio(2); renderer.shadowMap.enabled = true; c.insertBefore(renderer.domElement,c.firstChild);
+  controls = new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.target.set(0,0.3,0);
+  scene.add(new THREE.AmbientLight(0xffffff,0.4));
+  const l1 = new THREE.DirectionalLight(0xffffff,0.8); l1.position.set(5,10,5); l1.castShadow=true; scene.add(l1);
+  scene.add(new THREE.GridHelper(10,20,0x444466,0x333355));
+  const g = new THREE.Mesh(new THREE.PlaneGeometry(10,10),new THREE.MeshStandardMaterial({color:0x1a1a25,roughness:0.8})); g.rotation.x=-Math.PI/2; scene.add(g);
+  const tb = new THREE.Mesh(new THREE.BoxGeometry(1.8,0.05,1),new THREE.MeshStandardMaterial({color:0x2a2a35})); tb.position.set(0,0.4,0); scene.add(tb);
+  createRobotArm();
+  SCENE_OBJECTS.forEach(o=>{createObj(o); ORIGINAL[o.name]=[...o.pos];});
+  window.addEventListener('resize',()=>{camera.aspect=c.clientWidth/(c.clientHeight-100);camera.updateProjectionMatrix();renderer.setSize(c.clientWidth,c.clientHeight-100);});
+  document.getElementById('loadingOverlay').classList.add('hidden');
+  animate();
+}
+function createRobotArm(){
+  robotArm = new THREE.Group();
+  const armMat = new THREE.MeshStandardMaterial({color:0x00d4ff,metalness:0.5,roughness:0.3});
+  robotArm.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.15,0.15,16),new THREE.MeshStandardMaterial({color:0x444455})).translateY(0.475));
+  robotArm.add(new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.25,16),armMat).translateY(0.625));
+  robotArm.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.4,12),armMat).translateY(0.85).rotateZ(Math.PI/6));
+  robotArm.add(new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.35,12),armMat).translateY(1.1).rotateZ(Math.PI/4));
+  gripper = new THREE.Group();
+  gripper.add(new THREE.Mesh(new THREE.BoxGeometry(0.015,0.08,0.02),new THREE.MeshStandardMaterial({color:0xfff})).translateY(1.24).translateZ(0.03));
+  gripper.add(new THREE.Mesh(new THREE.BoxGeometry(0.015,0.08,0.02),new THREE.MeshStandardMaterial({color:0xfff})).translateY(1.24).translateZ(-0.03));
+  robotArm.add(gripper); scene.add(robotArm);
+}
+function createObj(c){let g; const m = new THREE.MeshStandardMaterial({color:c.color,roughness:0.5});
+  if(c.type==='block'||c.type==='plate')g=new THREE.BoxGeometry(...c.s);
+  else if(c.type==='bowl')g=new THREE.SphereGeometry(c.s[0],16,12,0,Math.PI*2,0,Math.PI/2);
+  else if(c.type==='cup')g=new THREE.CylinderGeometry(c.s[0],c.s[0]*0.8,c.s[1],16);
+  const mh = new THREE.Mesh(g,m); mh.position.set(...c.pos); mh.userData={name:c.name,type:c.type}; scene.add(mh); objects.push(mh);
+}
+function animate(){requestAnimationFrame(animate); controls.update(); if(robotArm)robotArm.position.lerp(robotState.armTarget,0.1); renderer.render(scene,camera);}
+
+let currentMode='webllm', webllm=null, loaded=false;
+const SYSPR = `You are a robot controller. Generate Python code. Objects: red_block_1, red_block_2, blue_block, green_block, yellow_block, blue_plate, red_plate, green_plate, bowl, cup. APIs: detect_objects(), pick(obj), place(loc,offset=[x,y,z]), get_position(obj), navigate(x,y,z), wait(sec). Generate ONLY valid Python code.`;
+async function initWebLLM(){try{const{CreateMLCEngine}=await import('https://esm.run/@mlc-ai/web-llm');webllm=await CreateMLCEngine('Llama-3.1-8B-Instruct-q4f32_1-MLC',{initProgressCallback:p=>{if(p.text)document.getElementById('llmStatusText').textContent=p.text}});loaded=true;updateLLM('ready','WebLLM Ready')}catch(e){updateLLM('error','Use OpenAI');}}
+function updateLLM(s,t){document.getElementById('llmDot').className='llm-dot '+s;document.getElementById('llmStatusText').textContent=t;}
+async function genCode(instr){const up=SYSPR+'\n\nTask: '+instr+'\n\nCode:';let r;if(currentMode==='webllm'&&loaded){updateLLM('loading','Generating...');r=await webllm.chat.completions.create({messages:[{role:'user',content:up}],max_tokens:1024,temperature:0.3})}else{const k=document.getElementById('apiKeyInput').value;if(!k)return alert('Enter API key');updateLLM('loading','Calling...');const res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+k},body:JSON.stringify({model:'gpt-4o-mini',messages:[{role:'user',content:up}],max_tokens:1024,temperature:0.3})});const d=await res.json();r={choices:[{message:{content:d.choices[0].message.content}}]};}updateLLM('ready',currentMode==='webllm'?'WebLLM Ready':'OpenAI Ready');return r.choices[0].message.content.replace(/^```python\n?/,'').replace(/^```\n?/,'').replace(/```$/,'').trim();}
+
+let exeQ=[],codeL=[];
+function parseCode(c){const l=c.split('\n'),q=[];l.forEach((t,i)=>{let tr=t.trim();if(!tr||tr.startsWith('#'))return;
+  if(m=tr.match(/^pick\(['"]?(\w+)['"]?\)/))q.push({type:'pick',obj:m[1],line:i});
+  else if(m=tr.match(/^place\(['"]?(\w+)['"]?(,offset=\[([-\d.,]+)\])?\)/))q.push({type:'place',loc:m[1],off:m[3]?m[3].split(',').map(Number):[0,0,0],line:i});
+  else if(m=tr.match(/^navigate\(([-\d.,]+)\)/))q.push({type:'nav',pos:m[1].split(',').map(Number),line:i});
+});return q;}
+async function runCode(code){codeL=code.split('\n');document.getElementById('codeContent').innerHTML='<pre><code class="language-python">'+hljs.highlight(code,{language:'python'}).value+'</code></pre>';document.getElementById('codeLines').textContent=codeL.length;exeQ=parseCode(code);
+  if(!exeQ.length){document.getElementById('execStatus').textContent='Done';document.getElementById('execStatus').className='execution-status done';document.getElementById('currentAction').textContent='Code generated';return;}
+  document.getElementById('execStatus').textContent='Running';document.getElementById('execStatus').className='execution-status running';
+  for(const a of exeQ){document.getElementById('execLine').textContent=a.line+1;document.getElementById('currentAction').textContent=a.type.toUpperCase()+' '+ (a.obj||a.loc||'');await new Promise(r=>setTimeout(r,800));}
+  document.getElementById('execStatus').textContent='Done';document.getElementById('execStatus').className='execution-status done';document.getElementById('currentAction').textContent='Complete';
+}
+
+document.querySelectorAll('.mode-tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.mode-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentMode=b.dataset.mode;document.getElementById('openaiSection').classList.toggle('hidden',currentMode==='webllm');});
+document.querySelectorAll('.example-btn').forEach(b=>b.onclick=()=>document.getElementById('instructionInput').value=b.dataset.instruction);
+document.getElementById('runBtn').onclick=async()=>{const i=document.getElementById('instructionInput').value.trim();if(!i)return;document.getElementById('runBtn').disabled=true;try{const c=await genCode(i);await runCode(c);}catch(e){alert('Error: '+e);}document.getElementById('runBtn').disabled=false;};
+initWebLLM();init();
+  </script>
+</body>
+</html>
