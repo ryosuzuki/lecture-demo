@@ -124,6 +124,10 @@
                 <p>LLM-Guided Robot Planning</p>
             </div>
             <div class="input-section">
+                <label>OpenAI API Key</label>
+                <div class="input-wrapper" style="margin-bottom: 12px;">
+                    <input type="password" id="api-key-input" placeholder="sk-..." style="font-size: 0.85rem;">
+                </div>
                 <label>Instruction</label>
                 <div class="input-wrapper">
                     <input type="text" id="instruction-input" placeholder="e.g., Bring me a coke" onkeypress="if(event.key==='Enter')executeInstruction()">
@@ -326,77 +330,100 @@
             dot.className = 'status-dot' + (thinking ? ' thinking' : '');
         }
         
-        const taskLibrary = {
-            'bring me a coke': {
-                affordances: [
-                    { skill: 'pick(coke)', score: 0.92 }, { skill: 'pick(apple)', score: 0.15 }, { skill: 'pick(book)', score: 0.08 },
-                    { skill: 'pick(cup)', score: 0.12 }, { skill: 'place(table)', score: 0.88 }, { skill: 'place(counter)', score: 0.21 },
-                    { skill: 'place(shelf)', score: 0.05 }, { skill: 'navigate(table)', score: 0.85 }, { skill: 'navigate(counter)', score: 0.30 }
-                ],
-                plan: [
-                    { step: 'navigate', target: 'counter', description: 'Navigate to counter' },
-                    { step: 'pick', target: 'coke', description: 'Pick up the coke can' },
-                    { step: 'navigate', target: 'table', description: 'Navigate to table' },
-                    { step: 'place', target: 'table', description: 'Place coke on table' }
-                ]
-            },
-            'put the apple on the table': {
-                affordances: [
-                    { skill: 'pick(apple)', score: 0.94 }, { skill: 'pick(coke)', score: 0.18 }, { skill: 'pick(book)', score: 0.10 },
-                    { skill: 'place(table)', score: 0.91 }, { skill: 'place(counter)', score: 0.25 }, { skill: 'place(shelf)', score: 0.08 },
-                    { skill: 'navigate(counter)', score: 0.45 }, { skill: 'navigate(table)', score: 0.88 }
-                ],
-                plan: [
-                    { step: 'navigate', target: 'counter', description: 'Navigate to counter' },
-                    { step: 'pick', target: 'apple', description: 'Pick up the apple' },
-                    { step: 'navigate', target: 'table', description: 'Navigate to table' },
-                    { step: 'place', target: 'table', description: 'Place apple on table' }
-                ]
-            },
-            'move the book to the shelf': {
-                affordances: [
-                    { skill: 'pick(book)', score: 0.89 }, { skill: 'pick(apple)', score: 0.12 }, { skill: 'pick(coke)', score: 0.10 },
-                    { skill: 'place(shelf)', score: 0.95 }, { skill: 'place(table)', score: 0.20 }, { skill: 'place(counter)', score: 0.15 },
-                    { skill: 'navigate(counter)', score: 0.42 }, { skill: 'navigate(shelf)', score: 0.90 }
-                ],
-                plan: [
-                    { step: 'navigate', target: 'counter', description: 'Navigate to counter' },
-                    { step: 'pick', target: 'book', description: 'Pick up the book' },
-                    { step: 'navigate', target: 'shelf', description: 'Navigate to shelf' },
-                    { step: 'place', target: 'shelf', description: 'Place book on shelf' }
-                ]
+        const SAYCAN_SYSTEM_PROMPT = `You are a SayCan-style robot planner. You control a robot in a kitchen environment.
+
+Available objects on the counter: coke (red can), apple (green), book (blue), cup (yellow, on table)
+Available locations: counter, table, shelf
+Available skills: pick(object), place(location), navigate(location)
+
+Given a user instruction, you must:
+1. Score ALL possible skill-object/location combinations as affordances (0.0 to 1.0)
+   - High scores for relevant actions, low for irrelevant
+   - This simulates the "affordance function" in SayCan
+2. Create an execution plan using only the available skills
+
+The key insight of SayCan: combine LLM language understanding (what should I do?) with affordance grounding (what can I do?). The final score = P(useful | instruction) x P(success | state).
+
+Respond with ONLY valid JSON in this exact format:
+{
+  "affordances": [
+    {"skill": "pick(coke)", "score": 0.92},
+    {"skill": "pick(apple)", "score": 0.15},
+    {"skill": "pick(book)", "score": 0.08},
+    {"skill": "pick(cup)", "score": 0.12},
+    {"skill": "place(table)", "score": 0.88},
+    {"skill": "place(counter)", "score": 0.21},
+    {"skill": "place(shelf)", "score": 0.05},
+    {"skill": "navigate(table)", "score": 0.85},
+    {"skill": "navigate(counter)", "score": 0.30},
+    {"skill": "navigate(shelf)", "score": 0.10}
+  ],
+  "plan": [
+    {"step": "navigate", "target": "counter", "description": "Navigate to counter"},
+    {"step": "pick", "target": "coke", "description": "Pick up the coke can"},
+    {"step": "navigate", "target": "table", "description": "Navigate to table"},
+    {"step": "place", "target": "table", "description": "Place coke on table"}
+  ]
+}
+
+Rules for "target" values:
+- For "pick": must be one of: coke, apple, book, cup
+- For "place": must be one of: counter, table, shelf
+- For "navigate": must be one of: counter, table, shelf
+- Always include ALL 10 affordance skills (vary scores based on instruction)`;
+
+        async function getLLMResponse(instruction, apiKey) {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + apiKey
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o-mini',
+                    messages: [
+                        { role: 'system', content: SAYCAN_SYSTEM_PROMPT },
+                        { role: 'user', content: 'Instruction: "' + instruction + '"' }
+                    ],
+                    temperature: 0.3,
+                    response_format: { type: 'json_object' }
+                })
+            });
+            
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error?.message || 'API request failed: ' + response.status);
             }
-        };
-        
-        function getLLMResponse(instruction) {
-            const normalized = instruction.toLowerCase().trim();
-            for (const [key, data] of Object.entries(taskLibrary)) {
-                if (normalized.includes(key) || key.includes(normalized)) return data;
-            }
-            return {
-                affordances: [
-                    { skill: 'pick(coke)', score: 0.75 }, { skill: 'pick(apple)', score: 0.70 },
-                    { skill: 'place(table)', score: 0.80 }, { skill: 'navigate(table)', score: 0.75 }
-                ],
-                plan: [
-                    { step: 'navigate', target: 'counter', description: 'Navigate to counter' },
-                    { step: 'pick', target: 'object', description: 'Pick up object' },
-                    { step: 'navigate', target: 'table', description: 'Navigate to table' },
-                    { step: 'place', target: 'table', description: 'Place object on table' }
-                ]
-            };
+            
+            const data = await response.json();
+            const content = data.choices[0].message.content;
+            return JSON.parse(content);
         }
         
-        function executeInstruction() {
+        async function executeInstruction() {
             const input = document.getElementById('instruction-input');
             const instruction = input.value.trim();
             if (!instruction) return;
+            
+            const apiKey = document.getElementById('api-key-input').value.trim();
+            if (!apiKey) {
+                alert('Please enter your OpenAI API key first.');
+                document.getElementById('api-key-input').focus();
+                return;
+            }
+            
             const btn = document.getElementById('execute-btn');
             btn.disabled = true;
             updateStatus('LLM Analyzing...', true);
-            const response = getLLMResponse(instruction);
-            displayResults(instruction, response);
-            executePlan(response.plan);
+            
+            try {
+                const response = await getLLMResponse(instruction, apiKey);
+                displayResults(instruction, response);
+                executePlan(response.plan);
+            } catch (err) {
+                updateStatus('Error: ' + err.message, false);
+                btn.disabled = false;
+            }
         }
         
         function displayResults(instruction, response) {
