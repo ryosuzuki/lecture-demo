@@ -194,8 +194,8 @@ function updateLLM(s,t){document.getElementById('llmDot').className='llm-dot '+s
 async function genCode(instr){const up=SYSPR+'\n\nTask: '+instr+'\n\nCode:';let r;if(currentMode==='webllm'&&loaded){updateLLM('loading','Generating...');r=await webllm.chat.completions.create({messages:[{role:'user',content:up}],max_tokens:1024,temperature:0.3})}else{const k=document.getElementById('apiKeyInput').value;if(!k)return alert('Enter API key');updateLLM('loading','Calling...');const res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+k},body:JSON.stringify({model:'gpt-4o-mini',messages:[{role:'user',content:up}],max_tokens:1024,temperature:0.3})});const d=await res.json();r={choices:[{message:{content:d.choices[0].message.content}}]};}updateLLM('ready',currentMode==='webllm'?'WebLLM Ready':'OpenAI Ready');return r.choices[0].message.content.replace(/^```python\n?/,'').replace(/^```\n?/,'').replace(/```$/,'').trim();}
 
 let exeQ=[],codeL=[];
-function parseCode(c){const l=c.split('\n'),q=[];l.forEach((t,i)=>{let tr=t.trim();if(!tr||tr.startsWith('#'))return;
-  if(m=tr.match(/^pick\(['"]?(\w+)['"]?\)/))q.push({type:'pick',obj:m[1],line:i});
+function parseCode(c){const l=c.split('\n'),q=[];l.forEach((t,i)=>{let tr=t.trim(),m;if(!tr||tr.startsWith('#'))return;
+  if(m=tr.match(/pick\(['"]?(\w+)['"]?\)/))q.push({type:'pick',obj:m[1],line:i});
   else if(m=tr.match(/^place\(['"]?(\w+)['"]?(,offset=\[([-\d.,]+)\])?\)/))q.push({type:'place',loc:m[1],off:m[3]?m[3].split(',').map(Number):[0,0,0],line:i});
   else if(m=tr.match(/^navigate\(([-\d.,]+)\)/))q.push({type:'nav',pos:m[1].split(',').map(Number),line:i});
 });return q;}
