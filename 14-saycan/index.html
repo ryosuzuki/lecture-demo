@@ -17,7 +17,7 @@
         .scene-container { flex: 1; position: relative; }
         #canvas-container { width: 100%; height: 100%; }
         .sidebar {
-            width: 420px;
+            width: 520px;
             background: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(10px);
             border-left: 1px solid rgba(255, 255, 255, 0.1);
@@ -411,22 +411,122 @@ Rules:
                 s.position.set(x, 1.25, -3);
                 scene.add(s);
             });
-            createObject('coke', 0xff6b6b, -5, 1.2, -4, 0.4);
-            createObject('apple', 0x2ecc71, -4, 1.2, -4, 0.35);
-            createObject('book', 0x3498db, -3.5, 1.2, -4, 0.3);
-            createObject('cup', 0xf39c12, 3, 1, 2, 0.25);
+            createCoke(-5, 1.15, -4);
+            createApple(-4, 1.2, -4);
+            createBook(-3, 1.1, -4);
+            createCup(3, 0.95, 2);
         }
         
-        function createObject(name, color, x, y, z, size) {
-            const geo = new THREE.BoxGeometry(size * 1.5, size, size);
-            const mat = new THREE.MeshStandardMaterial({ color });
-            const obj = new THREE.Mesh(geo, mat);
-            obj.position.set(x, y, z);
-            obj.castShadow = true;
-            obj.userData = { name, originalPos: { x, y, z }, isHeld: false };
-            scene.add(obj);
-            objects.push(obj);
-            return obj;
+        function makeLabel(text, parent) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 48;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.roundRect(0, 8, 128, 32, 6); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif';
+            ctx.textAlign = 'center'; ctx.fillText(text, 64, 32);
+            const tex = new THREE.CanvasTexture(canvas);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+            sprite.scale.set(1.2, 0.45, 1);
+            sprite.position.set(0, 0.8, 0);
+            parent.add(sprite);
+        }
+        
+        function createCoke(x, y, z) {
+            const group = new THREE.Group();
+            // Can body (cylinder)
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.15, 0.5, 16),
+                new THREE.MeshStandardMaterial({ color: 0xff2222 })
+            );
+            body.castShadow = true;
+            group.add(body);
+            // Silver top
+            const top = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.14, 0.15, 0.05, 16),
+                new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.6 })
+            );
+            top.position.y = 0.275;
+            group.add(top);
+            makeLabel('Coke', group);
+            group.position.set(x, y, z);
+            group.userData = { name: 'coke', originalPos: { x, y, z }, isHeld: false };
+            scene.add(group);
+            objects.push(group);
+        }
+        
+        function createApple(x, y, z) {
+            const group = new THREE.Group();
+            const body = new THREE.Mesh(
+                new THREE.SphereGeometry(0.2, 16, 16),
+                new THREE.MeshStandardMaterial({ color: 0x2ecc71 })
+            );
+            body.castShadow = true;
+            group.add(body);
+            // Stem
+            const stem = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.02, 0.02, 0.12),
+                new THREE.MeshStandardMaterial({ color: 0x5d3513 })
+            );
+            stem.position.y = 0.22;
+            group.add(stem);
+            makeLabel('Apple', group);
+            group.position.set(x, y, z);
+            group.userData = { name: 'apple', originalPos: { x, y, z }, isHeld: false };
+            scene.add(group);
+            objects.push(group);
+        }
+        
+        function createBook(x, y, z) {
+            const group = new THREE.Group();
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(0.5, 0.08, 0.35),
+                new THREE.MeshStandardMaterial({ color: 0x3498db })
+            );
+            body.castShadow = true;
+            group.add(body);
+            // Pages (white stripe on side)
+            const pages = new THREE.Mesh(
+                new THREE.BoxGeometry(0.48, 0.06, 0.01),
+                new THREE.MeshStandardMaterial({ color: 0xf5f5f5 })
+            );
+            pages.position.z = 0.17;
+            group.add(pages);
+            makeLabel('Book', group);
+            group.position.set(x, y, z);
+            group.userData = { name: 'book', originalPos: { x, y, z }, isHeld: false };
+            scene.add(group);
+            objects.push(group);
+        }
+        
+        function createCup(x, y, z) {
+            const group = new THREE.Group();
+            // Cup body (open cylinder using lathe)
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.12, 0.1, 0.3, 16, 1, true),
+                new THREE.MeshStandardMaterial({ color: 0xf39c12, side: THREE.DoubleSide })
+            );
+            body.castShadow = true;
+            group.add(body);
+            // Bottom
+            const bottom = new THREE.Mesh(
+                new THREE.CircleGeometry(0.1, 16),
+                new THREE.MeshStandardMaterial({ color: 0xd68910 })
+            );
+            bottom.rotation.x = -Math.PI / 2;
+            bottom.position.y = -0.15;
+            group.add(bottom);
+            // Handle
+            const handleShape = new THREE.TorusGeometry(0.08, 0.02, 8, 12, Math.PI);
+            const handle = new THREE.Mesh(handleShape, new THREE.MeshStandardMaterial({ color: 0xf39c12 }));
+            handle.rotation.z = Math.PI / 2;
+            handle.position.set(0.15, 0, 0);
+            group.add(handle);
+            makeLabel('Cup', group);
+            group.position.set(x, y, z);
+            group.userData = { name: 'cup', originalPos: { x, y, z }, isHeld: false };
+            scene.add(group);
+            objects.push(group);
         }
         
         function createRobot() {
@@ -506,9 +606,26 @@ Rules:
                 html += '<div class="plan-step pending" id="step-' + i + '"><span class="step-number">' + (i + 1) + '</span><span class="step-text">' + step.description + '</span></div>';
             });
             html += '</div></div>';
-            // Raw LLM response toggle
-            html += '<div class="raw-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'">Show raw LLM response</div>';
-            html += '<div class="raw-response" style="display:none">' + rawText.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
+            // Pipeline explanation
+            html += '<div class="section"><div class="section-title">How SayCan Works</div>';
+            html += '<div style="font-size:0.8rem; color:rgba(255,255,255,0.6); line-height:1.6; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px;">';
+            html += '<b style="color:#00d4ff">Step 1: Language Understanding</b><br>';
+            html += 'LLM receives instruction: <i>"' + instruction + '"</i><br><br>';
+            html += '<b style="color:#00d4ff">Step 2: Affordance Scoring</b><br>';
+            html += 'For each skill, compute: <b>Score = P(useful | instruction) x P(success | state)</b><br>';
+            html += 'High score = relevant to task AND physically feasible<br><br>';
+            html += '<b style="color:#00d4ff">Step 3: Action Selection</b><br>';
+            html += 'Select highest-scoring action, execute, repeat until done<br><br>';
+            html += '<b style="color:#00ff88">Key Insight:</b> The LLM provides language grounding (what to do), the affordance function provides physical grounding (what CAN be done)';
+            html += '</div></div>';
+            
+            // Debug: System prompt
+            html += '<div class="section"><div class="section-title">Debug: LLM Interaction</div>';
+            html += '<div class="raw-toggle" onclick="document.getElementById(\'debug-prompt\').style.display=document.getElementById(\'debug-prompt\').style.display===\'none\'?\'block\':\'none\'">Show system prompt</div>';
+            html += '<div class="raw-response" id="debug-prompt" style="display:none">' + SAYCAN_PROMPT.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</div>';
+            html += '<div class="raw-toggle" onclick="document.getElementById(\'debug-output\').style.display=document.getElementById(\'debug-output\').style.display===\'none\'?\'block\':\'none\'">Show raw LLM output</div>';
+            html += '<div class="raw-response" id="debug-output" style="display:none">' + rawText.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
+            html += '</div>';
             container.innerHTML = html;
             setTimeout(() => {
                 sorted.forEach((aff, i) => {
