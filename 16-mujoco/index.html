@@ -413,7 +413,7 @@ function loadModel(modelName) {
     model = mujoco.MjModel.loadFromXML('/working/' + modelName + '.xml');
     data = new mujoco.MjData(model);
     
-    model.opt.gravity = [0, 0, -params.gravity];
+    model.opt.gravity[0] = 0; model.opt.gravity[1] = 0; model.opt.gravity[2] = -params.gravity;
     
     createMeshesFromModel(modelName);
     
@@ -589,7 +589,7 @@ function setupEventListeners() {
   $('gravitySlider').addEventListener('input', (e) => {
     params.gravity = parseFloat(e.target.value);
     $('gravityValue').textContent = params.gravity.toFixed(2);
-    if (model) model.opt.gravity = [0, 0, -params.gravity];
+    if (model) { model.opt.gravity[0] = 0; model.opt.gravity[1] = 0; model.opt.gravity[2] = -params.gravity; }
   });
   
   $('frictionSlider').addEventListener('input', (e) => {
