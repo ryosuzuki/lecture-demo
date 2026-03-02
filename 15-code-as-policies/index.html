@@ -122,7 +122,7 @@
         </div>
         <div class="status-panel">
           <div class="status-row"><span class="status-label">Current Action</span><span class="status-value" id="currentAction">-</span></div>
-          <div class="status-row"><span class="status-label">Objects Detected</span><span class="status-value" id="objectsDetected">6</span></div>
+          <div class="status-row"><span class="status-label">Objects Detected</span><span class="status-value" id="objectsDetected">10</span></div>
           <div class="status-row"><span class="status-label">Code Lines</span><span class="status-value" id="codeLines">0</span></div>
           <div class="status-row"><span class="status-label">Execution Line</span><span class="status-value" id="execLine">-</span></div>
         </div>
@@ -134,8 +134,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-let scene, camera, renderer, controls, robotArm, gripper, objects = [];
-const robotState = { holding: null, armTarget: new THREE.Vector3(0, 0.5, 0), gripperOpen: true };
+let scene, camera, renderer, controls, robotArm, gripper, gripperL, gripperR, objects = [];
+const robotState = { holding: null, armTarget: new THREE.Vector3(0, 0.8, 0), gripperOpen: true };
 const SCENE_OBJECTS = [
   {name:'red_block_1',type:'block',color:0xff4444,pos:[-0.6,0.1,0.3],s:[0.12,0.12,0.12]},
   {name:'red_block_2',type:'block',color:0xff4444,pos:[-0.5,0.1,0.4],s:[0.1,0.1,0.1]},
@@ -148,7 +148,6 @@ const SCENE_OBJECTS = [
   {name:'bowl',type:'bowl',color:0x888888,pos:[0,0.08,-0.3],s:[0.15,0.08,0.15]},
   {name:'cup',type:'cup',color:0xffffff,pos:[-0.2,0.1,0],s:[0.06,0.12,0.06]}
 ];
-const ORIGINAL = {};
 
 function init(){
   const c = document.getElementById('canvas-container');
@@ -162,11 +161,12 @@ function init(){
   const g = new THREE.Mesh(new THREE.PlaneGeometry(10,10),new THREE.MeshStandardMaterial({color:0x1a1a25,roughness:0.8})); g.rotation.x=-Math.PI/2; scene.add(g);
   const tb = new THREE.Mesh(new THREE.BoxGeometry(1.8,0.05,1),new THREE.MeshStandardMaterial({color:0x2a2a35})); tb.position.set(0,0.4,0); scene.add(tb);
   createRobotArm();
-  SCENE_OBJECTS.forEach(o=>{createObj(o); ORIGINAL[o.name]=[...o.pos];});
+  SCENE_OBJECTS.forEach(o=>{createObj(o);});
   window.addEventListener('resize',()=>{camera.aspect=c.clientWidth/(c.clientHeight-100);camera.updateProjectionMatrix();renderer.setSize(c.clientWidth,c.clientHeight-100);});
   document.getElementById('loadingOverlay').classList.add('hidden');
   animate();
 }
+
 function createRobotArm(){
   robotArm = new THREE.Group();
   const armMat = new THREE.MeshStandardMaterial({color:0x00d4ff,metalness:0.5,roughness:0.3});
@@ -175,41 +175,185 @@ function createRobotArm(){
   robotArm.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.4,12),armMat).translateY(0.85).rotateZ(Math.PI/6));
   robotArm.add(new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.35,12),armMat).translateY(1.1).rotateZ(Math.PI/4));
   gripper = new THREE.Group();
-  gripper.add(new THREE.Mesh(new THREE.BoxGeometry(0.015,0.08,0.02),new THREE.MeshStandardMaterial({color:0xfff})).translateY(1.24).translateZ(0.03));
-  gripper.add(new THREE.Mesh(new THREE.BoxGeometry(0.015,0.08,0.02),new THREE.MeshStandardMaterial({color:0xfff})).translateY(1.24).translateZ(-0.03));
+  gripperL = new THREE.Mesh(new THREE.BoxGeometry(0.015,0.08,0.02),new THREE.MeshStandardMaterial({color:0xffffff}));
+  gripperL.position.set(0,1.24,0.03);
+  gripperR = new THREE.Mesh(new THREE.BoxGeometry(0.015,0.08,0.02),new THREE.MeshStandardMaterial({color:0xffffff}));
+  gripperR.position.set(0,1.24,-0.03);
+  gripper.add(gripperL); gripper.add(gripperR);
   robotArm.add(gripper); scene.add(robotArm);
 }
-function createObj(c){let g; const m = new THREE.MeshStandardMaterial({color:c.color,roughness:0.5});
-  if(c.type==='block'||c.type==='plate')g=new THREE.BoxGeometry(...c.s);
-  else if(c.type==='bowl')g=new THREE.SphereGeometry(c.s[0],16,12,0,Math.PI*2,0,Math.PI/2);
-  else if(c.type==='cup')g=new THREE.CylinderGeometry(c.s[0],c.s[0]*0.8,c.s[1],16);
-  const mh = new THREE.Mesh(g,m); mh.position.set(...c.pos); mh.userData={name:c.name,type:c.type}; scene.add(mh); objects.push(mh);
+
+function createObj(c){
+  let g; const m = new THREE.MeshStandardMaterial({color:c.color,roughness:0.5});
+  if(c.type==='block'||c.type==='plate') g=new THREE.BoxGeometry(...c.s);
+  else if(c.type==='bowl') g=new THREE.SphereGeometry(c.s[0],16,12,0,Math.PI*2,0,Math.PI/2);
+  else if(c.type==='cup') g=new THREE.CylinderGeometry(c.s[0],c.s[0]*0.8,c.s[1],16);
+  const mh = new THREE.Mesh(g,m); mh.position.set(...c.pos); mh.userData={name:c.name,type:c.type,size:c.s}; scene.add(mh); objects.push(mh);
 }
-function animate(){requestAnimationFrame(animate); controls.update(); if(robotArm)robotArm.position.lerp(robotState.armTarget,0.1); renderer.render(scene,camera);}
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  if(robotArm) robotArm.position.lerp(robotState.armTarget, 0.12);
+  if(robotState.holding){
+    robotState.holding.position.set(robotArm.position.x, robotArm.position.y - 0.05, robotArm.position.z);
+  }
+  const tz = robotState.gripperOpen ? 0.04 : 0.012;
+  gripperL.position.z += (tz - gripperL.position.z) * 0.15;
+  gripperR.position.z += (-tz - gripperR.position.z) * 0.15;
+  renderer.render(scene, camera);
+}
+
+function smoothMoveTo(target, ms=600){
+  return new Promise(resolve=>{ robotState.armTarget.copy(target); setTimeout(resolve, ms); });
+}
+
+function findObj(name){ return objects.find(o=>o.userData.name===name); }
+
+function countStackHeight(locName){
+  const loc = findObj(locName); if(!loc) return 0;
+  let h = 0;
+  objects.forEach(o=>{
+    if(o!==loc && o.userData.type==='block' &&
+       Math.abs(o.position.x - loc.position.x)<0.18 &&
+       Math.abs(o.position.z - loc.position.z)<0.18 &&
+       o.position.y > loc.position.y + 0.02)
+      h += (o.userData.size?.[1] || 0.12);
+  });
+  return h;
+}
+
+async function execPick(name){
+  const obj = findObj(name);
+  if(!obj){ console.warn('pick: not found:', name); return; }
+  robotState.gripperOpen = true;
+  const above = obj.position.clone(); above.y += 0.4;
+  await smoothMoveTo(above, 600);
+  const at = obj.position.clone(); at.y += 0.15;
+  await smoothMoveTo(at, 400);
+  robotState.gripperOpen = false;
+  await new Promise(r=>setTimeout(r, 250));
+  robotState.holding = obj;
+  const lift = at.clone(); lift.y += 0.3;
+  await smoothMoveTo(lift, 400);
+}
+
+async function execPlace(locName, offset=[0,0,0]){
+  const loc = findObj(locName);
+  if(!loc || !robotState.holding){ console.warn('place: cannot', locName); return; }
+  const stackH = countStackHeight(locName);
+  const locTop = loc.position.y + (loc.userData.size?.[1]||0.04)/2;
+  const heldH = (robotState.holding.userData.size?.[1]||0.12)/2;
+  const px = loc.position.x + offset[0], pz = loc.position.z + offset[2];
+  const py = locTop + heldH + stackH + offset[1];
+  const above = new THREE.Vector3(px, py + 0.35, pz);
+  await smoothMoveTo(above, 600);
+  const at = new THREE.Vector3(px, py + 0.15, pz);
+  await smoothMoveTo(at, 400);
+  robotState.holding.position.set(px, py, pz);
+  robotState.holding = null;
+  robotState.gripperOpen = true;
+  await new Promise(r=>setTimeout(r, 250));
+  const up = at.clone(); up.y += 0.3;
+  await smoothMoveTo(up, 400);
+}
+
+async function execNav(pos){
+  await smoothMoveTo(new THREE.Vector3(pos[0]||0, pos[1]||0.8, pos[2]||0), 600);
+}
+
+function parseCode(code){
+  const lines = code.split('\n'), q = [];
+  lines.forEach((line, i)=>{
+    const tr = line.trim(); if(!tr || tr.startsWith('#')) return;
+    let m;
+    if(m = tr.match(/pick\(\s*['"]?(\w+)['"]?\s*\)/))
+      q.push({type:'pick', obj:m[1], line:i});
+    else if(m = tr.match(/place\(\s*['"]?(\w+)['"]?\s*(?:,\s*offset\s*=\s*\[\s*([-\d.,\s]+)\s*\])?\s*\)/))
+      q.push({type:'place', loc:m[1], off:m[2]?m[2].split(',').map(Number):[0,0,0], line:i});
+    else if(m = tr.match(/navigate\(\s*([-\d.,\s]+)\s*\)/))
+      q.push({type:'nav', pos:m[1].split(',').map(Number), line:i});
+    else if(tr.match(/detect_objects|get_position|wait/))
+      q.push({type:'noop', line:i});
+  });
+  return q;
+}
+
+async function runCode(code){
+  document.getElementById('codeContent').innerHTML = '<pre><code class="language-python">' + hljs.highlight(code,{language:'python'}).value + '</code></pre>';
+  document.getElementById('codeLines').textContent = code.split('\n').length;
+  const queue = parseCode(code);
+  if(!queue.length){
+    document.getElementById('execStatus').textContent='Done';
+    document.getElementById('execStatus').className='execution-status done';
+    document.getElementById('currentAction').textContent='No executable actions found';
+    return;
+  }
+  document.getElementById('execStatus').textContent='Running';
+  document.getElementById('execStatus').className='execution-status running';
+  for(const a of queue){
+    document.getElementById('execLine').textContent = a.line+1;
+    document.getElementById('currentAction').textContent = a.type.toUpperCase()+' '+(a.obj||a.loc||'');
+    if(a.type==='pick') await execPick(a.obj);
+    else if(a.type==='place') await execPlace(a.loc, a.off);
+    else if(a.type==='nav') await execNav(a.pos);
+    else await new Promise(r=>setTimeout(r,300));
+  }
+  document.getElementById('execStatus').textContent='Done';
+  document.getElementById('execStatus').className='execution-status done';
+  document.getElementById('currentAction').textContent='Complete ✓';
+}
 
 let currentMode='webllm', webllm=null, loaded=false;
-const SYSPR = `You are a robot controller. Generate Python code. Objects: red_block_1, red_block_2, blue_block, green_block, yellow_block, blue_plate, red_plate, green_plate, bowl, cup. APIs: detect_objects(), pick(obj), place(loc,offset=[x,y,z]), get_position(obj), navigate(x,y,z), wait(sec). Generate ONLY valid Python code.`;
-async function initWebLLM(){try{const{CreateMLCEngine}=await import('https://esm.run/@mlc-ai/web-llm');webllm=await CreateMLCEngine('Llama-3.1-8B-Instruct-q4f32_1-MLC',{initProgressCallback:p=>{if(p.text)document.getElementById('llmStatusText').textContent=p.text}});loaded=true;updateLLM('ready','WebLLM Ready')}catch(e){updateLLM('error','Use OpenAI');}}
-function updateLLM(s,t){document.getElementById('llmDot').className='llm-dot '+s;document.getElementById('llmStatusText').textContent=t;}
-async function genCode(instr){const up=SYSPR+'\n\nTask: '+instr+'\n\nCode:';let r;if(currentMode==='webllm'&&loaded){updateLLM('loading','Generating...');r=await webllm.chat.completions.create({messages:[{role:'user',content:up}],max_tokens:1024,temperature:0.3})}else{const k=document.getElementById('apiKeyInput').value;if(!k)return alert('Enter API key');updateLLM('loading','Calling...');const res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+k},body:JSON.stringify({model:'gpt-4o-mini',messages:[{role:'user',content:up}],max_tokens:1024,temperature:0.3})});const d=await res.json();r={choices:[{message:{content:d.choices[0].message.content}}]};}updateLLM('ready',currentMode==='webllm'?'WebLLM Ready':'OpenAI Ready');return r.choices[0].message.content.replace(/^```python\n?/,'').replace(/^```\n?/,'').replace(/```$/,'').trim();}
+const SYSPR = `You are a robot controller. Generate ONLY Python code (no explanation, no markdown fences).
+Available objects: red_block_1, red_block_2, blue_block, green_block, yellow_block, blue_plate, red_plate, green_plate, bowl, cup.
+APIs: detect_objects(), pick("name"), place("target_name", offset=[x,y,z]), get_position("name"), navigate(x,y,z), wait(sec).
+Each pick must be followed by a place. Generate valid Python only.`;
 
-let exeQ=[],codeL=[];
-function parseCode(c){const l=c.split('\n'),q=[];l.forEach((t,i)=>{let tr=t.trim(),m;if(!tr||tr.startsWith('#'))return;
-  if(m=tr.match(/pick\(['"]?(\w+)['"]?\)/))q.push({type:'pick',obj:m[1],line:i});
-  else if(m=tr.match(/^place\(['"]?(\w+)['"]?(,offset=\[([-\d.,]+)\])?\)/))q.push({type:'place',loc:m[1],off:m[3]?m[3].split(',').map(Number):[0,0,0],line:i});
-  else if(m=tr.match(/^navigate\(([-\d.,]+)\)/))q.push({type:'nav',pos:m[1].split(',').map(Number),line:i});
-});return q;}
-async function runCode(code){codeL=code.split('\n');document.getElementById('codeContent').innerHTML='<pre><code class="language-python">'+hljs.highlight(code,{language:'python'}).value+'</code></pre>';document.getElementById('codeLines').textContent=codeL.length;exeQ=parseCode(code);
-  if(!exeQ.length){document.getElementById('execStatus').textContent='Done';document.getElementById('execStatus').className='execution-status done';document.getElementById('currentAction').textContent='Code generated';return;}
-  document.getElementById('execStatus').textContent='Running';document.getElementById('execStatus').className='execution-status running';
-  for(const a of exeQ){document.getElementById('execLine').textContent=a.line+1;document.getElementById('currentAction').textContent=a.type.toUpperCase()+' '+ (a.obj||a.loc||'');await new Promise(r=>setTimeout(r,800));}
-  document.getElementById('execStatus').textContent='Done';document.getElementById('execStatus').className='execution-status done';document.getElementById('currentAction').textContent='Complete';
+async function initWebLLM(){
+  try{
+    const{CreateMLCEngine}=await import('https://esm.run/@mlc-ai/web-llm');
+    webllm=await CreateMLCEngine('Llama-3.1-8B-Instruct-q4f32_1-MLC',{
+      initProgressCallback:p=>{if(p.text)document.getElementById('llmStatusText').textContent=p.text}
+    });
+    loaded=true; updateLLM('ready','WebLLM Ready');
+  }catch(e){ updateLLM('error','WebLLM failed — use OpenAI'); }
+}
+function updateLLM(s,t){ document.getElementById('llmDot').className='llm-dot '+s; document.getElementById('llmStatusText').textContent=t; }
+
+async function genCode(instr){
+  const prompt = SYSPR+'\n\nTask: '+instr+'\n\nPython code:';
+  let r;
+  if(currentMode==='webllm'&&loaded){
+    updateLLM('loading','Generating...');
+    r = await webllm.chat.completions.create({messages:[{role:'user',content:prompt}],max_tokens:1024,temperature:0.3});
+  } else {
+    const k = document.getElementById('apiKeyInput').value;
+    if(!k){alert('Enter OpenAI API key');return null;}
+    updateLLM('loading','Calling OpenAI...');
+    const res = await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+k},body:JSON.stringify({model:'gpt-4o-mini',messages:[{role:'user',content:prompt}],max_tokens:1024,temperature:0.3})});
+    const d = await res.json();
+    r = {choices:[{message:{content:d.choices[0].message.content}}]};
+  }
+  updateLLM('ready',currentMode==='webllm'?'WebLLM Ready':'OpenAI Ready');
+  let code = r.choices[0].message.content;
+  code = code.replace(/^```python\n?/gm,'').replace(/^```\n?/gm,'').replace(/```$/gm,'').trim();
+  return code;
 }
 
-document.querySelectorAll('.mode-tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.mode-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentMode=b.dataset.mode;document.getElementById('openaiSection').classList.toggle('hidden',currentMode==='webllm');});
+document.querySelectorAll('.mode-tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.mode-tab').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); currentMode=b.dataset.mode;
+  document.getElementById('openaiSection').classList.toggle('hidden',currentMode==='webllm');
+});
 document.querySelectorAll('.example-btn').forEach(b=>b.onclick=()=>document.getElementById('instructionInput').value=b.dataset.instruction);
-document.getElementById('runBtn').onclick=async()=>{const i=document.getElementById('instructionInput').value.trim();if(!i)return;document.getElementById('runBtn').disabled=true;try{const c=await genCode(i);await runCode(c);}catch(e){alert('Error: '+e);}document.getElementById('runBtn').disabled=false;};
-initWebLLM();init();
+document.getElementById('runBtn').onclick=async()=>{
+  const i=document.getElementById('instructionInput').value.trim(); if(!i) return;
+  document.getElementById('runBtn').disabled=true;
+  try{ const c=await genCode(i); if(c) await runCode(c); }catch(e){ console.error(e); alert('Error: '+e.message); }
+  document.getElementById('runBtn').disabled=false;
+};
+initWebLLM(); init();
   </script>
 </body>
 </html>
