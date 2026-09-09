@@ -52,3 +52,7 @@ function renderFrame(dt){const idx=Math.min(5,Math.floor(state.time/25));if(idx!
 function tick(now){const dt=Math.min(.1,(now-last)/1000||0);last=now;if(state.playing&&!document.hidden){state.time=Math.min(150,state.time+dt*state.speed);if(state.time===150){state.playing=false;playSync()}}renderFrame(dt);requestAnimationFrame(tick)}
 window.cinema={get state(){return {...state,chapter,frames,camera:camera.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,webgl:!renderer.getContext().isContextLost()}},trace:()=>trace(state),multi:()=>multi(state),seek,chapters:chapters.map(c=>c.name),get labels(){return labels.map(l=>({text:l.el.textContent,visible:l.el.style.display!=='none',rect:l.el.getBoundingClientRect().toJSON()}))}};
 setChapter(0);updateReadout();playSync();requestAnimationFrame(tick);
+
+function focusMode(on){document.body.classList.toggle('cinema-focus',on);$('#focus').setAttribute('aria-pressed',String(on));$('#focus').textContent=on?'操作パネルに戻る':'映像に集中';window.dispatchEvent(new Event('resize'))}
+$('#focus').onclick=()=>focusMode(!document.body.classList.contains('cinema-focus'));
+window.addEventListener('keydown',e=>{if(e.key==='Escape')focusMode(false)});
