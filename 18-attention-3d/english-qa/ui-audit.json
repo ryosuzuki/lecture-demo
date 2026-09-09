@@ -1,0 +1,479 @@
+{
+  "results": [
+    {
+      "route": "/replica/#gpt",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#modalities",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#generate",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#tokens",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#model",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#architecture",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#chat",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#roadmap",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#learning",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#regression",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#tensors",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#weights",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#lookup",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#dimensions",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#tower-neighbors",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#analogy",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#countries",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#food",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#dot",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#plural",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#embedding-count",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#king-context",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#context-window",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#unembedding",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#unembedding-count",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#softmax",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#temperature",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#chapter5-end",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#recap",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#mole",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#eiffel",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#mystery",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#adjectives",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#query",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#key",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#scores",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#attention-softmax",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#equation",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#mask",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#quadratic",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#value",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#weighted-values",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#residual",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#qkv-count",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#lowrank",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#cross",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#harry",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#heads",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#output",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#deeper",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#attention-count",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "/replica/#parallel",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/guide.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/v2/guide.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/gpt-cinema/",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/replica/guide.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/replica/qa.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/replica/provenance.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/replica/compare.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/replica/3d/guide.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/replica/3d/qa.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "1280:/replica/3d/compare.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/guide.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/v2/guide.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/gpt-cinema/",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/replica/guide.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/replica/qa.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/replica/provenance.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/replica/compare.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/replica/3d/guide.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/replica/3d/qa.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "390:/replica/3d/compare.html",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "open instructor cue: story",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "open instructor cue: geometry",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "open instructor cue: values",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "open instructor cue: matrix",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    },
+    {
+      "route": "open instructor cue: training",
+      "lang": "en",
+      "japanese": false,
+      "overflow": false
+    }
+  ],
+  "errors": []
+}

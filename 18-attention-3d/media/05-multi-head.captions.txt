@@ -1,0 +1,17 @@
+replica / 05-multi-head — English walkthrough captions
+
+Ordered transcript of captions burned into the recording. No audio.
+
+Each head has distinct Q/K/V and proposes its own update.
+
+Inspect head 2: its attention pattern and update differ.
+
+Inspect head 3. Real-model roles need not be this simple.
+
+The output matrix combines the head up-projection matrices.
+
+Projecting separately then summing equals concatenating then projecting once.
+
+96 heads × 96 layers: about 58 billion attention weights.
+
+Repeat attention and MLP to build richer context.

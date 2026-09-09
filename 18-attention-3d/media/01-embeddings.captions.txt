@@ -1,0 +1,15 @@
+replica / 01-embeddings — English walkthrough captions
+
+Ordered transcript of captions burned into the recording. No audio.
+
+Use the source example: add woman − man to king.
+
+Translate the yellow difference to the tip of king.
+
+It does not exactly match queen, as the source also emphasizes.
+
+Orbit with the mouse to inspect the 3D arrows.
+
+Compare the same difference with the family pair.
+
+Real GloVe 50D projected into 3D—not GPT-3 weights.

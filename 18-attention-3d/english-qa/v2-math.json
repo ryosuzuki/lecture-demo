@@ -1,0 +1,98 @@
+[
+  {
+    "name": "PyTorch logits parity: the blue cube is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch attention parity: the blue cube is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch residual parity: the blue cube is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch logits parity: the red cube is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch attention parity: the red cube is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch residual parity: the red cube is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch logits parity: the green sphere looks very",
+    "pass": true
+  },
+  {
+    "name": "PyTorch attention parity: the green sphere looks very",
+    "pass": true
+  },
+  {
+    "name": "PyTorch residual parity: the green sphere looks very",
+    "pass": true
+  },
+  {
+    "name": "PyTorch logits parity: the river bank is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch attention parity: the river bank is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch residual parity: the river bank is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch logits parity: the money bank is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch attention parity: the money bank is",
+    "pass": true
+  },
+  {
+    "name": "PyTorch residual parity: the money bank is",
+    "pass": true
+  },
+  {
+    "name": "blue predicts blue",
+    "pass": true
+  },
+  {
+    "name": "red predicts red",
+    "pass": true
+  },
+  {
+    "name": "V intervention preserves attention",
+    "pass": true
+  },
+  {
+    "name": "V intervention changes actual message",
+    "pass": true
+  },
+  {
+    "name": "V intervention propagates to logits",
+    "pass": true
+  },
+  {
+    "name": "future edit preserves earlier state under causal mask",
+    "pass": true
+  },
+  {
+    "name": "future edit can change earlier state without mask",
+    "pass": true
+  },
+  {
+    "name": "all causal rows sum to one",
+    "pass": true
+  },
+  {
+    "name": "checkpoints differ",
+    "pass": true
+  }
+]

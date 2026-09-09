@@ -1,0 +1,182 @@
+[
+  {
+    "id": "original/meaning",
+    "bytes": 2187473,
+    "duration": 33.53,
+    "sha256": "ff158837caedaddeda85c786f24b4a9725a9dc6e4da8d2cf19f4fd31ee80907c",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "original/match",
+    "bytes": 1455178,
+    "duration": 41.53,
+    "sha256": "62bca106fdd061523d3d10058a983ee275dcf8825f0768f8e9580601ff407b3f",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "original/mix",
+    "bytes": 1892371,
+    "duration": 34.37,
+    "sha256": "a9d2122b0c8eb22df00029dead2cb9658fae13fd2910271b204a0796426c34d8",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "replica/01-embeddings",
+    "bytes": 2037222,
+    "duration": 42.43,
+    "sha256": "518b3b43a29243c75943516da35f38bee53863c730ce5ff38b9e47275877e5a5",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "replica/02-query-key",
+    "bytes": 2172435,
+    "duration": 51.03,
+    "sha256": "8afd86506d3d789f69c5b239fe9b35cee3de78ad3074fcae71d0ff066f08d739",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "replica/03-mask",
+    "bytes": 1770249,
+    "duration": 53.63,
+    "sha256": "64cfcfb798109a154209a38379fe93f040d2ac1514cb8f87301e6b27c2e0142a",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "original/mask",
+    "bytes": 1615362,
+    "duration": 42.23,
+    "sha256": "300aa3a6090e34981db87d37cae0d579c71371b8f2e74c32c6da256803c10e28",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "original/learn",
+    "bytes": 1237814,
+    "duration": 39.43,
+    "sha256": "445fb2dc1eab1464fdcbe8cadb820467d6f74398dd803d80f8361a35471373a5",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "replica/04-values",
+    "bytes": 1878270,
+    "duration": 56.63,
+    "sha256": "9942a27209f7997e228dd49863eadb451d44e6b7f7a6e7c3664f1d1014a9ee22",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "replica/05-multi-head",
+    "bytes": 1646910,
+    "duration": 53.13,
+    "sha256": "5f5645c580b41209acc235dddca869fb379037b2e1a14bbd295034068f466804",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "v2/story",
+    "bytes": 4015504,
+    "duration": 83.4,
+    "sha256": "640a4269a405aac95debc0448f95d427dd2c34fc0b54299afec83b202ff59b16",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "v2/geometry",
+    "bytes": 2752954,
+    "duration": 81.37,
+    "sha256": "8a26a0c7f87f0c041176c49721d56a2856c539a470c2427aca958e8f4d5900cb",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "v2/values",
+    "bytes": 3152322,
+    "duration": 76.97,
+    "sha256": "ca4c776ba96c2e15b59067dfd18fadf7ac36592852c3dd3a44eb8c81590fa9a7",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "v2/matrix",
+    "bytes": 3261240,
+    "duration": 71.23,
+    "sha256": "418d9488791c536443725f5e35c32ad8331f953bc46f69afb1bb15d804fa431d",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "v2/training",
+    "bytes": 3341376,
+    "duration": 78.73,
+    "sha256": "4205050764a4515be50c2c8aac8ca5f49dd2a65314cd293438603e1388bae857",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "3d/pipeline",
+    "bytes": 3967501,
+    "duration": 28.27,
+    "sha256": "0bbfba419a5221e8f8bf42312c907dba5f11dd327e88147cd605a2327ee33c36",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "3d/qk",
+    "bytes": 1829870,
+    "duration": 24.93,
+    "sha256": "8fc419919ccdad301ed464a00af336bc816d34d09a26c14ac10d10050ebff2ef",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "3d/values",
+    "bytes": 1598713,
+    "duration": 30.6,
+    "sha256": "f0bae93d7c45f9dcfab34c3d08fe4b729a4404bc71ec71aa8d250bf7474bf976",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "3d/heads",
+    "bytes": 2704880,
+    "duration": 29.83,
+    "sha256": "bba93e79af643b2b4303ccc4b17a3ced913b527ef68c7ae156e7000f36fb3e85",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  },
+  {
+    "id": "3d/meaning",
+    "bytes": 1466264,
+    "duration": 33.83,
+    "sha256": "bdc65581df4ff64aa06eb403f7cb8fd382eafaa3197445167f891705b2ead392",
+    "fullDecodeExit": 0,
+    "fastStart": true,
+    "recordedInEnglish": true
+  }
+]

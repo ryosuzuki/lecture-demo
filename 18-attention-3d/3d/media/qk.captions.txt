@@ -1,0 +1,13 @@
+3D / qk — English walkthrough captions
+
+Ordered transcript of captions burned into the recording. No audio.
+
+Inspect creature: what proportions come from fluffy and blue?
+
+Start with Q/K dot-product scores, not probabilities.
+
+Softmax normalizes the column: roughly 42% fluffy and 58% blue.
+
+Increase the blue score to read more from blue.
+
+The first a cannot see the future, so it reads only itself.

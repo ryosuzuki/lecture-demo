@@ -1,0 +1,77 @@
+{
+  "checks": [
+    {
+      "name": "English scene 1",
+      "pass": true
+    },
+    {
+      "name": "English scene 2",
+      "pass": true
+    },
+    {
+      "name": "English scene 3",
+      "pass": true
+    },
+    {
+      "name": "English scene 4",
+      "pass": true
+    },
+    {
+      "name": "English scene 5",
+      "pass": true
+    },
+    {
+      "name": "English scene 6",
+      "pass": true
+    },
+    {
+      "name": "play advances timeline",
+      "pass": true
+    },
+    {
+      "name": "pause holds timeline",
+      "pass": true
+    },
+    {
+      "name": "temperature control updates",
+      "pass": true
+    },
+    {
+      "name": "scope dialog opens",
+      "pass": true
+    },
+    {
+      "name": "mobile scene 1 fits",
+      "pass": true
+    },
+    {
+      "name": "mobile scene 2 fits",
+      "pass": true
+    },
+    {
+      "name": "mobile scene 3 fits",
+      "pass": true
+    },
+    {
+      "name": "mobile scene 4 fits",
+      "pass": true
+    },
+    {
+      "name": "mobile scene 5 fits",
+      "pass": true
+    },
+    {
+      "name": "mobile scene 6 fits",
+      "pass": true
+    },
+    {
+      "name": "English guide mobile overflow fixed",
+      "pass": true
+    },
+    {
+      "name": "no runtime errors",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

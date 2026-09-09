@@ -1,0 +1,11 @@
+3D / heads — English walkthrough captions
+
+Ordered transcript of captions burned into the recording. No audio.
+
+Heads are distinct attention patterns. Separate the stack.
+
+The four planes have different patterns. Click a plane to select its head.
+
+Show 12, then 96. These are illustrative patterns, not GPT-3 measurements.
+
+Head 96 is independently selectable too. Each head proposes an update.

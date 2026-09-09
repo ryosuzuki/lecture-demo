@@ -1,0 +1,122 @@
+{
+  "results": [
+    {
+      "route": "/",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/",
+      "title": "Attention, made tangible — five teaching experiments",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/guide.html",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/guide.html",
+      "title": "Teaching guide and walkthroughs — Attention Lab",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/v2/",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/v2/",
+      "title": "Inside a tiny Transformer — five teaching lenses",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/v2/guide.html",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/v2/guide.html",
+      "title": "Version 2 teaching rehearsal — Attention Lab",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/gpt-cinema/",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/gpt-cinema/",
+      "title": "GPT — Inside the next word.",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/replica/",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/#gpt",
+      "title": "Transformer — source-aligned interactive reconstruction",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/replica/guide.html",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/guide.html",
+      "title": "Classroom interaction guide",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/replica/qa.html",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/qa.html",
+      "title": "Verification — Transformer reconstruction",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/replica/provenance.html",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/provenance.html",
+      "title": "Sources and reconstruction scope",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/replica/compare.html",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/compare.html",
+      "title": "Source comparison — 52 scenes",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/replica/3d/",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/3d/#pipeline",
+      "title": "Attention in 3D — five spatial explanations",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/replica/3d/guide.html",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/3d/guide.html",
+      "title": "Teaching through 3D interaction",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/replica/3d/qa.html",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/3d/qa.html",
+      "title": "3D functional and numerical checks",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/replica/3d/compare.html",
+      "status": 200,
+      "url": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/3d/compare.html",
+      "title": "",
+      "lang": "en",
+      "japanese": false
+    },
+    {
+      "route": "/replica/qa.html diagnostic",
+      "pass": true,
+      "text": "PASS  Extreme logits still normalize to 1\nPASS  T=0 selects the maximum\nPASS  Each attention column sums to 1\nPASS  Future weights are zero\nPASS  Changing Value preserves attention\nPASS  Changing Value changes the update\nPASS  Increasing the blue score increases its weight\nPASS  Residual addition identity\nPASS  Source 6×6 mask preserves normalization\nPASS  Detect incorrect post-softmax zeroing\nPASS  concat → Wᴼ equals the sum across heads\nPASS  Attention parameter count\n\n12 / 12 passed"
+    }
+  ],
+  "errors": []
+}

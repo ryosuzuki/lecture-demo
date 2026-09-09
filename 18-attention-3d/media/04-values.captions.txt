@@ -1,0 +1,17 @@
+replica / 04-values — English walkthrough captions
+
+Ordered transcript of captions burned into the recording. No audio.
+
+Value specifies what to add to another token, not the original word vector.
+
+The fluffy value points toward an update to creature.
+
+Multiply the values by the source weights 0.42 and 0.58.
+
+Inspect the same operation by adding arrows.
+
+Change only the blue value. The update changes direction and magnitude.
+
+Return to columns. Changing V leaves the 0.42 / 0.58 proportions fixed.
+
+Finally, add E + ΔE instead of replacing E.

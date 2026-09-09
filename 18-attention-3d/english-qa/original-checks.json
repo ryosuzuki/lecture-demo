@@ -1,0 +1,85 @@
+{
+  "checks": [
+    {
+      "n": "initial embedding unchanged across context",
+      "pass": true
+    },
+    {
+      "n": "context moves embedding",
+      "pass": true
+    },
+    {
+      "n": "zero query gives uniform weights",
+      "pass": true
+    },
+    {
+      "n": "query rotation favors key B",
+      "pass": true
+    },
+    {
+      "n": "value intervention preserves attention",
+      "pass": true
+    },
+    {
+      "n": "value intervention changes output",
+      "pass": true
+    },
+    {
+      "n": "weighted sum is exact",
+      "pass": true
+    },
+    {
+      "n": "causal mask blocks future intervention",
+      "pass": true
+    },
+    {
+      "n": "causal rows normalized and future zero",
+      "pass": true
+    },
+    {
+      "n": "without mask future intervention leaks",
+      "pass": true
+    },
+    {
+      "n": "real gradient updates reduce loss",
+      "pass": true
+    },
+    {
+      "n": "blue context predicts blue",
+      "pass": true
+    },
+    {
+      "n": "red context predicts red",
+      "pass": true
+    },
+    {
+      "n": "generation does not update weights",
+      "pass": true
+    },
+    {
+      "n": "mobile no horizontal overflow: meaning",
+      "pass": true
+    },
+    {
+      "n": "mobile no horizontal overflow: match",
+      "pass": true
+    },
+    {
+      "n": "mobile no horizontal overflow: mix",
+      "pass": true
+    },
+    {
+      "n": "mobile no horizontal overflow: mask",
+      "pass": true
+    },
+    {
+      "n": "mobile no horizontal overflow: learn",
+      "pass": true
+    },
+    {
+      "n": "no JS errors",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

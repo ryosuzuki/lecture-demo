@@ -1,0 +1,73 @@
+{
+  "checks": [
+    {
+      "name": "lens 0 rendered",
+      "pass": true
+    },
+    {
+      "name": "lens 1 rendered",
+      "pass": true
+    },
+    {
+      "name": "lens 2 rendered",
+      "pass": true
+    },
+    {
+      "name": "lens 3 rendered",
+      "pass": true
+    },
+    {
+      "name": "lens 4 rendered",
+      "pass": true
+    },
+    {
+      "name": "query slider survives continuous mouse drag",
+      "pass": true
+    },
+    {
+      "name": "value slider survives mouse drag",
+      "pass": true
+    },
+    {
+      "name": "UI value intervention preserves attention",
+      "pass": true
+    },
+    {
+      "name": "checkpoint 0 selected",
+      "pass": true
+    },
+    {
+      "name": "generation appends one token and freezes checkpoint",
+      "pass": true
+    },
+    {
+      "name": "unknown tokens handled",
+      "pass": true
+    },
+    {
+      "name": "mobile no overflow 0",
+      "pass": true
+    },
+    {
+      "name": "mobile no overflow 1",
+      "pass": true
+    },
+    {
+      "name": "mobile no overflow 2",
+      "pass": true
+    },
+    {
+      "name": "mobile no overflow 3",
+      "pass": true
+    },
+    {
+      "name": "mobile no overflow 4",
+      "pass": true
+    },
+    {
+      "name": "no JS errors",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

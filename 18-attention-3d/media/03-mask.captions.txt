@@ -1,0 +1,17 @@
+replica / 03-mask — English walkthrough captions
+
+Ordered transcript of captions burned into the recording. No audio.
+
+The source uses this separate 6×6 example, starting from arbitrary scores.
+
+Set future positions to −∞ before applying softmax.
+
+Even with a zero lower triangle, each column sums to 1.
+
+Remove the mask and future information can leak in.
+
+Mask the future again.
+
+Incorrect: zeroing after softmax breaks the column sums.
+
+Correct: −∞ before softmax restores sums of 1.

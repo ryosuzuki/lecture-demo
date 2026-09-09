@@ -1,0 +1,178 @@
+{
+  "date": "2026-09-09T16:22:01.758Z",
+  "checks": [
+    {
+      "name": "pipeline renders in WebGL",
+      "pass": true,
+      "detail": 6320
+    },
+    {
+      "name": "pipeline real pointer orbit",
+      "pass": true
+    },
+    {
+      "name": "pipeline progress changes 3D geometry",
+      "pass": true
+    },
+    {
+      "name": "qk renders in WebGL",
+      "pass": true,
+      "detail": 2504
+    },
+    {
+      "name": "qk real pointer orbit",
+      "pass": true
+    },
+    {
+      "name": "qk progress changes 3D geometry",
+      "pass": true
+    },
+    {
+      "name": "values renders in WebGL",
+      "pass": true,
+      "detail": 224
+    },
+    {
+      "name": "values real pointer orbit",
+      "pass": true
+    },
+    {
+      "name": "values progress changes 3D geometry",
+      "pass": true
+    },
+    {
+      "name": "heads renders in WebGL",
+      "pass": true,
+      "detail": 4112
+    },
+    {
+      "name": "heads real pointer orbit",
+      "pass": true
+    },
+    {
+      "name": "heads progress changes 3D geometry",
+      "pass": true
+    },
+    {
+      "name": "meaning renders in WebGL",
+      "pass": true,
+      "detail": 336
+    },
+    {
+      "name": "meaning real pointer orbit",
+      "pass": true
+    },
+    {
+      "name": "meaning progress changes 3D geometry",
+      "pass": true
+    },
+    {
+      "name": "Q/K changes attention",
+      "pass": true
+    },
+    {
+      "name": "Q/K leaves values unchanged",
+      "pass": true
+    },
+    {
+      "name": "Columns normalize, causal future is zero",
+      "pass": true
+    },
+    {
+      "name": "Raw scores toggle",
+      "pass": true
+    },
+    {
+      "name": "Unmasked future entries restore",
+      "pass": true
+    },
+    {
+      "name": "Token UI updates query",
+      "pass": true
+    },
+    {
+      "name": "Value changes residual output",
+      "pass": true
+    },
+    {
+      "name": "Value leaves attention exactly unchanged",
+      "pass": true
+    },
+    {
+      "name": "Residual addition exact",
+      "pass": true
+    },
+    {
+      "name": "12 selectable 3D planes",
+      "pass": true
+    },
+    {
+      "name": "96 selectable 3D planes",
+      "pass": true
+    },
+    {
+      "name": "96 distinct head patterns",
+      "pass": true
+    },
+    {
+      "name": "Head 96 reachable",
+      "pass": true
+    },
+    {
+      "name": "Raycast selects actual head plane",
+      "pass": true
+    },
+    {
+      "name": "Geometry memory stable after 20 rebuilds",
+      "pass": true,
+      "detail": {
+        "before": 12,
+        "after": 12
+      }
+    },
+    {
+      "name": "Animation advances",
+      "pass": true
+    },
+    {
+      "name": "Animation pause holds",
+      "pass": true
+    },
+    {
+      "name": "Family analogy selected",
+      "pass": true
+    },
+    {
+      "name": "50D residual displayed",
+      "pass": true
+    },
+    {
+      "name": "pipeline mobile has no document horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "qk mobile has no document horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "values mobile has no document horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "heads mobile has no document horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "meaning mobile has no document horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "No browser runtime exceptions",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "passed": 40,
+  "total": 40,
+  "errors": []
+}

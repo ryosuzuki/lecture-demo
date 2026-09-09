@@ -1,0 +1,310 @@
+[
+  {
+    "file": "transformer-lab/site/v2/training-corpus.txt",
+    "unchanged": true
+  },
+  {
+    "file": "transformer-lab/site/v2/model.json",
+    "unchanged": true
+  },
+  {
+    "file": "transformer-lab/site/v2/engine.js",
+    "unchanged": true
+  },
+  {
+    "file": "transformer-lab/site/gpt-cinema/vendor/three.module.js",
+    "unchanged": true
+  },
+  {
+    "file": "transformer-lab/site/gpt-cinema/vendor/THREE-LICENSE.txt",
+    "unchanged": true
+  },
+  {
+    "file": "transformer-lab/site/gpt-cinema/vendor/three.core.js",
+    "unchanged": true
+  },
+  {
+    "file": "transformer-lab/site/gpt-cinema/vendor/OrbitControls.js",
+    "unchanged": true
+  },
+  {
+    "file": "transformer-lab/site/vendor/three.module.js",
+    "unchanged": true
+  },
+  {
+    "file": "transformer-lab/site/vendor/THREE-LICENSE.txt",
+    "unchanged": true
+  },
+  {
+    "file": "transformer-lab/site/vendor/three.core.js",
+    "unchanged": true
+  },
+  {
+    "file": "transformer-lab/site/vendor/OrbitControls.js",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/embeddings.json",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/FONT-LICENSE.txt",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/LICENSE-CC-BY-NC-SA.txt",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/math-font.woff2",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/math.js",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/3d/comparison/meaning-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/3d/comparison/heads-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/3d/comparison/qk-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/3d/comparison/pipeline-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/3d/comparison/values-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/gpt-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/tower-neighbors-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/adjectives-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/equation-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/lowrank-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/context-window-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/weights-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/unembedding-count-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/key-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/cross-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/output-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/residual-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/weighted-values-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/parallel-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/mask-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/unembedding-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/eiffel-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/food-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/attention-count-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/embedding-count-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/attention-softmax-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/scores-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/plural-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/softmax-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/dimensions-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/recap-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/model-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/temperature-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/tensors-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/query-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/mole-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/lookup-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/mystery-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/tokens-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/generate-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/king-context-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/value-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/harry-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/architecture-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/deeper-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/qkv-count-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/heads-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/regression-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/quadratic-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/dot-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/chat-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/analogy-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/roadmap-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/learning-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/modalities-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/countries-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/comparison/chapter5-end-source.jpg",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/vendor/three.module.js",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/vendor/THREE-LICENSE.txt",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/vendor/three.core.js",
+    "unchanged": true
+  },
+  {
+    "file": "3b1b-replica/site/vendor/OrbitControls.js",
+    "unchanged": true
+  }
+]

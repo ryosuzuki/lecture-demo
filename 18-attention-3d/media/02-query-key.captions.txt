@@ -1,0 +1,17 @@
+replica / 02-query-key — English walkthrough captions
+
+Ordered transcript of captions burned into the recording. No audio.
+
+The creature query asks: “Are there preceding adjectives?”
+
+Apply a different matrix to the same embeddings to create keys.
+
+Keys are on the left; queries are above. Inspect the creature column.
+
+Fluffy and blue have large dot products. These are not probabilities yet.
+
+Apply softmax to each column. Its weights sum to 1.
+
+Changing the blue score changes the reading proportions.
+
+Q/K determine where to read. V will supply the content next.

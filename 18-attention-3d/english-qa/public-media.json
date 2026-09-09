@@ -1,0 +1,785 @@
+{
+  "results": [
+    {
+      "id": "original/meaning",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/media/meaning.mp4",
+      "duration": 33.533333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.00417,
+          "time": 2.36029,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        },
+        {
+          "target": 16.7666665,
+          "initial": 16.770012,
+          "time": 17.125238,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        },
+        {
+          "target": 30.533333,
+          "initial": 30.536929,
+          "time": 30.891934,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/2187473",
+      "publicBytesMatch": true,
+      "sha256": "ff158837caedaddeda85c786f24b4a9725a9dc6e4da8d2cf19f4fd31ee80907c",
+      "pass": true
+    },
+    {
+      "id": "original/match",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/media/match.mp4",
+      "duration": 41.533333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.004864,
+          "time": 2.360706,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        },
+        {
+          "target": 20.7666665,
+          "initial": 20.770275,
+          "time": 21.12771,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        },
+        {
+          "target": 38.533333,
+          "initial": 38.536317,
+          "time": 38.895387,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/1455178",
+      "publicBytesMatch": true,
+      "sha256": "62bca106fdd061523d3d10058a983ee275dcf8825f0768f8e9580601ff407b3f",
+      "pass": true
+    },
+    {
+      "id": "original/mix",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/media/mix.mp4",
+      "duration": 34.366667,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.003323,
+          "time": 2.362818,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        },
+        {
+          "target": 17.1833335,
+          "initial": 17.186499,
+          "time": 17.545877,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        },
+        {
+          "target": 31.366667,
+          "initial": 31.369794,
+          "time": 31.727318,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/1892371",
+      "publicBytesMatch": true,
+      "sha256": "a9d2122b0c8eb22df00029dead2cb9658fae13fd2910271b204a0796426c34d8",
+      "pass": true
+    },
+    {
+      "id": "original/mask",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/media/mask.mp4",
+      "duration": 42.233333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.004455,
+          "time": 2.365103,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        },
+        {
+          "target": 21.1166665,
+          "initial": 21.120442,
+          "time": 21.478379,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        },
+        {
+          "target": 39.233333,
+          "initial": 39.237171,
+          "time": 39.595885,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/1615362",
+      "publicBytesMatch": true,
+      "sha256": "300aa3a6090e34981db87d37cae0d579c71371b8f2e74c32c6da256803c10e28",
+      "pass": true
+    },
+    {
+      "id": "original/learn",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/media/learn.mp4",
+      "duration": 39.433333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.004237,
+          "time": 2.363196,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        },
+        {
+          "target": 19.7166665,
+          "initial": 19.720027,
+          "time": 20.077707,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        },
+        {
+          "target": 36.433333,
+          "initial": 36.436847,
+          "time": 36.795377,
+          "ready": 4,
+          "width": 1440,
+          "height": 1000,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/1237814",
+      "publicBytesMatch": true,
+      "sha256": "445fb2dc1eab1464fdcbe8cadb820467d6f74398dd803d80f8361a35471373a5",
+      "pass": true
+    },
+    {
+      "id": "v2/story",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/v2/media/story.mp4",
+      "duration": 83.4,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.004717,
+          "time": 2.363403,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 41.7,
+          "initial": 41.703655,
+          "time": 42.063247,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 80.4,
+          "initial": 80.403406,
+          "time": 80.76295,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/4015504",
+      "publicBytesMatch": true,
+      "sha256": "640a4269a405aac95debc0448f95d427dd2c34fc0b54299afec83b202ff59b16",
+      "pass": true
+    },
+    {
+      "id": "v2/geometry",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/v2/media/geometry.mp4",
+      "duration": 81.366667,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.004273,
+          "time": 2.364462,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 40.6833335,
+          "initial": 40.686334,
+          "time": 41.045405,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 78.366667,
+          "initial": 78.370275,
+          "time": 78.729347,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/2752954",
+      "publicBytesMatch": true,
+      "sha256": "8a26a0c7f87f0c041176c49721d56a2856c539a470c2427aca958e8f4d5900cb",
+      "pass": true
+    },
+    {
+      "id": "v2/values",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/v2/media/values.mp4",
+      "duration": 76.966667,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.013404,
+          "time": 2.3721,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 38.4833335,
+          "initial": 38.486641,
+          "time": 38.845964,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 73.966667,
+          "initial": 73.970092,
+          "time": 74.329343,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/3152322",
+      "publicBytesMatch": true,
+      "sha256": "ca4c776ba96c2e15b59067dfd18fadf7ac36592852c3dd3a44eb8c81590fa9a7",
+      "pass": true
+    },
+    {
+      "id": "v2/matrix",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/v2/media/matrix.mp4",
+      "duration": 71.233333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.00436,
+          "time": 2.359085,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 35.6166665,
+          "initial": 35.619923,
+          "time": 35.980325,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 68.233333,
+          "initial": 68.23672,
+          "time": 68.594584,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/3261240",
+      "publicBytesMatch": true,
+      "sha256": "418d9488791c536443725f5e35c32ad8331f953bc46f69afb1bb15d804fa431d",
+      "pass": true
+    },
+    {
+      "id": "v2/training",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/v2/media/training.mp4",
+      "duration": 78.733333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.004747,
+          "time": 2.363306,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 39.3666665,
+          "initial": 39.370626,
+          "time": 39.730112,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 75.733333,
+          "initial": 75.736594,
+          "time": 76.096217,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/3341376",
+      "publicBytesMatch": true,
+      "sha256": "4205050764a4515be50c2c8aac8ca5f49dd2a65314cd293438603e1388bae857",
+      "pass": true
+    },
+    {
+      "id": "replica/01-embeddings",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/media/01-embeddings.mp4",
+      "duration": 42.433333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.003562,
+          "time": 2.364583,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 21.2166665,
+          "initial": 21.220146,
+          "time": 21.579998,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 39.433333,
+          "initial": 39.436934,
+          "time": 39.794621,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/2037222",
+      "publicBytesMatch": true,
+      "sha256": "518b3b43a29243c75943516da35f38bee53863c730ce5ff38b9e47275877e5a5",
+      "pass": true
+    },
+    {
+      "id": "replica/02-query-key",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/media/02-query-key.mp4",
+      "duration": 51.033333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.003161,
+          "time": 2.363705,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 25.5166665,
+          "initial": 25.520018,
+          "time": 25.878707,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 48.033333,
+          "initial": 48.036529,
+          "time": 48.396398,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/2172435",
+      "publicBytesMatch": true,
+      "sha256": "8afd86506d3d789f69c5b239fe9b35cee3de78ad3074fcae71d0ff066f08d739",
+      "pass": true
+    },
+    {
+      "id": "replica/03-mask",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/media/03-mask.mp4",
+      "duration": 53.633333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.003103,
+          "time": 2.356383,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 26.8166665,
+          "initial": 26.819778,
+          "time": 27.177975,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 50.633333,
+          "initial": 50.636363,
+          "time": 50.994382,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/1770249",
+      "publicBytesMatch": true,
+      "sha256": "64cfcfb798109a154209a38379fe93f040d2ac1514cb8f87301e6b27c2e0142a",
+      "pass": true
+    },
+    {
+      "id": "replica/04-values",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/media/04-values.mp4",
+      "duration": 56.633333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.003309,
+          "time": 2.363597,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 28.3166665,
+          "initial": 28.32003,
+          "time": 28.679619,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 53.633333,
+          "initial": 53.636488,
+          "time": 53.995146,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/1878270",
+      "publicBytesMatch": true,
+      "sha256": "9942a27209f7997e228dd49863eadb451d44e6b7f7a6e7c3664f1d1014a9ee22",
+      "pass": true
+    },
+    {
+      "id": "replica/05-multi-head",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/media/05-multi-head.mp4",
+      "duration": 53.133333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.003255,
+          "time": 2.362094,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 26.5666665,
+          "initial": 26.56985,
+          "time": 26.928475,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 50.133333,
+          "initial": 50.136768,
+          "time": 50.495961,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/1646910",
+      "publicBytesMatch": true,
+      "sha256": "5f5645c580b41209acc235dddca869fb379037b2e1a14bbd295034068f466804",
+      "pass": true
+    },
+    {
+      "id": "3d/pipeline",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/3d/media/pipeline.mp4",
+      "duration": 28.266667,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.00386,
+          "time": 2.362498,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 14.1333335,
+          "initial": 14.137763,
+          "time": 14.4975,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 25.266667,
+          "initial": 25.270006,
+          "time": 25.629812,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/3967501",
+      "publicBytesMatch": true,
+      "sha256": "0bbfba419a5221e8f8bf42312c907dba5f11dd327e88147cd605a2327ee33c36",
+      "pass": true
+    },
+    {
+      "id": "3d/qk",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/3d/media/qk.mp4",
+      "duration": 24.933333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.004083,
+          "time": 2.362669,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 12.4666665,
+          "initial": 12.469832,
+          "time": 12.829224,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 21.933333,
+          "initial": 21.936881,
+          "time": 22.295894,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/1829870",
+      "publicBytesMatch": true,
+      "sha256": "8fc419919ccdad301ed464a00af336bc816d34d09a26c14ac10d10050ebff2ef",
+      "pass": true
+    },
+    {
+      "id": "3d/values",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/3d/media/values.mp4",
+      "duration": 30.6,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.003105,
+          "time": 2.361418,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 15.3,
+          "initial": 15.304109,
+          "time": 15.662533,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 27.6,
+          "initial": 27.60353,
+          "time": 27.958065,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/1598713",
+      "publicBytesMatch": true,
+      "sha256": "f0bae93d7c45f9dcfab34c3d08fe4b729a4404bc71ec71aa8d250bf7474bf976",
+      "pass": true
+    },
+    {
+      "id": "3d/heads",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/3d/media/heads.mp4",
+      "duration": 29.833333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.004517,
+          "time": 2.360323,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 14.9166665,
+          "initial": 14.920979,
+          "time": 15.276779,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 26.833333,
+          "initial": 26.837267,
+          "time": 27.192474,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/2704880",
+      "publicBytesMatch": true,
+      "sha256": "bba93e79af643b2b4303ccc4b17a3ced913b527ef68c7ae156e7000f36fb3e85",
+      "pass": true
+    },
+    {
+      "id": "3d/meaning",
+      "src": "https://physics-farmer-partnership-putting.trycloudflare.com/replica/3d/media/meaning.mp4",
+      "duration": 33.833333,
+      "seeks": [
+        {
+          "target": 2,
+          "initial": 2.004547,
+          "time": 2.359635,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 16.9166665,
+          "initial": 16.92098,
+          "time": 17.276479,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        },
+        {
+          "target": 30.833333000000003,
+          "initial": 30.837397,
+          "time": 31.192076,
+          "ready": 4,
+          "width": 1600,
+          "height": 1200,
+          "pass": true
+        }
+      ],
+      "rangeStatus": 206,
+      "contentRange": "bytes 0-1023/1466264",
+      "publicBytesMatch": true,
+      "sha256": "bdc65581df4ff64aa06eb403f7cb8fd382eafaa3197445167f891705b2ead392",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

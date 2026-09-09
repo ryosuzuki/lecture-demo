@@ -1,0 +1,317 @@
+{
+  "results": [
+    {
+      "scene": "gpt",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "modalities",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "generate",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "tokens",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "model",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "architecture",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "chat",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "roadmap",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "learning",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "regression",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "tensors",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "weights",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "lookup",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "dimensions",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "tower-neighbors",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "analogy",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "countries",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "food",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "dot",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "plural",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "embedding-count",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "king-context",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "context-window",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "unembedding",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "unembedding-count",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "softmax",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "temperature",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "chapter5-end",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "recap",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "mole",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "eiffel",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "mystery",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "adjectives",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "query",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "key",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "scores",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "attention-softmax",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "equation",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "mask",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "quadratic",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "value",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "weighted-values",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "residual",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "qkv-count",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "lowrank",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "cross",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "harry",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "heads",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "output",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "deeper",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "attention-count",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    },
+    {
+      "scene": "parallel",
+      "rendered": true,
+      "webgl": "ok",
+      "clipped": []
+    }
+  ],
+  "errors": []
+}

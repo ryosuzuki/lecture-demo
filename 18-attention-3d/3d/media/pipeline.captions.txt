@@ -1,0 +1,11 @@
+3D / pipeline — English walkthrough captions
+
+Ordered transcript of captions burned into the recording. No audio.
+
+One column is one token; depth represents processing stages.
+
+Collapse the expansion to see the stacked blocks together.
+
+Attention crosses token positions; the MLP operates position-wise.
+
+The final-token output determines next-token probabilities.

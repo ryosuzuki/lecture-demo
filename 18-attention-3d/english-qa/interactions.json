@@ -1,0 +1,90 @@
+{
+  "tests": [
+    {
+      "name": "button sets right angle",
+      "pass": true
+    },
+    {
+      "name": "real pointer drag changes angle",
+      "pass": true
+    },
+    {
+      "name": "temperature slider changes T",
+      "pass": true
+    },
+    {
+      "name": "mask toggle off",
+      "pass": true
+    },
+    {
+      "name": "incorrect order loses normalization",
+      "pass": true
+    },
+    {
+      "name": "correct order restores normalization",
+      "pass": true
+    },
+    {
+      "name": "dragging value keeps attention fixed",
+      "pass": true
+    },
+    {
+      "name": "dragging value changes output",
+      "pass": true
+    },
+    {
+      "name": "sum-vector view switches",
+      "pass": true
+    },
+    {
+      "name": "clicking forest selects query column 8",
+      "pass": true
+    },
+    {
+      "name": "Three.js responds to orbit drag",
+      "pass": true
+    },
+    {
+      "name": "family analogy changes",
+      "pass": true
+    },
+    {
+      "name": "play advances progress",
+      "pass": true
+    },
+    {
+      "name": "pause freezes progress",
+      "pass": true
+    },
+    {
+      "name": "next navigates",
+      "pass": true
+    },
+    {
+      "name": "previous navigates",
+      "pass": true
+    },
+    {
+      "name": "source iframe has correct video/time",
+      "pass": true
+    },
+    {
+      "name": "projection mode activates",
+      "pass": true
+    },
+    {
+      "name": "mobile has no horizontal document overflow",
+      "pass": true,
+      "detail": {
+        "doc": 390,
+        "w": 390
+      }
+    },
+    {
+      "name": "no runtime exceptions",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "errors": []
+}

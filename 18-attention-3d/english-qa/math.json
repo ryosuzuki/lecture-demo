@@ -1,0 +1,146 @@
+[
+  {
+    "name": "softmax stable normalization 1",
+    "pass": true
+  },
+  {
+    "name": "softmax stable normalization -1000",
+    "pass": true
+  },
+  {
+    "name": "softmax stable normalization 100000",
+    "pass": true
+  },
+  {
+    "name": "T=0 exact maximum",
+    "pass": true
+  },
+  {
+    "name": "T=0 ties share probability",
+    "pass": true
+  },
+  {
+    "name": "higher T raises entropy",
+    "pass": true
+  },
+  {
+    "name": "column 0 sums to 1 (mask=false)",
+    "pass": true
+  },
+  {
+    "name": "column 1 sums to 1 (mask=false)",
+    "pass": true
+  },
+  {
+    "name": "column 2 sums to 1 (mask=false)",
+    "pass": true
+  },
+  {
+    "name": "column 3 sums to 1 (mask=false)",
+    "pass": true
+  },
+  {
+    "name": "column 4 sums to 1 (mask=false)",
+    "pass": true
+  },
+  {
+    "name": "column 5 sums to 1 (mask=false)",
+    "pass": true
+  },
+  {
+    "name": "column 6 sums to 1 (mask=false)",
+    "pass": true
+  },
+  {
+    "name": "column 7 sums to 1 (mask=false)",
+    "pass": true
+  },
+  {
+    "name": "column 0 sums to 1 (mask=true)",
+    "pass": true
+  },
+  {
+    "name": "column 1 sums to 1 (mask=true)",
+    "pass": true
+  },
+  {
+    "name": "column 2 sums to 1 (mask=true)",
+    "pass": true
+  },
+  {
+    "name": "column 3 sums to 1 (mask=true)",
+    "pass": true
+  },
+  {
+    "name": "column 4 sums to 1 (mask=true)",
+    "pass": true
+  },
+  {
+    "name": "column 5 sums to 1 (mask=true)",
+    "pass": true
+  },
+  {
+    "name": "column 6 sums to 1 (mask=true)",
+    "pass": true
+  },
+  {
+    "name": "column 7 sums to 1 (mask=true)",
+    "pass": true
+  },
+  {
+    "name": "all future-to-past edges zero",
+    "pass": true
+  },
+  {
+    "name": "V intervention preserves all attention weights",
+    "pass": true
+  },
+  {
+    "name": "V intervention changes creature output",
+    "pass": true
+  },
+  {
+    "name": "higher blue score increases blue weight",
+    "pass": true
+  },
+  {
+    "name": "score intervention preserves V",
+    "pass": true
+  },
+  {
+    "name": "residual identity every component",
+    "pass": true
+  },
+  {
+    "name": "reconstructed rounded weights .42/.58",
+    "pass": true
+  },
+  {
+    "name": "concat/output equals per-head sum",
+    "pass": true
+  },
+  {
+    "name": "GPT3 attention parameter arithmetic",
+    "pass": true
+  },
+  {
+    "name": "embedding parameter arithmetic",
+    "pass": true
+  },
+  {
+    "name": "four example heads have distinct attention",
+    "pass": true
+  },
+  {
+    "name": "chapter 5 time ranges contiguous",
+    "pass": true
+  },
+  {
+    "name": "chapter 6 time ranges contiguous",
+    "pass": true
+  },
+  {
+    "name": "unique scene identifiers",
+    "pass": true
+  }
+]
