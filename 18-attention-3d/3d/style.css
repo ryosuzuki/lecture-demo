@@ -2,3 +2,4 @@
 
 .input-text{width:100%;min-height:80px;padding:10px;background:#080808;color:#eee;border:1px solid #555;resize:vertical;font:14px monospace}.input-note{color:#aaa;font-size:12px;line-height:1.6}.vector-numbers{max-height:180px;overflow:auto}.input-next{display:block;margin:14px 0;padding:10px;border:1px solid #58c4dd}
 #controls{min-width:0}#controls select{max-width:100%}
+#numbers{white-space:pre-wrap}#single-matrices{font-size:11px;line-height:1.65;white-space:pre-wrap}
