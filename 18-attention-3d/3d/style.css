@@ -2,4 +2,26 @@
 
 .input-text{width:100%;min-height:80px;padding:10px;background:#080808;color:#eee;border:1px solid #555;resize:vertical;font:14px monospace}.input-note{color:#aaa;font-size:12px;line-height:1.6}.vector-numbers{max-height:180px;overflow:auto}.input-next{display:block;margin:14px 0;padding:10px;border:1px solid #58c4dd}
 #controls{min-width:0}#controls select{max-width:100%}
-#numbers{white-space:pre-wrap}#single-matrices{font-size:11px;line-height:1.65;white-space:pre-wrap}
+#numbers{white-space:pre-wrap}#single-matrices{font-size:11px;line-height:1.65;white-space:pre-wrap}/* Independent spatial views; arithmetic is ordinary HTML, never a texture. */
+#qk-stage[hidden],#calculation[hidden]{display:none!important}
+#qk-stage{position:relative;background:#000;border:1px solid #333;min-width:0;height:540px;overflow:hidden}
+#qk-stage h2{position:absolute;left:18px;top:12px;font:21px Georgia,serif;z-index:2;margin:0;pointer-events:none}
+#qk-canvas{position:absolute;inset:48px 0 65px;touch-action:none}
+#qk-canvas canvas{width:100%;height:100%;display:block}
+.qk-label{position:absolute;pointer-events:none;font:17px Georgia,serif;white-space:nowrap;background:#000c;padding:3px}
+#qk-stage p{position:absolute;bottom:9px;left:15px;font-size:11px;color:#aaa;line-height:1.5;pointer-events:none;margin:0}
+#qk-home{position:absolute;right:12px;bottom:12px;font-size:11px}
+.split-attention .lab{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.split-attention #stage{height:540px}
+.split-attention #stage:after{content:'2 · What information do we add?';position:absolute;left:18px;top:12px;font:21px Georgia,serif;pointer-events:none;color:#eee}
+.split-attention aside{grid-column:1/-1;max-height:none;display:grid;grid-template-columns:1fr 1fr 1fr;gap:25px}
+.split-attention aside .readout,.split-attention aside .teacher{margin:0;padding:0 0 0 20px;border-top:0;border-left:1px solid #444}
+#calculation{padding:20px;border:1px solid #38434a;background:#13191c;margin-top:20px}
+#calculation h2{font:24px Georgia,serif;margin:0 0 12px}#calculation p{line-height:1.65;max-width:1000px;color:#ccc}
+.table-scroll{overflow-x:auto}#calculation table{border-collapse:collapse;width:100%;font:14px ui-monospace,monospace}#calculation td,#calculation th{padding:12px;text-align:left;border-bottom:1px solid #344047;white-space:nowrap}#calculation th{color:#58c4dd}#calculation tr.selected{background:#343318;color:#ffff62}#calculation td button{padding:6px 12px}
+.token-strip{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0}.sentence{font:24px Georgia,serif}.sum-result{color:#ffff62!important;font-family:monospace}
+@media(max-width:900px){.split-attention .lab{grid-template-columns:1fr}.split-attention #stage,#qk-stage{height:480px}.split-attention aside{grid-template-columns:1fr}.split-attention aside .readout,.split-attention aside .teacher{padding:15px 0 0;border:0;border-top:1px solid #444}#calculation{padding:12px}}
+
+.lab .timeline{grid-column:1/-1;grid-row:2}.lab aside{grid-column:2;grid-row:1}.split-attention .lab aside{grid-column:1/-1;grid-row:3}@media(max-width:900px){.lab aside{grid-column:1;grid-row:3}.split-attention .lab .timeline{grid-row:3}.split-attention .lab aside{grid-row:4}}
+
+@media(max-width:500px){#qk-stage p{bottom:56px}}
