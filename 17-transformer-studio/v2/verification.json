@@ -1,0 +1,85 @@
+{
+  "version": "2",
+  "model": {
+    "parameters": 1296,
+    "trainedFromScratch": true,
+    "trainingSequences": 81,
+    "heldoutSequences": 15,
+    "heldoutUniquePrefixes": 5,
+    "scope": "controlled synthetic word-level corpus, not pretrained GPT"
+  },
+  "numerical": {
+    "referencePrompts": 5,
+    "allIntermediateActivationsCompared": true,
+    "maxAbsoluteErrorVsPyTorch": 2.68371522471611e-06,
+    "attentionNormalizedAtEveryCheckpoint": true,
+    "causalPrefixInvariance": true,
+    "valueInterventionPreservesSelectedHeadAttention": true
+  },
+  "independentReview": {
+    "status": "passed after revisions",
+    "fixed": [
+      "context comparison intervention contamination",
+      "LayerNorm input/output label",
+      "nonuniform checkpoint spacing",
+      "validation target-position interpretation",
+      "explicit readout calculation",
+      "V intervention scope"
+    ],
+    "remainingMathBlockers": []
+  },
+  "browser": {
+    "desktop": "1920x1080",
+    "mobile": "390x844",
+    "chapters": 7,
+    "javascriptErrors": [],
+    "checks": [
+      "Q handle drag",
+      "V slider drag",
+      "exact SVG pointer coordinates despite letterboxing",
+      "context comparison resets interventions",
+      "vocabulary readout selector",
+      "future append prefix invariance",
+      "mask off intervention",
+      "training checkpoint keyboard",
+      "guide and model card layouts"
+    ]
+  },
+  "media": {
+    "status": "passed mechanical, ASR, sampled visual and browser playback checks",
+    "voice": "Microsoft Edge ja-JP-NanamiNeural",
+    "voiceIsSynthetic": true,
+    "scriptSeconds": 423.142,
+    "asr": "Full authored narration transcribed with Whisper large-v3-turbo and reviewed for omissions and technical terms; homophone spellings differ",
+    "perceptualListening": "No independent end-to-end perceptual listening pass; ASR and mechanical checks do not substitute for that",
+    "proof": {
+      "seconds": 84.804,
+      "decode": "passed",
+      "loudnessLUFS": -15.9,
+      "truePeakDbFS": -2.1,
+      "visualTransitions": "first two chapters inspected"
+    },
+    "durationSeconds": 423.142,
+    "resolution": "1920x1080",
+    "fps": 30,
+    "codec": "H264 / AAC 48kHz",
+    "fullDecode": "passed",
+    "loudnessLUFS": -16.0,
+    "truePeakDbFS": -2.1,
+    "maxScheduledActionDriftSeconds": 0.005,
+    "faststart": true,
+    "browserPlaybackAndSubtitlesSeconds": [
+      2,
+      210,
+      415
+    ],
+    "chapterSeek": "passed",
+    "sampledVideoFrames": "context, match, carry, update, mask and learning inspected"
+  },
+  "limitations": [
+    "No classroom learning-effectiveness study",
+    "Not a general language model",
+    "2025 lecture video not located; earlier teaching review uses January 2026 transcript and slides",
+    "Full arbitrary-input GPT-2 inference in external Transformer Explainer not verified"
+  ]
+}
