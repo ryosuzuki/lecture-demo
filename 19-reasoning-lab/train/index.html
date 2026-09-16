@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Next-Token Training Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div><span class="eyebrow">LLM RECAP · LIVE COMPUTATION</span><h1>Next-Token Training Lab</h1><div class="truth-badge">Tiny 2-token feed-forward model · not a Transformer</div></div>
+    <div class="header-metric"><span>Training step</span><strong id="stepCount">0</strong></div>
+  </header>
+
+  <main>
+    <section class="panel input-panel">
+      <div class="panel-title"><span>1</span><div><h2>Sentence & Numbers</h2><p>Choose a real training pair.</p></div></div>
+      <label for="pairSelect">Training example</label>
+      <select id="pairSelect"></select>
+      <div class="sentence" id="sentence"></div>
+      <div class="target-card hidden" id="targetCard"><small>TRUE NEXT TOKEN</small><strong id="targetToken"></strong></div>
+      <div class="vector-block">
+        <div class="subhead"><span>Input embedding</span><code id="contextToken"></code></div>
+        <div id="embeddingVector" class="vector"></div>
+      </div>
+      <div class="vector-block">
+        <div class="subhead"><span>Hidden state</span><code>tanh(EW+b)</code></div>
+        <div id="hiddenVector" class="vector"></div>
+      </div>
+      <div class="math-card">
+        <div><span>Target probability</span><strong id="targetProb">—</strong></div>
+        <div><span>Cross-entropy loss</span><strong id="lossValue">—</strong></div>
+        <code>L = −log p(target)</code>
+      </div>
+    </section>
+
+    <section class="panel model-panel">
+      <div class="panel-title"><span>2</span><div><h2>Trainable Neural Language Model</h2><p>Drag to orbit. Click a connection to inspect its real weight.</p></div></div>
+      <div id="model3d" aria-label="Interactive 3D neural language model"></div>
+      <div class="model-legend"><span><i class="dot teal"></i>Embedding</span><span><i class="dot yellow"></i>Hidden</span><span><i class="dot coral"></i>Vocabulary</span></div>
+      <div id="weightInspector" class="inspector">
+        <div><small>SELECTED WEIGHT</small><strong id="weightName">Click a connection</strong></div>
+        <div class="weight-controls">
+          <input id="weightSlider" type="range" min="-2.5" max="2.5" step="0.001" disabled />
+          <input id="weightNumber" type="number" min="-2.5" max="2.5" step="0.001" disabled />
+        </div>
+        <p id="weightImpact">Manual changes recompute logits, probabilities, and loss immediately.</p>
+      </div>
+      <button class="secondary" id="toggleSurface">Explore actual 2-weight loss surface</button>
+    </section>
+
+    <section class="panel output-panel">
+      <div class="panel-title"><span>3</span><div><h2>Next-Token Distribution</h2><p>The model’s final answer is always here.</p></div></div>
+      <div id="probBars" class="bars"></div>
+      <div class="prediction-card"><span>PREDICTED NEXT TOKEN</span><strong id="prediction">—</strong><small id="predictionProb"></small></div>
+      <div id="gradientCard" class="gradient-card hidden">
+        <div class="subhead"><span id="gradientLabel">Current selected gradient</span><code id="gradientName"></code></div>
+        <strong id="gradientValue"></strong>
+        <p>Gradient tells this weight which direction increases or decreases loss.</p>
+      </div>
+    </section>
+  </main>
+
+  <section id="surfacePanel" class="surface-panel hidden">
+    <div class="surface-copy"><span class="eyebrow">REAL LOSS, NOT AN ILLUSTRATION</span><h2>A 2D Slice Through a High-Dimensional Model</h2><p>We vary two distinct weights, run the full model for every grid point, and plot measured cross-entropy. The yellow point is the current model. After any weight or training change, this surface is recomputed while all other current weights are held fixed.</p><div id="surfaceAxes"></div></div>
+    <div id="lossSurface"></div>
+  </section>
+
+  <footer>
+    <div class="flow" id="flow">
+      <button data-stage="predict" class="active">1 · Predict</button>
+      <button data-stage="target">2 · Reveal Target</button>
+      <button data-stage="loss">3 · Compute Loss</button>
+      <button data-stage="gradient">4 · Backpropagate</button>
+      <button data-stage="update">5 · Update Weights</button>
+      <button data-stage="again">6 · Predict Again</button>
+    </div>
+    <div class="training-controls">
+      <label>Learning rate <input id="learningRate" type="number" value="0.12" min="0.001" max="2" step="0.01" /></label>
+      <button id="trainOne">Train 1 step</button>
+      <button id="trainHundred">Train 100</button>
+      <button id="checkpoint" class="secondary">Save checkpoint</button>
+      <button id="restore" class="secondary">Restore</button>
+      <button id="reset" class="danger">Reset</button>
+    </div>
+    <div id="status" role="status">Predict first: the weights are fixed during inference.</div>
+  </footer>
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.167.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.167.1/examples/jsm/"}}
+  </script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

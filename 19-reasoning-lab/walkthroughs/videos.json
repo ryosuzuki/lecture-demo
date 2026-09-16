@@ -1,0 +1,44 @@
+[
+  {
+    "title": "A \u00b7 Inside the Layers",
+    "question": "Which numbers change inside the layers when the model learns?",
+    "video": "../train-layers/video/training-through-layers-walkthrough.mp4",
+    "app": "../train-layers/",
+    "script": "../train-layers/TEACHING-SCRIPT.md"
+  },
+  {
+    "title": "B \u00b7 Downhill on Loss",
+    "question": "How does a gradient move actual parameters downhill?",
+    "video": "../train-landscape/sgd-landscape-walkthrough.mp4",
+    "app": "../train-landscape/",
+    "script": "../train-landscape/README.md"
+  },
+  {
+    "title": "C \u00b7 One Sentence",
+    "question": "Why does making the observed word more probable reduce loss?",
+    "video": "../train-story/walkthrough.mp4",
+    "app": "../train-story/",
+    "script": "../train-story/TEACHING.md"
+  },
+  {
+    "title": "Search \u00b7 Real Embeddings",
+    "question": "What changes when we rank by meaning rather than word overlap?",
+    "video": "search-walkthrough.mp4",
+    "app": "../search/",
+    "script": "search-script.md"
+  },
+  {
+    "title": "Reason \u00b7 Generate and Verify",
+    "question": "Is a generated explanation the same thing as a correct answer?",
+    "video": "reason-walkthrough.mp4",
+    "app": "../reason/",
+    "script": "reason-script.md"
+  },
+  {
+    "title": "Continuous Thoughts \u00b7 Hidden States",
+    "question": "What is fed back into the model when no word is decoded?",
+    "video": "latent-walkthrough.mp4",
+    "app": "../latent/",
+    "script": "latent-script.md"
+  }
+]

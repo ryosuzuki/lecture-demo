@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reasoning Lab — generate, search, verify</title>
+  <style>
+    :root{--navy:#071a2b;--navy2:#0d2940;--teal:#18b7a0;--teal2:#bdf5e8;--yellow:#ffd84d;--paper:#f5f7f4;--ink:#102638;--muted:#657785;--line:#cad7d9;--red:#c74a49;--white:#fff;--shadow:0 12px 35px #071a2b14}
+    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif} button,input,select,textarea{font:inherit} button{cursor:pointer}
+    header{background:var(--navy);color:white;padding:28px max(22px,calc((100vw - 1180px)/2));border-bottom:6px solid var(--yellow)}
+    .eyebrow{color:var(--yellow);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.title-row{display:flex;gap:24px;align-items:end;justify-content:space-between}h1{font-size:clamp(30px,5vw,54px);line-height:1;margin:8px 0 10px;letter-spacing:-.045em}header p{margin:0;color:#b9cad6;max-width:670px}.stepper{display:flex;gap:7px;flex-wrap:wrap}.stepper button{border:1px solid #3b5569;background:transparent;color:#d9e5ec;padding:8px 12px;border-radius:999px}.stepper button.active{background:var(--yellow);color:var(--navy);border-color:var(--yellow);font-weight:800}
+    main{max-width:1180px;margin:auto;padding:28px 20px 70px}.lesson{display:none}.lesson.active{display:block}.lesson-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}.num{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:var(--teal);color:white;font-weight:900;font-size:18px}.lesson h2{margin:0;font-size:27px;letter-spacing:-.025em}.lesson-head p{margin:2px 0;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}.card{background:white;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}.span4{grid-column:span 4}.span5{grid-column:span 5}.span7{grid-column:span 7}.span8{grid-column:span 8}.span12{grid-column:span 12}.card h3{margin:0 0 12px;font-size:16px}.label{display:block;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}.note{font-size:12px;color:var(--muted)}.callout{background:#fff8cf;border-left:4px solid var(--yellow);padding:11px 13px;border-radius:4px}.mode{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;padding:5px 9px;border-radius:999px;background:var(--teal2);color:#07584d}.mode.off{background:#e8edf0;color:#596a75}.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+    textarea,input,select{width:100%;border:1px solid var(--line);border-radius:9px;background:white;padding:10px;color:var(--ink)}textarea{min-height:100px;resize:vertical}.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.btn{border:1px solid var(--line);border-radius:9px;background:white;color:var(--ink);padding:9px 13px;font-weight:750}.btn.primary{background:var(--teal);border-color:var(--teal);color:white}.btn.dark{background:var(--navy);border-color:var(--navy);color:white}.btn.warn{background:var(--yellow);border-color:var(--yellow);color:var(--navy)}.btn:disabled{opacity:.45;cursor:not-allowed}.metric{padding:8px 10px;border:1px solid var(--line);border-radius:9px;min-width:98px}.metric b{font-size:17px;display:block}.metric small{color:var(--muted)}
+    .output{background:var(--navy);color:#eef7fa;border-radius:12px;padding:14px;min-height:190px;white-space:pre-wrap;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;overflow:auto;position:relative}.output.empty{color:#8198a8}.output-label{color:var(--yellow);font:800 11px/1.2 Inter,sans-serif;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}.samples{display:grid;gap:7px;max-height:320px;overflow:auto}.sample{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fbfcfb}.sample.good{border-left:4px solid var(--teal)}.sample.bad{border-left:4px solid var(--red)}
+    .pipeline{display:grid;grid-template-columns:1fr 26px 1fr 26px 1fr;align-items:stretch}.pipe{border:1px solid var(--line);border-radius:12px;padding:14px}.arrow{display:grid;place-items:center;color:var(--teal);font-size:22px}.pipe .who{font-size:10px;text-transform:uppercase;font-weight:900;color:var(--teal)}.pipe pre{white-space:pre-wrap;margin:8px 0 0;font:12px/1.45 ui-monospace,monospace}.answer{font-size:34px;font-weight:900;margin:8px 0}.numbers{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}.number{min-width:60px;border:2px solid var(--teal);background:#edfcf8;border-radius:12px;padding:12px;text-align:center;font-size:20px;font-weight:850}.number.selected{background:var(--teal);color:white}.opbar .btn{width:42px;padding:9px 0}.history{list-style:none;margin:10px 0 0;padding:0}.history li{padding:8px;border-bottom:1px solid #e1e8e8;font-family:ui-monospace,monospace}.tree{min-height:238px;background:#f7faf9;border:1px dashed var(--line);border-radius:12px;padding:12px;overflow:auto}.branch{border-left:3px solid var(--teal);padding:7px 10px;margin:7px 0;background:white;border-radius:0 8px 8px 0}.branch.dead{border-color:#97a5ae;color:#70808a}.branch.win{border-color:var(--yellow);background:#fff9d9}.range{accent-color:var(--teal)}.status{padding:10px 12px;border-radius:9px;background:#edf2f3;color:#506673}.status.good{background:#d9f7ee;color:#075c4e}.status.bad{background:#fde8e6;color:#8b2d2b}.footer-note{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+    @media(max-width:800px){.title-row{display:block}.stepper{margin-top:20px}.span4,.span5,.span7,.span8{grid-column:span 12}.pipeline{grid-template-columns:1fr}.arrow{transform:rotate(90deg);height:28px}}
+  </style>
+</head>
+<body>
+<header>
+<div class="eyebrow">ATLS 4519 · live classroom lab</div>
+<div class="title-row">
+<div>
+<h1>Reasoning Lab</h1>
+<p>Watch a public model generate, compare repeated attempts, then separate generation from exact verification.</p>
+</div>
+<nav class="stepper" aria-label="Lessons">
+<button class="active" data-tab="model">1 · Model</button>
+<button data-tab="samples">2 · Samples</button>
+<button data-tab="tool">3 · Tool</button>
+<button data-tab="game">4 · Search</button>
+</nav>
+</div>
+</header>
+<main>
+  <section id="model" class="lesson active">
+<div class="lesson-head">
+<div class="num">1</div>
+<div>
+<h2>Direct answer vs. visible reasoning output</h2>
+<p>Same public model, same question, different instruction.</p>
+</div>
+</div>
+    <div class="grid">
+<div class="card span4">
+<span id="modelMode" class="mode off">
+<i class="dot">
+</i> model not loaded</span>
+<label class="label" for="question">Question</label>
+<textarea id="question">A store has 17 boxes with 24 pencils each. It gives away 135 pencils. How many pencils remain?</textarea>
+<label class="label" for="modelSelect">Public browser model</label>
+<select id="modelSelect">
+<option value="Qwen3-0.6B-q4f16_1-MLC">Qwen3 0.6B Instruct · q4</option>
+<option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5 0.5B Instruct · q4</option>
+</select>
+<div class="row" style="margin-top:12px">
+<button id="loadModel" class="btn primary">Load model</button>
+<button id="cancelModel" class="btn" disabled>Cancel</button>
+</div>
+<div id="modelStatus" class="status" style="margin-top:12px">Checks WebGPU only when you load. Model weights stay in this browser.</div>
+<div class="callout note" style="margin-top:12px">
+<b>Important:</b> the text shown is generated output requested from an open model—not access to hidden proprietary thoughts.</div>
+</div>
+      <div class="card span4">
+<div class="row" style="justify-content:space-between">
+<h3>Direct</h3>
+<button class="btn dark run-one" data-style="direct" disabled>Run direct</button>
+</div>
+<div id="directOut" class="output empty">
+<div class="output-label">actual model output</div>Load the model to begin.</div>
+<div class="row" style="margin-top:10px">
+<div class="metric">
+<b id="directTok">—</b>
+<small>output tokens</small>
+</div>
+<div class="metric">
+<b id="directTime">—</b>
+<small>elapsed</small>
+</div>
+</div>
+</div>
+      <div class="card span4">
+<div class="row" style="justify-content:space-between">
+<h3>Reason aloud</h3>
+<button class="btn dark run-one" data-style="reason" disabled>Run reasoning</button>
+</div>
+<div id="reasonOut" class="output empty">
+<div class="output-label">actual model output</div>Load the model to begin.</div>
+<div class="row" style="margin-top:10px">
+<div class="metric">
+<b id="reasonTok">—</b>
+<small>output tokens</small>
+</div>
+<div class="metric">
+<b id="reasonTime">—</b>
+<small>elapsed</small>
+</div>
+</div>
+</div>
+    </div>
+  </section>
+  <section id="samples" class="lesson">
+<div class="lesson-head">
+<div class="num">2</div>
+<div>
+<h2>More computation, more candidates</h2>
+<p>Generate 1, 4, or 16 independent attempts and verify each answer.</p>
+</div>
+</div>
+    <div class="grid">
+<div class="card span4">
+<h3>Sampling experiment</h3>
+<p class="note">Fixed benchmark: <b>17 × 24 − 135</b>. Each click performs fresh model inference at temperature 0.8. The verifier checks the final integer against independently computed arithmetic (273).</p>
+<label class="label">Number of samples</label>
+<div class="row" id="sampleButtons">
+<button class="btn warn" data-n="1">n = 1</button>
+<button class="btn" data-n="4">n = 4</button>
+<button class="btn" data-n="16">n = 16</button>
+</div>
+<div class="row" style="margin-top:14px">
+<button id="runSamples" class="btn primary" disabled>Generate samples</button>
+<button id="cancelSamples" class="btn" disabled>Cancel</button>
+</div>
+<div id="samplingStatus" class="status" style="margin-top:12px">Load the model in Step 1 first.</div>
+<div class="footer-note">Counts and timing are measured from this run. No sample responses are stored in the page.</div>
+</div>
+<div class="card span8">
+<div class="row">
+<div class="metric">
+<b id="sampleValid">0 / 0</b>
+<small>exactly correct</small>
+</div>
+<div class="metric">
+<b id="sampleTokens">0</b>
+<small>output tokens</small>
+</div>
+<div class="metric">
+<b id="sampleTime">0.0s</b>
+<small>elapsed</small>
+</div>
+</div>
+<div id="sampleList" class="samples" style="margin-top:14px">
+<div class="note">Generated attempts will appear here.</div>
+</div>
+</div>
+</div>
+  </section>
+  <section id="tool" class="lesson">
+<div class="lesson-head">
+<div class="num">3</div>
+<div>
+<h2>Who actually did the math?</h2>
+<p>A transparent calculator handoff: model request → application call → deterministic tool.</p>
+</div>
+</div>
+    <div class="card">
+<div class="row" style="margin-bottom:16px">
+<label>First number <input id="calcA" type="number" value="23" style="width:110px">
+</label>
+<label>Operation <select id="calcOp" style="width:90px">
+<option value="*">×</option>
+<option value="+">+</option>
+<option value="-">−</option>
+<option value="/">÷</option>
+</select>
+</label>
+<label>Second number <input id="calcB" type="number" value="47" style="width:110px">
+</label>
+<button id="calcRun" class="btn primary">Run handoff</button>
+</div>
+<div class="pipeline">
+<div class="pipe">
+<div class="who">Model · requested call</div>
+<pre id="calcRequest">calculator({ a: 23, op: "*", b: 47 })</pre>
+</div>
+<div class="arrow">→</div>
+<div class="pipe">
+<div class="who">Application · structured arguments</div>
+<pre id="calcArgs">{"a":23,"op":"*","b":47}</pre>
+</div>
+<div class="arrow">→</div>
+<div class="pipe">
+<div class="who">Tool · deterministic result</div>
+<div id="calcAnswer" class="answer">1081</div>
+<div class="note">Computed by JavaScript arithmetic, not model inference.</div>
+</div>
+</div>
+</div>
+  </section>
+  <section id="game" class="lesson">
+<div class="lesson-head">
+<div class="num">4</div>
+<div>
+<h2>Game 24: branch, verify, backtrack</h2>
+<p>Use 4, 9, 10, and 13 exactly once. Exact rational arithmetic decides—not fluency.</p>
+</div>
+</div>
+    <div class="grid">
+<div class="card span5">
+<div class="row" style="justify-content:space-between">
+<span class="mode">
+<i class="dot">
+</i> deterministic solver</span>
+<button id="gameReset" class="btn">Reset</button>
+</div>
+<div id="gameNumbers" class="numbers">
+</div>
+<div class="row opbar">
+<button class="btn" data-op="+">+</button>
+<button class="btn" data-op="-">−</button>
+<button class="btn" data-op="*">×</button>
+<button class="btn" data-op="/">÷</button>
+</div>
+<div class="row" style="margin-top:12px">
+<button id="backtrack" class="btn">Backtrack</button>
+<button id="checkGame" class="btn dark">Check</button>
+</div>
+<ol id="gameHistory" class="history">
+</ol>
+<div id="gameStatus" class="status">Select two numbers, then an operation.</div>
+</div>
+      <div class="card span7">
+<div class="row" style="justify-content:space-between">
+<h3>Budgeted search</h3>
+<div>
+<b id="budgetLabel">24</b> nodes</div>
+</div>
+<input id="budget" class="range" type="range" min="1" max="800" value="24">
+<div class="row" style="margin:10px 0">
+<button id="runSearch" class="btn primary">Search</button>
+<span class="note">Expand alternatives depth-first; prune repeats and division by zero.</span>
+</div>
+<div id="searchTree" class="tree">
+<div class="note">Choose a budget and press Search. Every displayed equation is recomputed with exact fractions.</div>
+</div>
+<div class="footer-note">
+<b>Teaching boundary:</b> this tree is an explicit symbolic search procedure, not a claim about a model’s hidden thoughts.</div>
+</div>
+</div>
+  </section>
+</main>
+<script type="module">
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+$$('.stepper button').forEach(b=>b.onclick=()=>{$$('.stepper button').forEach(x=>x.classList.toggle('active',x===b));$$('.lesson').forEach(x=>x.classList.toggle('active',x.id===b.dataset.tab));});
+let engine=null, engineKind='webllm', localModel=null, abort=null, sampleN=1;
+const modelStatus=$('#modelStatus'), mode=$('#modelMode');
+function setModelStatus(text,kind=''){modelStatus.textContent=text;modelStatus.className='status '+kind}
+async function probeLocal(){if(location.hostname.endsWith("github.io"))return;try{const r=await fetch('/api/health',{cache:'no-store'});const h=await r.json();if(h.reason){engineKind='local';localModel=h.reason_model||'Qwen/Qwen3-0.6B';const select=$('#modelSelect');select.insertAdjacentHTML('afterbegin',`<option selected>${localModel} · local safetensors</option>`);select.disabled=true;$('#loadModel').textContent=h.reason_loaded?'Use loaded local model':'Load local model';setModelStatus(`Local ${localModel} is available. The first request loads public weights from the server cache.`,'good')}}catch{}}
+probeLocal();
+async function callLocal(question,thinking,max_tokens=256,n=1){const r=await fetch('/api/reason',{method:'POST',headers:{'Content-Type':'application/json'},signal:abort?.signal,body:JSON.stringify({question,thinking,max_tokens,n})});const data=await r.json();if(!r.ok)throw Error(data.error||`HTTP ${r.status}`);return data}
+$('#loadModel').onclick=async()=>{if(engineKind==='local'){engine={local:true};mode.className='mode';mode.innerHTML='<i class="dot"></i> '+localModel+' · local server';$$('.run-one').forEach(b=>b.disabled=false);$('#runSamples').disabled=false;setModelStatus('Ready. Inference runs on the local open model; the first request may load weights.','good');return}if(!navigator.gpu){setModelStatus('WebGPU unavailable in this browser. The deterministic calculator and Game 24 labs still work.','bad');return} $('#loadModel').disabled=true;setModelStatus('Importing WebLLM…');try{const webllm=await import('https://esm.run/@mlc-ai/web-llm');const model=$('#modelSelect').value;engine=await webllm.CreateMLCEngine(model,{initProgressCallback:p=>setModelStatus(p.text||`Loading ${Math.round((p.progress||0)*100)}%`)});mode.className='mode';mode.innerHTML='<i class="dot"></i> '+model;$$('.run-one').forEach(b=>b.disabled=false);$('#runSamples').disabled=false;setModelStatus('Ready. All generation runs locally in your browser.','good')}catch(e){engine=null;$('#loadModel').disabled=false;setModelStatus('Model unavailable: '+e.message,'bad')}};
+async function stream(style){if(!engine)return; abort=new AbortController();$('#cancelModel').disabled=false;$$('.run-one').forEach(b=>b.disabled=true);const out=$('#'+style+'Out'),tok=$('#'+style+'Tok'),time=$('#'+style+'Time');out.classList.remove('empty');out.innerHTML='<div class="output-label">actual model output · streaming</div>';const prompt=(style==='direct'?'/no_think\n':'/think\n')+$('#question').value+(style==='direct'?'\nAnswer directly. End with “Final answer: <integer>”.':'\nExplain your calculation step by step in your visible response, then end with “Final answer: <integer>”.');let text='',tokens=0,start=performance.now();try{const chunks=await engine.chat.completions.create({messages:[{role:'user',content:prompt}],temperature:0.2,max_tokens:220,stream:true,stream_options:{include_usage:true}});for await(const c of chunks){if(abort.signal.aborted)throw new DOMException('Cancelled','AbortError');text+=c.choices?.[0]?.delta?.content||'';tokens=c.usage?.completion_tokens||tokens;out.textContent=text;time.textContent=((performance.now()-start)/1000).toFixed(1)+'s'}if(!tokens)tokens=await countTokens(text);tok.textContent=tokens;out.textContent=text||'(model returned no text)'}catch(e){out.textContent=e.name==='AbortError'?'Run cancelled. Partial output discarded.':'Generation error: '+e.message}finally{$$('.run-one').forEach(b=>b.disabled=!engine);$('#cancelModel').disabled=true;abort=null}};
+async function countTokens(t){try{return (await engine.tokenizer.encode(t)).length}catch{return '~'+Math.max(1,Math.round(t.length/4))}}
+async function localStream(style){abort=new AbortController();$('#cancelModel').disabled=false;$$('.run-one').forEach(b=>b.disabled=true);const out=$('#'+style+'Out'),tok=$('#'+style+'Tok'),time=$('#'+style+'Time');out.classList.remove('empty');out.textContent='Local model inference in progress…';try{const r=await callLocal($('#question').value,style==='reason',style==='reason'?512:256,1);const o=r.outputs[0];let shown='';if(o.reasoning)shown+='REASONING · model-emitted\n'+o.reasoning;if(o.final)shown+=(shown?'\n\n':'')+'FINAL RESPONSE · model-emitted\n'+o.final;if(!o.final&&o.reasoning)shown+='\n\n[Generation limit reached before the model emitted </think>; no final response was invented.]';out.textContent=shown||o.raw||'(model returned no text)';tok.textContent=o.output_tokens;time.textContent=(o.elapsed_ms/1000).toFixed(1)+'s'}catch(e){out.textContent=e.name==='AbortError'?'Request cancelled locally. Server inference may finish in the background.':'Generation error: '+e.message}finally{$$('.run-one').forEach(b=>b.disabled=false);$('#cancelModel').disabled=true;abort=null}}
+$$('.run-one').forEach(b=>b.onclick=()=>engineKind==='local'?localStream(b.dataset.style):stream(b.dataset.style));$('#cancelModel').onclick=()=>{abort?.abort();engine?.interruptGenerate?.()};
+$$('#sampleButtons button').forEach(b=>b.onclick=()=>{sampleN=+b.dataset.n;$$('#sampleButtons button').forEach(x=>x.classList.toggle('warn',x===b))});
+$('#runSamples').onclick=async()=>{if(!engine)return;abort=new AbortController();$('#runSamples').disabled=true;$('#cancelSamples').disabled=false;const list=$('#sampleList');list.innerHTML='';let ok=0,totalTok=0,start=performance.now();const benchmark='A store has 17 boxes with 24 pencils each. It gives away 135 pencils. How many pencils remain?';for(let i=0;i<sampleN;i++){if(abort.signal.aborted)break;$('#samplingStatus').textContent=`Generating ${i+1} of ${sampleN}…`;try{const r=await engine.chat.completions.create({messages:[{role:'user',content:'/think\n'+benchmark+'\nSolve independently. End with exactly “Final answer: <integer>”.'}],temperature:.8,max_tokens:180});const t=r.choices[0].message.content||'';const m=[...t.matchAll(/final answer\s*:\s*(-?\d+)/ig)].pop();const valid=m&&+m[1]===17*24-135;ok+=valid?1:0;const n=r.usage?.completion_tokens||await countTokens(t);totalTok+=n;list.insertAdjacentHTML('beforeend',`<div class="sample ${valid?'good':'bad'}">
+<b>Sample ${i+1} · ${valid?'verified ✓':'not verified'}</b>
+<div class="note">${n} tokens</div>
+<div style="white-space:pre-wrap;margin-top:5px">
+</div>
+</div>`);list.lastElementChild.lastElementChild.textContent=t;$('#sampleValid').textContent=`${ok} / ${i+1}`;$('#sampleTokens').textContent=totalTok;$('#sampleTime').textContent=((performance.now()-start)/1000).toFixed(1)+'s'}catch(e){if(e.name!=='AbortError')$('#samplingStatus').textContent='Generation error: '+e.message;break}}$('#samplingStatus').textContent=abort.signal.aborted?'Cancelled. Completed samples retained.':`Complete: ${ok} of ${sampleN} exact.`;$('#runSamples').disabled=false;$('#cancelSamples').disabled=true;abort=null};
+const runWebSamples=$('#runSamples').onclick;
+async function localSamples(){abort=new AbortController();$('#runSamples').disabled=true;$('#cancelSamples').disabled=false;const list=$('#sampleList');list.innerHTML='';const benchmark='A store has 17 boxes with 24 pencils each. It gives away 135 pencils. How many pencils remain? End with “Final answer: <integer>”.';try{$('#samplingStatus').textContent=`Generating ${sampleN} measured local sample${sampleN===1?'':'s'}…`;const r=await callLocal(benchmark,true,256,sampleN);let ok=0;r.outputs.forEach((o,i)=>{const final=o.final.trim();const tagged=final.match(/final answer\s*:\s*(-?\d+)/i);const numeric=final.match(/^\s*(-?\d+)\s*[.!]?\s*$/);const answer=tagged?.[1]||numeric?.[1];const valid=answer!==undefined&&+answer===273;ok+=valid?1:0;const label=valid?'verified ✓':final?'final not verified':'incomplete · no final emitted';list.insertAdjacentHTML('beforeend',`<div class="sample ${valid?'good':'bad'}"><b>Sample ${i+1} · ${label}</b><div class="note">${o.output_tokens} actual tokens · ${(o.elapsed_ms/1000).toFixed(1)}s</div><div style="white-space:pre-wrap;margin-top:5px"></div></div>`);list.lastElementChild.lastElementChild.textContent=[o.reasoning,final].filter(Boolean).join('\n\n')||o.raw});$('#sampleValid').textContent=`${ok} / ${r.outputs.length}`;$('#sampleTokens').textContent=r.total_tokens;$('#sampleTime').textContent=(r.elapsed_ms/1000).toFixed(1)+'s';$('#samplingStatus').textContent=`Complete: ${ok} of ${r.outputs.length} exact.`}catch(e){$('#samplingStatus').textContent=e.name==='AbortError'?'Request cancelled.':'Generation error: '+e.message}finally{$('#runSamples').disabled=false;$('#cancelSamples').disabled=true;abort=null}}
+$('#runSamples').onclick=()=>engineKind==='local'?localSamples():runWebSamples();
+$('#cancelSamples').onclick=()=>{abort?.abort();engine?.interruptGenerate?.()};
+function calc(){const a=Number($('#calcA').value),b=Number($('#calcB').value),op=$('#calcOp').value;$('#calcRequest').textContent=`calculator({ a: ${a}, op: "${op}", b: ${b} })`;$('#calcArgs').textContent=JSON.stringify({a,op,b});let v=op==='+'?a+b:op==='-'?a-b:op==='*'?a*b:b===0?'Error: division by zero':a/b;$('#calcAnswer').textContent=v}$('#calcRun').onclick=calc;$$('#calcA,#calcB,#calcOp').forEach(x=>x.oninput=calc);
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);function F(n,d=1){if(!d)throw Error('zero');let g=gcd(n,d);if(d<0)g=-g;return{n:n/g,d:d/g}}function apply(a,b,o){return o==='+'?F(a.n*b.d+b.n*a.d,a.d*b.d):o==='-'?F(a.n*b.d-b.n*a.d,a.d*b.d):o==='*'?F(a.n*b.n,a.d*b.d):F(a.n*b.d,a.d*b.n)}function val(x){return x.d===1?''+x.n:`${x.n}/${x.d}`}
+let game=[],history=[],selected=[];function resetGame(){game=[4,9,10,13].map(n=>({f:F(n),e:''+n}));history=[];selected=[];renderGame();$('#gameStatus').className='status';$('#gameStatus').textContent='Select two numbers, then an operation.'}function renderGame(){$('#gameNumbers').innerHTML=game.map((x,i)=>`<button class="number ${selected.includes(i)?'selected':''}" data-i="${i}">${val(x.f)}<small style="display:block">${x.e}</small>
+</button>`).join('');$$('#gameNumbers button').forEach(b=>b.onclick=()=>{let i=+b.dataset.i;if(selected.includes(i))selected=selected.filter(x=>x!==i);else if(selected.length<2)selected.push(i);renderGame()});$('#gameHistory').innerHTML=history.map(h=>`<li>${h}</li>`).join('')}function operate(op){if(selected.length!==2){$('#gameStatus').textContent='Select exactly two values first.';return}let [i,j]=selected,a=game[i],b=game[j];try{let r={f:apply(a.f,b.f,op),e:`(${a.e} ${op} ${b.e})`};history.push(`${a.e} ${op} ${b.e} = ${val(r.f)}`);game=game.filter((_,k)=>k!==i&&k!==j);game.push(r);selected=[];renderGame()}catch{$('#gameStatus').textContent='Division by zero is not allowed.'}}$$('.opbar button').forEach(b=>b.onclick=()=>operate(b.dataset.op));$('#gameReset').onclick=resetGame;$('#checkGame').onclick=()=>{let win=game.length===1&&game[0].f.n===24*game[0].f.d;$('#gameStatus').className='status '+(win?'good':'bad');$('#gameStatus').textContent=win?'Verified: exactly 24, using all four numbers once.':'Not yet: combine all four numbers into exactly 24.'};resetGame();
+let gameStates=[];const performOperation=operate;operate=op=>{if(selected.length===2)gameStates.push({game:structuredClone(game),history:[...history]});performOperation(op)};$('#backtrack').onclick=()=>{const prior=gameStates.pop();if(!prior)return;game=prior.game;history=prior.history;selected=[];renderGame();$('#gameStatus').className='status';$('#gameStatus').textContent='Restored the previous branch.'};$('#gameReset').onclick=()=>{resetGame();gameStates=[]};
+$('#budget').oninput=e=>$('#budgetLabel').textContent=e.target.value;
+$('#runSearch').onclick=()=>{let budget=+$('#budget').value,nodes=0,lines=[],found=null;function dfs(items,depth){if(nodes>=budget||found)return;nodes++;lines.push({depth,text:items.map(x=>x.e).join(' · '),kind:items.length===1?(items[0].f.n===24*items[0].f.d?'win':'dead'):''});if(items.length===1){if(items[0].f.n===24*items[0].f.d)found=items[0].e;return}for(let i=0;i<items.length;i++)for(let j=0;j<items.length;j++)if(i!==j)for(const o of ['+','-','*','/']){if(nodes>=budget||found)return;if((o==='+'||o==='*')&&j<i)continue;if(o==='/'&&items[j].f.n===0)continue;let next=items.filter((_,k)=>k!==i&&k!==j),r={f:apply(items[i].f,items[j].f,o),e:`(${items[i].e}${o}${items[j].e})`};dfs([...next,r],depth+1)}}dfs([4,9,10,13].map(n=>({f:F(n),e:''+n})),0);$('#searchTree').innerHTML=lines.map(x=>`<div class="branch ${x.kind}" style="margin-left:${x.depth*16}px">${x.text}${x.kind==='win'?' = 24 ✓':''}</div>`).join('')+`<div class="status ${found?'good':''}">${found?'Found and exactly verified: '+found+' = 24':`Budget exhausted after ${nodes} nodes. Increase the budget or try another branch.`}</div>`};
+</script>
+</body>
+</html>
